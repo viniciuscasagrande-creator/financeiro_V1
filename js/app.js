@@ -2388,29 +2388,277 @@ class LimitlessFinancialApp {
   }
 
   // ==========================================================================
-  // FUNÇÕES AVANÇADAS DO PACOTE 13 (SPREAD, ADVANCED, SPLIT, ESTORNOS)
+  // FUNÇÕES AVANÇADAS DO PACOTE 13 E 14 (SPREAD, ADVANCED, SPLIT, ESTORNOS)
   // ==========================================================================
   p13Action(action, id = '') {
-    const map = {
-      'simular-spread': ['Simulador de Spread', 'Simulação aberta com as regras vigentes de adquirência e MDR; nenhuma simulação altera o Ledger.'],
-      'nova-taxa': ['Nova Taxa de Spread', 'Cadastro iniciado. A publicação deverá respeitar vigência contratual, alçada e auditoria.'],
-      'editar-taxa': ['Editar Taxa', 'Regra selecionada para edição controlada e versionamento de taxa comercial.'],
-      'duplicar-taxa': ['Duplicar Taxa', 'Cópia de trabalho criada para simulação sem afetar a regra vigente.'],
-      'novo-lancamento': ['Novo Lançamento', 'Lançamento financeiro preparado para classificação contábil e aprovação de alçada.'],
-      'liquidar': ['Tesouraria', 'Título de despesa encaminhado para liquidação e conciliação bancária na Tesouraria.'],
-      'historico-split': ['Histórico de Splits', 'Histórico de divisão carregado preservando vendas, beneficiários, reversões e Ledger.'],
-      'exportar-estornos': ['Exportação', 'Exportação analítica dos estornos e contestações em formato compatível com ERP.'],
-      'novo-estorno': ['Novo Estorno', 'Solicitação de estorno iniciada e vinculada ao pedido e canal de pagamento original.'],
-      'analisar-estorno': ['Central de Aprovações', `Estorno ${id || ''} selecionado e encaminhado para validação da alçada de risco.`]
-    };
-    const routes = {
-      'liquidar': 'diskTesouraria',
-      'analisar-estorno': 'diskAprovacoes',
-      'historico-split': 'diskDivisaoReceitas'
-    };
-    const x = map[action] || ['Ação Financeira', 'Ação registrada no fluxo operacional avançado.'];
-    financialStore.showToast(x[0], x[1], 'info');
-    if (routes[action]) this.navigate(routes[action]);
+    try {
+      if (action === 'nova-taxa' || action === 'editar-taxa' || action === 'duplicar-taxa') {
+        return this.openSpreadRuleModal(action, id);
+      }
+      if (action === 'novo-lancamento') {
+        return this.openPayableModal();
+      }
+      if (action === 'novo-estorno') {
+        return this.openRefundModal();
+      }
+      if (action === 'editar-split') {
+        return this.openSplitModal(id);
+      }
+      if (action === 'liquidar') {
+        const row = financialStore.liquidatePayable(id);
+        financialStore.showToast('Título Liquidado', `${row.id} · ${row.creditor} foi liquidado e lançado no Ledger.`, 'success');
+        return this.navigate('diskAdvanced');
+      }
+
+      const routes = {
+        'analisar-estorno': 'diskAprovacoes',
+        'historico-split': 'diskDivisaoReceitas'
+      };
+      const map = {
+        'simular-spread': ['Simulador de Spread', 'A simulação usa as regras persistidas e não altera o Ledger.'],
+        'historico-split': ['Histórico de Splits', 'Histórico operacional preservado no estado do Core Financeiro.'],
+        'exportar-estornos': ['Exportação', 'Visão de estornos preparada para exportação analítica.'],
+        'analisar-estorno': ['Central de Aprovações', `Estorno ${id || ''} aberto na fila de análise com o mesmo protocolo.`]
+      };
+      const x = map[action] || ['Ação Financeira', 'Ação registrada no fluxo operacional.'];
+      financialStore.showToast(x[0], x[1], 'info');
+      if (routes[action]) this.navigate(routes[action]);
+    } catch (e) {
+      financialStore.showToast('Operação não realizada', e.message, 'danger');
+    }
+  }
+
+  openSpreadRuleModal(action = 'nova-taxa', id = '') {
+    const st = financialStore.getState();
+    let r = st.data.spreadRules?.find(x => x.id === id) || { name: '', acquirer: '', chargedRate: '', mdr: '', fixedFee: 0, payer: 'Produtor', term: 'D+30' };
+    if (action === 'duplicar-taxa') r = { ...r, id: null, name: `${r.name} (cópia)` };
+    this.showModal(`
+      <div class="modal-card" style="max-width: 620px;">
+        <div class="modal-header">
+          <h4 class="mb-0 fw-bold">${action === 'nova-taxa' ? 'Nova' : (action === 'duplicar-taxa' ? 'Duplicar' : 'Editar')} Regra de Spread</h4>
+          <button class="modal-close-btn" onclick="window.app.closeModal()">&times;</button>
+        </div>
+        <form class="modal-body p-4" onsubmit="window.app.submitSpreadRule(event, '${action === 'editar-taxa' ? id : ''}')">
+          <div class="row g-3">
+            <div class="col-12">
+              <label class="form-label fw-bold">Regra / Meio de Pagamento</label>
+              <input name="name" class="form-control" required value="${r.name || ''}" placeholder="Ex: Cartão de Crédito Parcelado (2 a 6x)">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-bold">Adquirente</label>
+              <input name="acquirer" class="form-control" required value="${r.acquirer || ''}" placeholder="Ex: Cielo, Rede, Stone">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label fw-bold">Taxa Cobrada %</label>
+              <input name="chargedRate" type="number" step="0.01" class="form-control" required value="${r.chargedRate || ''}">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label fw-bold">Custo MDR %</label>
+              <input name="mdr" type="number" step="0.01" class="form-control" required value="${r.mdr || ''}">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-bold">Tarifa Fixa (R$)</label>
+              <input name="fixedFee" type="number" step="0.01" class="form-control" value="${r.fixedFee || 0}">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-bold">Quem Absorve</label>
+              <select name="payer" class="form-select">
+                <option value="Produtor" ${r.payer === 'Produtor' ? 'selected' : ''}>Produtor (Retenção)</option>
+                <option value="Comprador" ${r.payer === 'Comprador' ? 'selected' : ''}>Comprador (Conveniência)</option>
+                <option value="Compartilhada" ${r.payer === 'Compartilhada' ? 'selected' : ''}>Compartilhada</option>
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-bold">Prazo Liquidação</label>
+              <input name="term" class="form-control" value="${r.term || 'D+30'}">
+            </div>
+          </div>
+          <div class="modal-footer px-0 pb-0 mt-4">
+            <button type="button" class="btn btn-light" onclick="window.app.closeModal()">Cancelar</button>
+            <button type="submit" class="btn btn-primary fw-bold">Salvar e Publicar</button>
+          </div>
+        </form>
+      </div>
+    `);
+  }
+
+  submitSpreadRule(ev, id = '') {
+    ev.preventDefault();
+    try {
+      const f = Object.fromEntries(new FormData(ev.target).entries());
+      const row = financialStore.saveSpreadRule(f, id || null);
+      this.closeModal();
+      financialStore.showToast('Regra de Spread Salva', `${row.id} publicada e persistida com spread líquido de +${(row.chargedRate - row.mdr).toFixed(2)}%.`, 'success');
+      this.navigate('diskSpread');
+    } catch (e) {
+      financialStore.showToast('Não foi possível salvar', e.message, 'danger');
+    }
+  }
+
+  openPayableModal() {
+    this.showModal(`
+      <div class="modal-card" style="max-width: 560px;">
+        <div class="modal-header">
+          <h4 class="mb-0 fw-bold">Novo Lançamento Financeiro</h4>
+          <button class="modal-close-btn" onclick="window.app.closeModal()">&times;</button>
+        </div>
+        <form class="modal-body p-4" onsubmit="window.app.submitPayable(event)">
+          <div class="mb-3">
+            <label class="form-label fw-bold">Fornecedor / Credor</label>
+            <input name="creditor" class="form-control" required placeholder="Ex: Mega Som & Iluminação">
+          </div>
+          <div class="row g-3">
+            <div class="col-6">
+              <label class="form-label fw-bold">Vencimento</label>
+              <input name="dueDate" type="date" class="form-control" required>
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-bold">Valor (R$)</label>
+              <input name="amount" type="number" step="0.01" class="form-control" required placeholder="0.00">
+            </div>
+          </div>
+          <div class="mt-3">
+            <label class="form-label fw-bold">Observação</label>
+            <textarea name="notes" class="form-control" placeholder="Descreva a despesa ou centro de custo..."></textarea>
+          </div>
+          <div class="modal-footer px-0 pb-0 mt-4">
+            <button type="button" class="btn btn-light" onclick="window.app.closeModal()">Cancelar</button>
+            <button type="submit" class="btn btn-primary fw-bold">Salvar Lançamento</button>
+          </div>
+        </form>
+      </div>
+    `);
+  }
+
+  submitPayable(ev) {
+    ev.preventDefault();
+    try {
+      const f = Object.fromEntries(new FormData(ev.target).entries());
+      const r = financialStore.createPayable(f);
+      this.closeModal();
+      financialStore.showToast('Lançamento Criado', `${r.id} (${r.creditor}) salvo e disponível no Financeiro Advanced.`, 'success');
+      this.navigate('diskAdvanced');
+    } catch (e) {
+      financialStore.showToast('Não foi possível salvar', e.message, 'danger');
+    }
+  }
+
+  openRefundModal() {
+    this.showModal(`
+      <div class="modal-card" style="max-width: 620px;">
+        <div class="modal-header">
+          <h4 class="mb-0 fw-bold">Nova Solicitação de Estorno</h4>
+          <button class="modal-close-btn" onclick="window.app.closeModal()">&times;</button>
+        </div>
+        <form class="modal-body p-4" onsubmit="window.app.submitRefund(event)">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label fw-bold">Pedido Original</label>
+              <input name="orderId" class="form-control" required placeholder="Ex: #PED-154231">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-bold">Cliente</label>
+              <input name="customer" class="form-control" placeholder="Nome do titular da compra">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-bold">Evento Vinculado</label>
+              <input name="eventName" class="form-control" placeholder="Nome do evento">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label fw-bold">Valor (R$)</label>
+              <input name="amount" type="number" step="0.01" class="form-control" required placeholder="0.00">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label fw-bold">Pagamento</label>
+              <select name="paymentMethod" class="form-select">
+                <option value="PIX">PIX</option>
+                <option value="Cartão">Cartão</option>
+                <option value="Boleto">Boleto</option>
+              </select>
+            </div>
+            <div class="col-12">
+              <label class="form-label fw-bold">Motivo da Devolução</label>
+              <textarea name="reason" class="form-control" required placeholder="Justifique o motivo do estorno para conferência de alçada..."></textarea>
+            </div>
+          </div>
+          <div class="modal-footer px-0 pb-0 mt-4">
+            <button type="button" class="btn btn-light" onclick="window.app.closeModal()">Cancelar</button>
+            <button type="submit" class="btn btn-primary fw-bold">Enviar para Aprovação</button>
+          </div>
+        </form>
+      </div>
+    `);
+  }
+
+  submitRefund(ev) {
+    ev.preventDefault();
+    try {
+      const f = Object.fromEntries(new FormData(ev.target).entries());
+      const r = financialStore.createRefundRequest(f);
+      this.closeModal();
+      financialStore.showToast('Estorno Protocolado', `${r.id} criado com protocolo único e encaminhado à Central de Aprovações.`, 'success');
+      this.navigate('diskCentralEstornos');
+    } catch (e) {
+      financialStore.showToast('Não foi possível criar', e.message, 'danger');
+    }
+  }
+
+  openSplitModal(id = '') {
+    const st = financialStore.getState();
+    const r = st.data.splitRules?.find(x => x.id === id) || st.data.splitRules?.find(x => x.status === 'Ativa');
+    const b = r?.beneficiaries || [];
+    this.showModal(`
+      <div class="modal-card" style="max-width: 680px;">
+        <div class="modal-header">
+          <h4 class="mb-0 fw-bold">Configurar Divisão de Receitas (Split)</h4>
+          <button class="modal-close-btn" onclick="window.app.closeModal()">&times;</button>
+        </div>
+        <form class="modal-body p-4" onsubmit="window.app.submitSplit(event)">
+          <div class="mb-3">
+            <label class="form-label fw-bold">Nome da Regra</label>
+            <input name="name" class="form-control" value="${r?.name || 'Regra padrão do evento'}" required>
+            <input type="hidden" name="eventId" value="${st.selectedEventId === 'all' ? 'evt-001' : st.selectedEventId}">
+          </div>
+          <label class="form-label fw-bold mb-2">Beneficiários e Percentuais (Soma obrigatória: 100%)</label>
+          <div class="row g-2">
+            ${[0, 1, 2, 3].map(i => `
+              <div class="col-8">
+                <input name="beneficiary${i}" class="form-control" required value="${b[i]?.name || ''}" placeholder="Nome do Beneficiário ${i + 1}">
+              </div>
+              <div class="col-4">
+                <div class="input-group">
+                  <input name="percent${i}" type="number" step="0.01" class="form-control" required value="${b[i]?.percent ?? 0}">
+                  <span class="input-group-text">%</span>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+          <div class="alert alert-info mt-3 mb-0 fs-xs">
+            <i class="ph-info me-1"></i> A publicação desta regra substitui a regra ativa anterior do evento e recalcula os recebíveis com registro imutável no Ledger.
+          </div>
+          <div class="modal-footer px-0 pb-0 mt-4">
+            <button type="button" class="btn btn-light" onclick="window.app.closeModal()">Cancelar</button>
+            <button type="submit" class="btn btn-primary fw-bold">Publicar Regra de Split</button>
+          </div>
+        </form>
+      </div>
+    `);
+  }
+
+  submitSplit(ev) {
+    ev.preventDefault();
+    try {
+      const f = Object.fromEntries(new FormData(ev.target).entries());
+      const beneficiaries = [0, 1, 2, 3]
+        .filter(i => f[`beneficiary${i}`])
+        .map(i => ({ name: f[`beneficiary${i}`], percent: Number(f[`percent${i}`]) }));
+      const r = financialStore.saveSplitRule({ eventId: f.eventId, name: f.name, beneficiaries });
+      this.closeModal();
+      financialStore.showToast('Regra de Divisão Publicada', `${r.id} persistida e ativada para o evento com 100% distribuído.`, 'success');
+      this.navigate('diskDivisaoReceitas');
+    } catch (e) {
+      financialStore.showToast('Regra não publicada', e.message, 'danger');
+    }
   }
 
   p13RecalcSplit(raw) {
@@ -2418,16 +2666,18 @@ class LimitlessFinancialApp {
     const el = document.getElementById('p13SplitBars');
     if (!el) return;
     const money = v => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-    const rows = [
-      ['Organizador (Principal)', 70],
-      ['Afiliado / Coprodutor', 10],
-      ['Produtor Artístico', 15],
-      ['Plataforma DiskIngressos', 5]
+    const st = financialStore.getState();
+    const activeRule = (st.data.splitRules || []).find(x => x.status === 'Ativa') || {};
+    const rows = (activeRule.beneficiaries && activeRule.beneficiaries.length) ? activeRule.beneficiaries : [
+      { name: 'Organizador (Principal)', percent: 70 },
+      { name: 'Afiliado / Coprodutor', percent: 10 },
+      { name: 'Produtor Artístico', percent: 15 },
+      { name: 'Plataforma DiskIngressos', percent: 5 }
     ];
     el.innerHTML = rows.map(x => `
       <div class="p13-bar">
-        <div><strong>${x[0]}</strong><span>${x[1]}% | ${money(n * x[1] / 100)}</span></div>
-        <div class="p13-track"><i style="width:${x[1]}%"></i></div>
+        <div><strong>${x.name}</strong><span>${x.percent}% | ${money(n * x.percent / 100)}</span></div>
+        <div class="p13-track"><i style="width:${x.percent}%"></i></div>
       </div>
     `).join('');
   }

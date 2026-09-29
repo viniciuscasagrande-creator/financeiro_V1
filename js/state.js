@@ -123,6 +123,33 @@ class CoreFinanceiroStore {
 
   ensureOperationModel() {
     this.data.operationEvents = this.data.operationEvents || [];
+    this.data.spreadRules = this.data.spreadRules || [
+      { id: 'SPR-001', name: 'Cartão de Crédito Parcelado (2 a 6x)', acquirer: 'Cielo', chargedRate: 8.00, mdr: 2.80, fixedFee: 0.80, payer: 'Comprador (Conveniência)', term: 'D+30', status: 'Ativa', version: 1 },
+      { id: 'SPR-002', name: 'Cartão de Crédito à Vista (1x)', acquirer: 'Rede', chargedRate: 4.80, mdr: 2.00, fixedFee: 0.50, payer: 'Produtor (Retenção)', term: 'D+14', status: 'Ativa', version: 1 },
+      { id: 'SPR-003', name: 'Cartão de Crédito Parcelado (7 a 12x Premium)', acquirer: 'Stone', chargedRate: 9.90, mdr: 3.40, fixedFee: 1.00, payer: 'Comprador (Conveniência)', term: 'D+30', status: 'Ativa', version: 1 },
+      { id: 'SPR-004', name: 'PIX Instantâneo EFI / Safra', acquirer: 'EfiPix', chargedRate: 1.50, mdr: 0.40, fixedFee: 0.00, payer: 'Produtor (Retenção)', term: 'D+0', status: 'Ativa', version: 1 },
+      { id: 'SPR-005', name: 'Cartão de Débito Balcão PDV & Online', acquirer: 'PagBank', chargedRate: 3.90, mdr: 1.10, fixedFee: 0.30, payer: 'Produtor (Retenção)', term: 'D+1', status: 'Ativa', version: 1 },
+      { id: 'SPR-006', name: 'Boleto Bancário Registrado', acquirer: 'Rede', chargedRate: 4.30, mdr: 1.20, fixedFee: 2.50, payer: 'Produtor (Retenção)', term: 'D+2', status: 'Ativa', version: 1 }
+    ];
+    this.data.splitRules = this.data.splitRules || [{
+      id: 'SPL-001',
+      eventId: 'evt-001',
+      name: 'Regra padrão do evento',
+      status: 'Ativa',
+      beneficiaries: [
+        { name: 'Organizador (Principal)', percent: 70 },
+        { name: 'Afiliado / Coprodutor', percent: 10 },
+        { name: 'Produtor Artístico', percent: 15 },
+        { name: 'Plataforma DiskIngressos', percent: 5 }
+      ],
+      updatedAt: new Date().toLocaleString('pt-BR')
+    }];
+    this.data.payables = this.data.payables || [
+      { id: 'PAG-001', creditor: 'Mega Som & Iluminação', dueDate: '19/07/2026', amount: 14500, status: 'Pendente' },
+      { id: 'PAG-002', creditor: 'Segurança Forte Ltda', dueDate: '12/07/2026', amount: 9800, status: 'Pendente' },
+      { id: 'PAG-003', creditor: 'Agência Tráfego Ads', dueDate: '05/07/2026', amount: 7600, status: 'Pendente' }
+    ];
+    this.data.refundRequests = this.data.refundRequests || [];
     this.data.approvalQueue = (this.data.approvalQueue || []).map(item => ({
       ...item,
       protocol: item.protocol || item.id,
@@ -1045,6 +1072,183 @@ class CoreFinanceiroStore {
     );
 
     this.notify();
+  }
+
+  // ==========================================================================
+  // OPERAÇÕES DO PACOTE 14 (SPREAD, SPLIT, CONTAS A PAGAR, ESTORNOS)
+  // ==========================================================================
+  saveSpreadRule(payload, id = null) {
+    if (!['disk', 'admin'].includes(this.state.currentUser.role)) {
+      throw new Error('Somente o Financeiro Disk pode alterar regras de spread.');
+    }
+    const chargedRate = Number(payload.chargedRate);
+    const mdr = Number(payload.mdr);
+    const fixedFee = Number(payload.fixedFee || 0);
+    if (!payload.name?.trim() || !payload.acquirer?.trim()) {
+      throw new Error('Informe regra e adquirente.');
+    }
+    if (chargedRate < 0 || mdr < 0 || chargedRate < mdr) {
+      throw new Error('A taxa cobrada deve ser maior ou igual ao MDR.');
+    }
+    let row = id ? this.data.spreadRules.find(x => x.id === id) : null;
+    if (row) {
+      Object.assign(row, payload, {
+        chargedRate,
+        mdr,
+        fixedFee,
+        version: (row.version || 1) + 1,
+        updatedAt: new Date().toLocaleString('pt-BR')
+      });
+    } else {
+      row = {
+        id: `SPR-${Date.now()}`,
+        ...payload,
+        chargedRate,
+        mdr,
+        fixedFee,
+        status: 'Ativa',
+        version: 1,
+        updatedAt: new Date().toLocaleString('pt-BR')
+      };
+      this.data.spreadRules.unshift(row);
+    }
+    this.recordOperationEvent(
+      { id: row.id, protocol: row.id, workflowId: `WF-${row.id}` },
+      id ? 'Regra de spread editada' : 'Regra de spread criada',
+      `${row.name} · ${row.acquirer} · Spread ${(chargedRate - mdr).toFixed(2)}%`,
+      'Spread & Adquirentes'
+    );
+    this.notify();
+    return row;
+  }
+
+  saveSplitRule({ eventId, name, beneficiaries }) {
+    if (!['disk', 'admin'].includes(this.state.currentUser.role)) {
+      throw new Error('Somente o Financeiro Disk pode publicar regras de divisão.');
+    }
+    const total = beneficiaries.reduce((a, b) => a + Number(b.percent || 0), 0);
+    if (Math.abs(total - 100) > 0.001) {
+      throw new Error('A soma dos percentuais deve ser exatamente 100%.');
+    }
+    const old = this.data.splitRules.find(x => x.eventId === eventId && x.status === 'Ativa');
+    if (old) old.status = 'Substituída';
+    const row = {
+      id: `SPL-${Date.now()}`,
+      eventId,
+      name: name || 'Regra de divisão',
+      beneficiaries,
+      status: 'Ativa',
+      updatedAt: new Date().toLocaleString('pt-BR')
+    };
+    this.data.splitRules.unshift(row);
+    this.recordOperationEvent(
+      { id: row.id, protocol: row.id, workflowId: `WF-${row.id}` },
+      'Regra de split publicada',
+      `Evento ${eventId} · 100% distribuído`,
+      'Divisão de Receitas'
+    );
+    this.notify();
+    return row;
+  }
+
+  createPayable({ creditor, dueDate, amount, notes = '' }) {
+    if (!['disk', 'admin'].includes(this.state.currentUser.role)) {
+      throw new Error('Somente o Financeiro Disk pode criar lançamentos financeiros.');
+    }
+    const n = Number(amount);
+    if (!creditor?.trim() || !dueDate || !n || n <= 0) {
+      throw new Error('Preencha credor, vencimento e valor válido.');
+    }
+    const row = {
+      id: `PAG-${Date.now()}`,
+      creditor,
+      dueDate,
+      amount: n,
+      notes,
+      status: 'Pendente',
+      createdAt: new Date().toLocaleString('pt-BR')
+    };
+    this.data.payables.unshift(row);
+    this.recordOperationEvent(
+      { id: row.id, protocol: row.id, workflowId: `WF-${row.id}` },
+      'Conta a pagar cadastrada',
+      `${creditor} · R$ ${n.toFixed(2)} vencimento em ${dueDate}`,
+      'Contas a Pagar / Advanced'
+    );
+    this.notify();
+    return row;
+  }
+
+  createRefundRequest({ orderId, customer, eventName, amount, paymentMethod, reason }) {
+    if (!['disk', 'admin'].includes(this.state.currentUser.role)) {
+      throw new Error('Somente o Financeiro Disk pode registrar estorno administrativo.');
+    }
+    const n = Number(amount);
+    if (!orderId?.trim() || !n || n <= 0 || !reason?.trim()) {
+      throw new Error('Informe pedido, valor e motivo.');
+    }
+    const id = `EST-${Date.now()}`;
+    const row = {
+      id,
+      protocol: id,
+      workflowId: `WF-${id}`,
+      type: 'Estorno',
+      producerId: this.state.selectedProducerId,
+      eventId: this.state.selectedEventId === 'all' ? null : this.state.selectedEventId,
+      producerName: this.getState().activeProducer?.name || '—',
+      eventName: eventName || 'Evento não informado',
+      customer: customer || '—',
+      requestedAmount: n,
+      paymentMethod: paymentMethod || 'Não informado',
+      reason,
+      status: 'Aguardando análise',
+      requestDate: new Date().toLocaleString('pt-BR'),
+      signatures: { producer: { signed: false }, disk: { signed: false, lockedUntilProducerSigns: true } },
+      auditTrail: [],
+      rejection: null
+    };
+    this.data.refundRequests.unshift(row);
+    this.data.approvalQueue.unshift(row);
+    this.recordOperationEvent(
+      row,
+      'Solicitação de estorno criada',
+      `${orderId} · R$ ${n.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+      'Central de Estornos'
+    );
+    this.notify();
+    return row;
+  }
+
+  liquidatePayable(id) {
+    if (!['disk', 'admin'].includes(this.state.currentUser.role)) {
+      throw new Error('Liquidação permitida somente ao Financeiro Disk.');
+    }
+    const row = this.data.payables.find(x => x.id === id);
+    if (!row) throw new Error('Título não encontrado.');
+    if (row.status === 'Pago') throw new Error('Título já liquidado.');
+    row.status = 'Pago';
+    row.paidAt = new Date().toLocaleString('pt-BR');
+    row.authCode = `PIX-${Date.now()}`;
+    this.data.ledgerEntries.unshift({
+      id: `LEDG-${Date.now()}`,
+      timestamp: row.paidAt,
+      eventType: 'CONTA_PAGAR_LIQUIDADA',
+      producerId: null,
+      eventId: null,
+      debitAccount: `Despesa: ${row.creditor}`,
+      creditAccount: 'Ativo: Conta Bancária Disk',
+      amount: row.amount,
+      refOrder: row.id,
+      conciliated: false
+    });
+    this.recordOperationEvent(
+      { id: row.id, protocol: row.id, workflowId: `WF-${row.id}` },
+      'Conta a pagar liquidada no caixa',
+      `Pago R$ ${row.amount.toFixed(2)} via ${row.authCode}`,
+      'Tesouraria / Advanced'
+    );
+    this.notify();
+    return row;
   }
 
   resetDemoData() {
