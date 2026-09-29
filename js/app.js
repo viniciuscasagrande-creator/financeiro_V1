@@ -49,6 +49,7 @@ import { renderDiskTransferencias } from './views/disk/diskTransferencias.js';
 import { renderDiskConciliacao } from './views/disk/diskConciliacao.js';
 import { renderDiskFechamentos } from './views/disk/diskFechamentos.js';
 import { renderDiskControladoria } from './views/disk/diskControladoria.js';
+import { renderDiskAssinaturasIntegracoes } from './views/disk/diskAssinaturasIntegracoes.js';
 import {
   renderDiskEventos,
   renderDiskSaldos,
@@ -58,7 +59,6 @@ import {
   renderDiskTaxas,
   renderDiskEstornos,
   renderDiskBordero,
-  renderDiskAssinaturas,
   renderDiskRelatorios,
   renderDiskAuditoria,
   renderDiskConfiguracoes,
@@ -1492,7 +1492,23 @@ class LimitlessFinancialApp {
           viewHtml = renderDiskFluxoCaixa(state, this.currentFilterArg);
           break;
         case 'diskAssinaturas':
-          viewHtml = renderDiskAssinaturas(state, this.currentFilterArg);
+        case 'diskIntegracao_assinaturas':
+          viewHtml = renderDiskAssinaturasIntegracoes(state, 'assinaturas');
+          break;
+        case 'diskIntegracao_documentos':
+          viewHtml = renderDiskAssinaturasIntegracoes(state, 'documentos');
+          break;
+        case 'diskIntegracao_autentique':
+          viewHtml = renderDiskAssinaturasIntegracoes(state, 'autentique');
+          break;
+        case 'diskIntegracao_contaazul':
+          viewHtml = renderDiskAssinaturasIntegracoes(state, 'contaazul');
+          break;
+        case 'diskIntegracao_sincronizacoes':
+          viewHtml = renderDiskAssinaturasIntegracoes(state, 'sincronizacoes');
+          break;
+        case 'diskIntegracao_logs':
+          viewHtml = renderDiskAssinaturasIntegracoes(state, 'logs');
           break;
         case 'diskRelatorios':
           viewHtml = renderDiskRelatorios(state, this.currentFilterArg);
@@ -1762,7 +1778,13 @@ class LimitlessFinancialApp {
       'diskBordero': { title: 'Borderôs & Fechamentos', subtitle: 'Conferência final de bilheteria, custos, deduções, aprovação e termo de encerramento assinado.' },
       'diskFechamentos': { title: 'Fechamentos, Borderôs & Dossiês Financeiros', subtitle: 'Esteira de fechamento, prestação de contas, assinaturas duplas e dossiê do evento.' },
       'diskFluxoCaixa': { title: 'Fluxo de Caixa Realizado & Projetado', subtitle: 'Entradas e saídas operacionais consolidadas e projeção de liquidez futura.' },
-      'diskAssinaturas': { title: 'Assinaturas Digitais', subtitle: 'Formalização de termos com certificados digitais ICP-Brasil (Financeiro é sempre o último signatário).' },
+      'diskAssinaturas': { title: 'Assinaturas & Integrações', subtitle: 'Central de Assinaturas (Autentique), Integração ERP (Conta Azul), Sincronizações e Logs.' },
+      'diskIntegracao_assinaturas': { title: 'Central de Assinaturas', subtitle: 'Documentos com ordem obrigatória: Produtor primeiro e Financeiro Disk por último.' },
+      'diskIntegracao_documentos': { title: 'Documentos para Assinatura', subtitle: 'Modelos de termos de repasse, antecipação, borderôs e contratos autorizados.' },
+      'diskIntegracao_autentique': { title: 'Integração Autentique', subtitle: 'Motor externo de assinatura digital ICP-Brasil e gerenciamento de webhooks.' },
+      'diskIntegracao_contaazul': { title: 'Integração Conta Azul', subtitle: 'Sincronização controlada com ERP, OAuth 2.0 e mapa de responsabilidade dos dados.' },
+      'diskIntegracao_sincronizacoes': { title: 'Central de Sincronizações', subtitle: 'Fila única com idempotência, tentativas e tratamento de divergências.' },
+      'diskIntegracao_logs': { title: 'Logs de Integração', subtitle: 'Rastreabilidade técnica de webhooks e sincronizações sem exposição de credenciais.' },
       'diskRelatorios': { title: 'Relatórios Financeiros Consolidados', subtitle: 'Demonstrativos gerenciais de vendas, conciliação, balancetes e exportações oficiais.' },
       'diskAuditoria': { title: 'Auditoria & Governança', subtitle: 'Log imutável de operações manuais, aprovações, alterações de taxas e acessos sensíveis.' },
       'diskConfiguracoes': { title: 'Configurações Administrativas', subtitle: 'Políticas de repasse, travas de antecipação, alçadas de aprovação e calendário operacional.' },

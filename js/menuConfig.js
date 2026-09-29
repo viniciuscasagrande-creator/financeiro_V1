@@ -269,14 +269,25 @@ export const menuFinanceiroCompleto = [
     ]
   },
   {
+    id: 'diskAssinaturas',
+    label: 'ASSINATURAS E INTEGRAÇÕES',
+    icon: 'ph-seal-check',
+    subItems: [
+      { id: 'diskIntegracao_assinaturas', label: 'Central de Assinaturas', filterArg: 'assinaturas' },
+      { id: 'diskIntegracao_documentos', label: 'Documentos', filterArg: 'documentos' },
+      { id: 'diskIntegracao_autentique', label: 'Autentique', filterArg: 'autentique' },
+      { id: 'diskIntegracao_contaazul', label: 'Conta Azul', filterArg: 'contaazul' },
+      { id: 'diskIntegracao_sincronizacoes', label: 'Sincronizações', filterArg: 'sincronizacoes' },
+      { id: 'diskIntegracao_logs', label: 'Logs de Integração', filterArg: 'logs' }
+    ]
+  },
+  {
     id: 'diskAdministracao',
     label: 'ADMINISTRAÇÃO',
     icon: 'ph-gear-six',
     subItems: [
       { id: 'diskConfiguracoes', label: 'Usuários e Permissões', filterArg: 'usuarios' },
-      { id: 'diskAssinaturas', label: 'Assinaturas Digitais', filterArg: 'assinaturas' },
       { id: 'diskAuditoria', label: 'Auditoria', filterArg: 'auditoria' },
-      { id: 'diskConfiguracoes', label: 'Integrações', filterArg: 'integracoes' },
       { id: 'diskConfiguracoes', label: 'Configurações', filterArg: 'configuracoes' }
     ]
   }
