@@ -282,13 +282,20 @@ export const menuFinanceiroCompleto = [
     ]
   },
   {
-    id: 'diskAdministracao',
-    label: 'ADMINISTRAÇÃO',
-    icon: 'ph-gear-six',
+    id: 'diskGovernanca',
+    label: 'GOVERNANÇA FINANCEIRA',
+    icon: 'ph-shield-check',
     subItems: [
-      { id: 'diskConfiguracoes', label: 'Usuários e Permissões', filterArg: 'usuarios' },
-      { id: 'diskAuditoria', label: 'Auditoria', filterArg: 'auditoria' },
-      { id: 'diskConfiguracoes', label: 'Configurações', filterArg: 'configuracoes' }
+      { id: 'diskGov_visaoGeral', label: 'Visão Geral', filterArg: 'visaoGeral' },
+      { id: 'diskGov_usuarios', label: 'Usuários Financeiros', filterArg: 'usuarios' },
+      { id: 'diskGov_perfis', label: 'Perfis e Permissões', filterArg: 'perfis' },
+      { id: 'diskGov_alcadas', label: 'Alçadas de Aprovação', filterArg: 'alcadas' },
+      { id: 'diskGov_fluxos', label: 'Fluxos de Aprovação', filterArg: 'fluxos' },
+      { id: 'diskGov_segregacao', label: 'Segregação de Funções', filterArg: 'segregacao' },
+      { id: 'diskGov_operacoes', label: 'Operações Sensíveis', filterArg: 'operacoes' },
+      { id: 'diskGov_bloqueios', label: 'Bloqueios e Exceções', filterArg: 'bloqueios' },
+      { id: 'diskGov_auditoria', label: 'Auditoria de Acessos', filterArg: 'auditoria' },
+      { id: 'diskGov_configuracoes', label: 'Configurações', filterArg: 'configuracoes' }
     ]
   }
 ];

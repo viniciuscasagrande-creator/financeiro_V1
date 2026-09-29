@@ -50,6 +50,7 @@ import { renderDiskConciliacao } from './views/disk/diskConciliacao.js';
 import { renderDiskFechamentos } from './views/disk/diskFechamentos.js';
 import { renderDiskControladoria } from './views/disk/diskControladoria.js';
 import { renderDiskAssinaturasIntegracoes } from './views/disk/diskAssinaturasIntegracoes.js';
+import { renderDiskGovernanca } from './views/disk/diskGovernanca.js';
 import {
   renderDiskEventos,
   renderDiskSaldos,
@@ -1513,11 +1514,38 @@ class LimitlessFinancialApp {
         case 'diskRelatorios':
           viewHtml = renderDiskRelatorios(state, this.currentFilterArg);
           break;
-        case 'diskAuditoria':
-          viewHtml = renderDiskAuditoria(state, this.currentFilterArg);
+        case 'diskGovernanca':
+        case 'diskGov_visaoGeral':
+          viewHtml = renderDiskGovernanca(state, 'visaoGeral');
           break;
+        case 'diskGov_usuarios':
+          viewHtml = renderDiskGovernanca(state, 'usuarios');
+          break;
+        case 'diskGov_perfis':
+          viewHtml = renderDiskGovernanca(state, 'perfis');
+          break;
+        case 'diskGov_alcadas':
+          viewHtml = renderDiskGovernanca(state, 'alcadas');
+          break;
+        case 'diskGov_fluxos':
+          viewHtml = renderDiskGovernanca(state, 'fluxos');
+          break;
+        case 'diskGov_segregacao':
+          viewHtml = renderDiskGovernanca(state, 'segregacao');
+          break;
+        case 'diskGov_operacoes':
+          viewHtml = renderDiskGovernanca(state, 'operacoes');
+          break;
+        case 'diskGov_bloqueios':
+          viewHtml = renderDiskGovernanca(state, 'bloqueios');
+          break;
+        case 'diskGov_auditoria':
+        case 'diskAuditoria':
+          viewHtml = renderDiskGovernanca(state, 'auditoria');
+          break;
+        case 'diskGov_configuracoes':
         case 'diskConfiguracoes':
-          viewHtml = renderDiskConfiguracoes(state, this.currentFilterArg);
+          viewHtml = renderDiskGovernanca(state, 'configuracoes');
           break;
         case 'diskFornecedores':
           viewHtml = renderDiskFornecedores(state, this.currentFilterArg);
@@ -1786,6 +1814,17 @@ class LimitlessFinancialApp {
       'diskIntegracao_sincronizacoes': { title: 'Central de Sincronizações', subtitle: 'Fila única com idempotência, tentativas e tratamento de divergências.' },
       'diskIntegracao_logs': { title: 'Logs de Integração', subtitle: 'Rastreabilidade técnica de webhooks e sincronizações sem exposição de credenciais.' },
       'diskRelatorios': { title: 'Relatórios Financeiros Consolidados', subtitle: 'Demonstrativos gerenciais de vendas, conciliação, balancetes e exportações oficiais.' },
+      'diskGovernanca': { title: 'Governança Financeira', subtitle: 'Visão geral, alçadas, perfis RBAC, segregação de funções e proteção de operações sensíveis.' },
+      'diskGov_visaoGeral': { title: 'Governança Financeira • Visão Geral', subtitle: 'Painel central de conformidade institucional, matriz de autorização e salvaguardas de processos.' },
+      'diskGov_usuarios': { title: 'Usuários Financeiros', subtitle: 'Gestão individual de operadores, perfis atribuídos e limites de autorização financeira.' },
+      'diskGov_perfis': { title: 'Perfis e Permissões (RBAC)', subtitle: 'Definição de privilégios granulares por módulo e nível de atuação operacional.' },
+      'diskGov_alcadas': { title: 'Alçadas de Aprovação', subtitle: 'Limites monetários parametrizáveis por tipo de operação (Repasses, Antecipações, Lotes e MDR).' },
+      'diskGov_fluxos': { title: 'Fluxos de Aprovação', subtitle: 'Sequenciamento formal das esteiras de decisão financeira, status e transições.' },
+      'diskGov_segregacao': { title: 'Segregação de Funções (SoD)', subtitle: 'Políticas rígidas para impedir acúmulo de etapas conflitantes (Criador, Aprovador, Pagador, Conciliador).' },
+      'diskGov_operacoes': { title: 'Operações Sensíveis & Críticas', subtitle: 'Relação de ações sujeitas a salvaguardas adicionais, dupla custódia e log imutável.' },
+      'diskGov_bloqueios': { title: 'Bloqueios Preventivos & Exceções', subtitle: 'Quarentenas de segurança patrimonial, travas temporárias e delegação de alçadas.' },
+      'diskGov_auditoria': { title: 'Auditoria de Acessos & Log Imutável', subtitle: 'Registro contínuo e à prova de adulteração de todas as operações administrativas e financeiras.' },
+      'diskGov_configuracoes': { title: 'Configurações de Governança', subtitle: 'Parâmetros operacionais globais de segurança, travas SoD e políticas da Disk Ingressos.' },
       'diskAuditoria': { title: 'Auditoria & Governança', subtitle: 'Log imutável de operações manuais, aprovações, alterações de taxas e acessos sensíveis.' },
       'diskConfiguracoes': { title: 'Configurações Administrativas', subtitle: 'Políticas de repasse, travas de antecipação, alçadas de aprovação e calendário operacional.' },
       'diskFornecedores': { title: 'Gestão de Fornecedores & Contratos', subtitle: 'Cadastro, contratos, documentos, cotações, pedidos, parcelas e vencimentos.' },
