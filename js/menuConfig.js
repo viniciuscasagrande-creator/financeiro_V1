@@ -108,7 +108,7 @@ export const menuFinanceiroCompleto = [
   },
   {
     id: 'diskSolicitacoes',
-    label: 'SOLICITAÇÕES E APROVAÇÕES',
+    label: 'SOLICITAÇÕES E OPERAÇÕES',
     icon: 'ph-scales',
     badge: 'pendingCount',
     subItems: [
@@ -116,6 +116,7 @@ export const menuFinanceiroCompleto = [
       { id: 'diskAprovacoes', label: 'Central de Aprovações', filterArg: 'pendentes' },
       { id: 'diskRepasses', label: 'Repasses', filterArg: 'all' },
       { id: 'diskAntecipacoes', label: 'Antecipações', filterArg: 'all' },
+      { id: 'diskDivisaoReceitas', label: 'Divisão de Receitas', filterArg: 'split' },
       { id: 'diskTransferencias', label: 'Transferências entre Eventos', action: 'openTransferModal' },
       { id: 'diskAssinaturas', label: 'Assinaturas Pendentes', filterArg: 'pendentes' }
     ]
@@ -152,11 +153,11 @@ export const menuFinanceiroCompleto = [
     label: 'TAXAS E REGRAS COMERCIAIS',
     icon: 'ph-percent',
     subItems: [
-      { id: 'diskTaxas', label: 'Taxas Disk', filterArg: 'disk' },
+      { id: 'diskTaxas', label: 'Taxas e Custos', filterArg: 'disk' },
+      { id: 'diskSpread', label: 'Spread & Adquirentes', filterArg: 'spread' },
+      { id: 'diskTaxas', label: 'Simulador Financeiro', filterArg: 'simulador' },
       { id: 'diskTaxas', label: 'Taxas do Produtor', filterArg: 'produtor' },
       { id: 'diskTaxas', label: 'Taxas do Cliente', filterArg: 'cliente' },
-      { id: 'diskTaxas', label: 'Spread', filterArg: 'spread' },
-      { id: 'diskTaxas', label: 'Advanced', filterArg: 'advanced' },
       { id: 'diskTaxas', label: 'Histórico de Regras', filterArg: 'historico' }
     ]
   },
@@ -193,10 +194,9 @@ export const menuFinanceiroCompleto = [
     label: 'ESTORNOS E CHARGEBACKS',
     icon: 'ph-warning-octagon',
     subItems: [
-      { id: 'diskEstornos', label: 'Estornos', filterArg: 'estornos' },
-      { id: 'diskEstornos', label: 'Chargebacks', filterArg: 'chargebacks' },
-      { id: 'diskEstornos', label: 'Contestações', filterArg: 'contestacoes' },
-      { id: 'diskEstornos', label: 'Impacto no Saldo', filterArg: 'impacto' }
+      { id: 'diskCentralEstornos', label: 'Central de Estornos', filterArg: 'estornos' },
+      { id: 'diskEstornos', label: 'Chargebacks e Contestações', filterArg: 'chargebacks' },
+      { id: 'diskEstornos', label: 'Impacto Financeiro', filterArg: 'impacto' }
     ]
   },
   {
@@ -217,12 +217,13 @@ export const menuFinanceiroCompleto = [
     icon: 'ph-chart-line-up',
     subItems: [
       { id: 'diskControladoria', label: 'Visão Geral', filterArg: 'visao' },
-      { id: 'diskCentrosCustos', label: 'Centros de Custos', filterArg: 'centros' },
-      { id: 'diskOrcamentos', label: 'Orçamentos', filterArg: 'orcamentos' },
+      { id: 'diskFluxoCaixa', label: 'Fluxo de Caixa', filterArg: 'fluxo' },
+      { id: 'diskProjecoes', label: 'Projeção de Caixa', filterArg: 'projecoes' },
       { id: 'diskDre', label: 'DRE Gerencial', filterArg: 'dre' },
+      { id: 'diskAdvanced', label: 'Financeiro Advanced', filterArg: 'advanced' },
       { id: 'diskRentabilidade', label: 'Rentabilidade', filterArg: 'rentabilidade' },
-      { id: 'diskProjecoes', label: 'Projeções de Caixa', filterArg: 'projecoes' },
-      { id: 'diskFluxoCaixa', label: 'Fluxo de Caixa', filterArg: 'fluxo' }
+      { id: 'diskCentrosCustos', label: 'Centros de Custos', filterArg: 'centros' },
+      { id: 'diskOrcamentos', label: 'Orçamentos', filterArg: 'orcamentos' }
     ]
   },
   {

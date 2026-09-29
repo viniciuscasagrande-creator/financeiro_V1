@@ -52,6 +52,7 @@ import { renderDiskControladoria } from './views/disk/diskControladoria.js';
 import { renderDiskAssinaturasIntegracoes } from './views/disk/diskAssinaturasIntegracoes.js';
 import { renderDiskGovernanca } from './views/disk/diskGovernanca.js';
 import { renderDiskCentralTrabalho } from './views/disk/diskCentralTrabalho.js';
+import { renderDiskFinanceiroAvancado } from './views/disk/diskFinanceiroAvancado.js';
 import {
   renderDiskEventos,
   renderDiskSaldos,
@@ -1603,6 +1604,19 @@ class LimitlessFinancialApp {
         case 'diskTrabalho_notificacoes':
           viewHtml = renderDiskCentralTrabalho(state, 'notificacoes');
           break;
+        case 'diskSpread':
+          viewHtml = renderDiskFinanceiroAvancado(state, 'spread');
+          break;
+        case 'diskAdvanced':
+          viewHtml = renderDiskFinanceiroAvancado(state, 'advanced');
+          break;
+        case 'diskDivisaoReceitas':
+        case 'diskSplit':
+          viewHtml = renderDiskFinanceiroAvancado(state, 'split');
+          break;
+        case 'diskCentralEstornos':
+          viewHtml = renderDiskFinanceiroAvancado(state, 'estornos');
+          break;
         default:
           viewHtml = renderDiskDashboard(state);
       }
@@ -1886,7 +1900,12 @@ class LimitlessFinancialApp {
       'diskTrabalho_sla': { title: 'SLA & Prazos Operacionais', subtitle: 'Metas e tempos de resposta de repasses, antecipações e fechamentos de borderô.' },
       'diskTrabalho_pendencias': { title: 'Pendências Financeiras', subtitle: 'Fila consolidada de itens aguardando ação, aprovação, assinatura ou conciliação.' },
       'diskTrabalho_agenda': { title: 'Agenda Operacional', subtitle: 'Compromissos, vencimentos de lotes bancários e cronograma financeiro diário.' },
-      'diskTrabalho_notificacoes': { title: 'Notificações Operacionais', subtitle: 'Histórico de eventos, avisos e notificações da mesa financeira.' }
+      'diskTrabalho_notificacoes': { title: 'Notificações Operacionais', subtitle: 'Histórico de eventos, avisos e notificações da mesa financeira.' },
+      'diskSpread': { title: 'Spread & Adquirentes', subtitle: 'Análise de receitas, tarifas retidas, custos de adquirentes e rentabilidade líquida do ecossistema de pagamentos.' },
+      'diskAdvanced': { title: 'Financeiro Advanced · Previsto × Realizado', subtitle: 'Controle de liquidez, contas a receber, pagamentos agendados e previsão semestral de caixa.' },
+      'diskDivisaoReceitas': { title: 'Divisão de Receitas / Split Financeiro', subtitle: 'Partilha automatizada de receitas entre organizador, coprodutor, artista e plataforma.' },
+      'diskSplit': { title: 'Divisão de Receitas / Split Financeiro', subtitle: 'Partilha automatizada de receitas entre organizador, coprodutor, artista e plataforma.' },
+      'diskCentralEstornos': { title: 'Centro de Controle de Estornos', subtitle: 'Gestão executiva de devoluções, aprovações por alçada, vouchers e risco operacional.' }
     };
 
     const currentInfo = titlesMap[state.currentView] || { title: 'Módulo Financeiro', subtitle: 'Sistema integrado de gestão financeira Disk Ingressos.' };
@@ -2367,6 +2386,51 @@ class LimitlessFinancialApp {
       this.navigate(targetRoute, opts.filterArg || 'all');
     }
   }
+
+  // ==========================================================================
+  // FUNÇÕES AVANÇADAS DO PACOTE 13 (SPREAD, ADVANCED, SPLIT, ESTORNOS)
+  // ==========================================================================
+  p13Action(action, id = '') {
+    const map = {
+      'simular-spread': ['Simulador de Spread', 'Simulação aberta com as regras vigentes de adquirência e MDR; nenhuma simulação altera o Ledger.'],
+      'nova-taxa': ['Nova Taxa de Spread', 'Cadastro iniciado. A publicação deverá respeitar vigência contratual, alçada e auditoria.'],
+      'editar-taxa': ['Editar Taxa', 'Regra selecionada para edição controlada e versionamento de taxa comercial.'],
+      'duplicar-taxa': ['Duplicar Taxa', 'Cópia de trabalho criada para simulação sem afetar a regra vigente.'],
+      'novo-lancamento': ['Novo Lançamento', 'Lançamento financeiro preparado para classificação contábil e aprovação de alçada.'],
+      'liquidar': ['Tesouraria', 'Título de despesa encaminhado para liquidação e conciliação bancária na Tesouraria.'],
+      'historico-split': ['Histórico de Splits', 'Histórico de divisão carregado preservando vendas, beneficiários, reversões e Ledger.'],
+      'exportar-estornos': ['Exportação', 'Exportação analítica dos estornos e contestações em formato compatível com ERP.'],
+      'novo-estorno': ['Novo Estorno', 'Solicitação de estorno iniciada e vinculada ao pedido e canal de pagamento original.'],
+      'analisar-estorno': ['Central de Aprovações', `Estorno ${id || ''} selecionado e encaminhado para validação da alçada de risco.`]
+    };
+    const routes = {
+      'liquidar': 'diskTesouraria',
+      'analisar-estorno': 'diskAprovacoes',
+      'historico-split': 'diskDivisaoReceitas'
+    };
+    const x = map[action] || ['Ação Financeira', 'Ação registrada no fluxo operacional avançado.'];
+    financialStore.showToast(x[0], x[1], 'info');
+    if (routes[action]) this.navigate(routes[action]);
+  }
+
+  p13RecalcSplit(raw) {
+    const n = Number(String(raw).replace(/\./g, '').replace(',', '.')) || 0;
+    const el = document.getElementById('p13SplitBars');
+    if (!el) return;
+    const money = v => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    const rows = [
+      ['Organizador (Principal)', 70],
+      ['Afiliado / Coprodutor', 10],
+      ['Produtor Artístico', 15],
+      ['Plataforma DiskIngressos', 5]
+    ];
+    el.innerHTML = rows.map(x => `
+      <div class="p13-bar">
+        <div><strong>${x[0]}</strong><span>${x[1]}% | ${money(n * x[1] / 100)}</span></div>
+        <div class="p13-track"><i style="width:${x[1]}%"></i></div>
+      </div>
+    `).join('');
+  }
 }
 
 // ============================================================================
@@ -2394,6 +2458,18 @@ window.integratedAction = function(action, options) {
 window.financeAction = function(action, id, data) {
   if (window.app && typeof window.app.financeAction === 'function') {
     return window.app.financeAction(action, id, data);
+  }
+};
+
+window.p13Action = function(action, id) {
+  if (window.app && typeof window.app.p13Action === 'function') {
+    return window.app.p13Action(action, id);
+  }
+};
+
+window.p13RecalcSplit = function(raw) {
+  if (window.app && typeof window.app.p13RecalcSplit === 'function') {
+    return window.app.p13RecalcSplit(raw);
   }
 };
 
