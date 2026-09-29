@@ -46,6 +46,9 @@ import { renderDiskCnab } from './views/disk/diskCnab.js';
 import { renderDiskAgendaPagamentos } from './views/disk/diskAgendaPagamentos.js';
 import { renderDiskPagamentosLote } from './views/disk/diskPagamentosLote.js';
 import { renderDiskTransferencias } from './views/disk/diskTransferencias.js';
+import { renderDiskConciliacao } from './views/disk/diskConciliacao.js';
+import { renderDiskFechamentos } from './views/disk/diskFechamentos.js';
+import { renderDiskControladoria } from './views/disk/diskControladoria.js';
 import {
   renderDiskEventos,
   renderDiskSaldos,
@@ -54,14 +57,12 @@ import {
   renderDiskRecebiveis,
   renderDiskTaxas,
   renderDiskEstornos,
-  renderDiskConciliacao,
   renderDiskBordero,
   renderDiskAssinaturas,
   renderDiskRelatorios,
   renderDiskAuditoria,
   renderDiskConfiguracoes,
-  renderDiskFornecedores,
-  renderDiskControleFinanceiro
+  renderDiskFornecedores
 } from './views/disk/enterpriseViews.js';
 
 class LimitlessFinancialApp {
@@ -1484,6 +1485,9 @@ class LimitlessFinancialApp {
         case 'diskBordero':
           viewHtml = renderDiskBordero(state, this.currentFilterArg);
           break;
+        case 'diskFechamentos':
+          viewHtml = renderDiskFechamentos(state);
+          break;
         case 'diskFluxoCaixa':
           viewHtml = renderDiskFluxoCaixa(state, this.currentFilterArg);
           break;
@@ -1502,8 +1506,24 @@ class LimitlessFinancialApp {
         case 'diskFornecedores':
           viewHtml = renderDiskFornecedores(state, this.currentFilterArg);
           break;
+        case 'diskControladoria':
         case 'diskControleFinanceiro':
-          viewHtml = renderDiskControleFinanceiro(state, this.currentFilterArg);
+          viewHtml = renderDiskControladoria(state, 'visao');
+          break;
+        case 'diskCentrosCustos':
+          viewHtml = renderDiskControladoria(state, 'centros');
+          break;
+        case 'diskOrcamentos':
+          viewHtml = renderDiskControladoria(state, 'orcamentos');
+          break;
+        case 'diskDre':
+          viewHtml = renderDiskControladoria(state, 'dre');
+          break;
+        case 'diskRentabilidade':
+          viewHtml = renderDiskControladoria(state, 'rentabilidade');
+          break;
+        case 'diskProjecoes':
+          viewHtml = renderDiskControladoria(state, 'projecoes');
           break;
         default:
           viewHtml = renderDiskDashboard(state);
@@ -1740,13 +1760,20 @@ class LimitlessFinancialApp {
       'diskTransferencias': { title: 'Transferências entre Contas', subtitle: 'Movimentações entre contas bancárias da Disk, TED/DOC e compensações.' },
       'diskLedger': { title: 'Ledger Financeiro', subtitle: 'Livro-razão contábil de partidas dobradas imutável, conciliação e rastreabilidade total de cada centavo.' },
       'diskBordero': { title: 'Borderôs & Fechamentos', subtitle: 'Conferência final de bilheteria, custos, deduções, aprovação e termo de encerramento assinado.' },
+      'diskFechamentos': { title: 'Fechamentos, Borderôs & Dossiês Financeiros', subtitle: 'Esteira de fechamento, prestação de contas, assinaturas duplas e dossiê do evento.' },
       'diskFluxoCaixa': { title: 'Fluxo de Caixa Realizado & Projetado', subtitle: 'Entradas e saídas operacionais consolidadas e projeção de liquidez futura.' },
       'diskAssinaturas': { title: 'Assinaturas Digitais', subtitle: 'Formalização de termos com certificados digitais ICP-Brasil (Financeiro é sempre o último signatário).' },
       'diskRelatorios': { title: 'Relatórios Financeiros Consolidados', subtitle: 'Demonstrativos gerenciais de vendas, conciliação, balancetes e exportações oficiais.' },
       'diskAuditoria': { title: 'Auditoria & Governança', subtitle: 'Log imutável de operações manuais, aprovações, alterações de taxas e acessos sensíveis.' },
       'diskConfiguracoes': { title: 'Configurações Administrativas', subtitle: 'Políticas de repasse, travas de antecipação, alçadas de aprovação e calendário operacional.' },
       'diskFornecedores': { title: 'Gestão de Fornecedores & Contratos', subtitle: 'Cadastro, contratos, documentos, cotações, pedidos, parcelas e vencimentos.' },
-      'diskControleFinanceiro': { title: 'Controle Financeiro, Orçamentos & DRE', subtitle: 'Centros de custos, orçamentos, fluxo de caixa, projeções de caixa e DRE gerencial.' }
+      'diskControladoria': { title: 'Controladoria Financeira', subtitle: 'Centros de custos, orçamentos, DRE gerencial, rentabilidade e projeções da operação.' },
+      'diskControleFinanceiro': { title: 'Controladoria Financeira', subtitle: 'Centros de custos, orçamentos, fluxo de caixa, projeções de caixa e DRE gerencial.' },
+      'diskCentrosCustos': { title: 'Centros de Custos', subtitle: 'Orçado × Realizado por centro de custo com apuração de desvios operacionais.' },
+      'diskOrcamentos': { title: 'Controle Orçamentário', subtitle: 'Acompanhamento de orçamentos previstos, realizados, comprometidos e governança de versões.' },
+      'diskDre': { title: 'DRE Gerencial', subtitle: 'Demonstrativo de Resultado do Exercício gerencial da Disk (Receitas, Adquirência, Operação e Margem).' },
+      'diskRentabilidade': { title: 'Rentabilidade por Evento & Produtor', subtitle: 'Margem de contribuição, resultado líquido e composição de custos por produção.' },
+      'diskProjecoes': { title: 'Projeções de Caixa', subtitle: 'Horizontes de liquidez em 7, 15, 30 e 60 dias (cenários não alteram o Ledger).' }
     };
 
     const currentInfo = titlesMap[state.currentView] || { title: 'Módulo Financeiro', subtitle: 'Sistema integrado de gestão financeira Disk Ingressos.' };

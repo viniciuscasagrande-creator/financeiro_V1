@@ -1,0 +1,51 @@
+import { formatCurrency } from '../../formatters.js';
+
+const dados = {
+  receita: 4284500, custos: 2869700, resultado: 1414800, margem: 33.02,
+  orcado: 3970000, realizado: 4284500, caixa30: 1842000
+};
+
+export function renderDiskControladoria(state, secao='visao') {
+  const produtor = state.data?.producer?.name || 'Todos os produtores';
+  const evento = state.data?.bordero?.eventName || 'Todos os eventos';
+  return `
+  <div class="limitless-page-header">
+    <div class="breadcrumbs"><span>Financeiro Disk</span><span class="breadcrumb-separator">/</span><span class="breadcrumb-active">Controladoria</span></div>
+    <div class="page-title-row"><div class="page-title-group"><h1><i class="ph-chart-line-up"></i> Controladoria Financeira</h1><p class="page-title-desc">Centros de custos, orçamento, DRE gerencial, rentabilidade e projeções da operação Disk.</p></div>
+    <div class="header-action-group"><button class="btn btn-secondary" onclick="window.print()"><i class="ph-download-simple"></i> Exportar</button><button class="btn btn-primary"><i class="ph-plus"></i> Novo orçamento</button></div></div>
+  </div>
+  <div class="limitless-content">
+    <div class="alert alert-primary border-0 mb-3"><strong>Contexto administrativo:</strong> ${produtor} &nbsp;•&nbsp; ${evento}. O Financeiro Disk permanece no ambiente administrativo mesmo ao filtrar produtor ou evento.</div>
+    <div class="d-flex gap-2 flex-wrap mb-4">
+      ${tab('diskControladoria','Visão Geral',secao==='visao')}${tab('diskCentrosCustos','Centros de Custos',secao==='centros')}${tab('diskOrcamentos','Orçamentos',secao==='orcamentos')}${tab('diskDre','DRE Gerencial',secao==='dre')}${tab('diskRentabilidade','Rentabilidade',secao==='rentabilidade')}${tab('diskProjecoes','Projeções',secao==='projecoes')}
+    </div>
+    ${renderSecao(secao)}
+  </div>`;
+}
+function tab(view,label,active){return `<button class="btn ${active?'btn-primary':'btn-secondary'} btn-sm" onclick="window.app.navigate('${view}')">${label}</button>`}
+function renderSecao(s){
+ if(s==='centros') return centros(); if(s==='orcamentos') return orcamentos(); if(s==='dre') return dre(); if(s==='rentabilidade') return rentabilidade(); if(s==='projecoes') return projecoes(); return visao();
+}
+function visao(){return `${kpis()}
+<div style="display:grid;grid-template-columns:1.35fr 1fr;gap:20px">
+ ${painel('Orçado × Realizado', `<table class="limitless-table"><thead><tr><th>Grupo</th><th>Orçado</th><th>Realizado</th><th>Variação</th></tr></thead><tbody>${linhaOR('Receita operacional',3970000,4284500)}${linhaOR('Custos de operação',2740000,2869700)}${linhaOR('Resultado',1230000,1414800)}</tbody></table>`)}
+ ${painel('Atenções da Controladoria', `<div class="card-body">${alerta('3 centros de custos acima do orçamento','Revisar desvios e justificativas.')}${alerta('2 eventos abaixo da margem planejada','Abrir análise de rentabilidade.')}${alerta('R$ 428 mil em compromissos nos próximos 15 dias','Refletidos na projeção de caixa.')}</div>`)}
+</div>
+<div class="card-panel mt-4"><div class="card-header-bar"><div class="card-title-group"><h2>Rentabilidade por Evento</h2><p class="card-subtitle">Resultado gerencial consolidado; não substitui contabilidade oficial.</p></div></div>${tabelaRentabilidade()}</div>`}
+function kpis(){return `<div class="row g-3 mb-4">${kpi('Receita realizada',formatCurrency(dados.receita),'ph-trend-up')}${kpi('Custos realizados',formatCurrency(dados.custos),'ph-trend-down')}${kpi('Resultado gerencial',formatCurrency(dados.resultado),'ph-chart-line-up')}${kpi('Margem gerencial',dados.margem.toFixed(2).replace('.',',')+'%','ph-percent')}${kpi('Caixa projetado 30 dias',formatCurrency(dados.caixa30),'ph-calendar-dots')}</div>`}
+function centros(){return `${kpis()}${painel('Centros de Custos',`<div class="card-body card-body-no-padding"><table class="limitless-table"><thead><tr><th>Código</th><th>Centro</th><th>Responsável</th><th>Orçado</th><th>Realizado</th><th>Desvio</th><th>Situação</th></tr></thead><tbody>${cc('CC-001','Operação de Eventos','Operações',920000,981400)}${cc('CC-002','Marketing e Aquisição','Marketing',540000,512300)}${cc('CC-003','Tecnologia e Plataformas','Tecnologia',410000,398900)}${cc('CC-004','Financeiro e Meios de Pagamento','Financeiro',870000,977100)}</tbody></table></div>`)}<div class="alert alert-info mt-3">Cada despesa deve possuir origem, competência e vínculo com centro de custo; quando aplicável, também com Produtor e Evento.</div>`}
+function orcamentos(){return `${kpis()}${painel('Controle Orçamentário',`<div class="card-body card-body-no-padding"><table class="limitless-table"><thead><tr><th>Orçamento</th><th>Escopo</th><th>Período</th><th>Previsto</th><th>Realizado</th><th>Comprometido</th><th>Situação</th></tr></thead><tbody>${orc('ORC-2026-09','Operação Disk','Set/2026',3970000,4284500,428000)}${orc('ORC-EVT-184','Festival Horizonte','Evento',1280000,1196000,84000)}${orc('ORC-EVT-201','Experiência Verão','Evento',720000,751800,46000)}</tbody></table></div>`)}<div class="alert alert-warning mt-3"><strong>Governança:</strong> revisão orçamentária não apaga a versão anterior. Motivo, usuário, data e aprovação ficam registrados.</div>`}
+function dre(){return `${kpis()}${painel('DRE Gerencial — Visão Financeiro Disk',`<div class="card-body"><div style="max-width:760px">${dreL('Receita operacional',4284500)}${dreL('(-) Custos de adquirência e gateways',-386400)}${dreL('(-) Custos operacionais de eventos',-1548300)}${dreL('(-) Repasses e custos comerciais',-642000)}${dreL('(-) Despesas administrativas',-293000)}${dreL('Resultado gerencial',1414800,true)}</div></div>`)}<div class="alert alert-info mt-3"><strong>DRE Gerencial:</strong> visão de gestão financeira. Não é escrituração contábil nem demonstração fiscal oficial.</div>`}
+function rentabilidade(){return `${kpis()}${painel('Rentabilidade por Evento e Produtor',tabelaRentabilidade())}<div class="card-panel mt-4"><div class="card-header-bar"><div class="card-title-group"><h2>Composição da Margem</h2><p class="card-subtitle">Drill-down do resultado: receita → MDR → taxas → custos → estornos → resultado.</p></div></div><div class="card-body"><div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px">${bloco('Receita','R$ 4,28 mi')}${bloco('MDR / Gateway','- R$ 386 mil')}${bloco('Operação','- R$ 1,55 mi')}${bloco('Outros custos','- R$ 935 mil')}${bloco('Resultado','R$ 1,41 mi')}</div></div></div>`}
+function projecoes(){return `${kpis()}${painel('Projeção de Caixa',`<div class="card-body card-body-no-padding"><table class="limitless-table"><thead><tr><th>Horizonte</th><th>Entradas previstas</th><th>Saídas previstas</th><th>Saldo projetado</th><th>Observação</th></tr></thead><tbody>${proj('7 dias',940000,612000,328000,'Operação normal')}${proj('15 dias',1740000,1312000,428000,'Concentração de repasses')}${proj('30 dias',3680000,1838000,1842000,'Inclui recebíveis previstos')}${proj('60 dias',6220000,4110000,2110000,'Cenário base')}</tbody></table></div>`)}<div class="alert alert-primary mt-3">Projeções devem separar valores realizados, contratados/comprometidos e estimados. Cenários não alteram o Ledger nem o saldo real.</div>`}
+function kpi(t,v,i){return `<div class="col"><div class="card-panel h-100"><div class="card-body"><div class="d-flex gap-2 align-items-center text-muted fs-xs"><i class="${i} fs-4"></i>${t}</div><div class="fs-4 fw-bold mt-2">${v}</div></div></div></div>`}
+function painel(t,b){return `<div class="card-panel"><div class="card-header-bar"><div class="card-title-group"><h2>${t}</h2></div></div>${b}</div>`}
+function linhaOR(n,o,r){let d=r-o;return `<tr><td><strong>${n}</strong></td><td>${formatCurrency(o)}</td><td>${formatCurrency(r)}</td><td><span class="badge ${d>=0?'bg-success':'bg-danger'}">${d>=0?'+':''}${formatCurrency(d)}</span></td></tr>`}
+function alerta(t,s){return `<div class="mb-3"><div class="fw-bold fs-xs"><i class="ph-warning-circle text-warning"></i> ${t}</div><div class="text-muted fs-xxs ms-4">${s}</div></div>`}
+function cc(c,n,r,o,real){let d=real-o;return `<tr><td>${c}</td><td><strong>${n}</strong></td><td>${r}</td><td>${formatCurrency(o)}</td><td>${formatCurrency(real)}</td><td>${d>=0?'+':''}${formatCurrency(d)}</td><td><span class="badge ${d>0?'bg-warning text-dark':'bg-success'}">${d>0?'Acima do orçamento':'Dentro do orçamento'}</span></td></tr>`}
+function orc(id,e,p,o,r,c){return `<tr><td><strong>${id}</strong></td><td>${e}</td><td>${p}</td><td>${formatCurrency(o)}</td><td>${formatCurrency(r)}</td><td>${formatCurrency(c)}</td><td><span class="badge ${r>o?'bg-warning text-dark':'bg-success'}">${r>o?'Revisar':'Controlado'}</span></td></tr>`}
+function dreL(n,v,total=false){return `<div style="display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--border-color);${total?'font-size:1.08rem':''}"><span class="${total?'fw-bold':''}">${n}</span><strong>${formatCurrency(v)}</strong></div>`}
+function tabelaRentabilidade(){return `<div class="card-body card-body-no-padding"><table class="limitless-table"><thead><tr><th>Evento</th><th>Produtor</th><th>Receita</th><th>Custos</th><th>Resultado</th><th>Margem</th><th>Situação</th></tr></thead><tbody>${rent('Festival Horizonte','Produtora Horizonte',1284550,841300)}${rent('Experiência Verão','Eventos Sul',684200,521790)}${rent('Arena Live','Grupo Arena',1038400,653100)}${rent('Parque Temporada','Parques Brasil',1277350,853510)}</tbody></table></div>`}
+function rent(e,p,r,c){let res=r-c,m=res/r*100;return `<tr><td><strong>${e}</strong></td><td>${p}</td><td>${formatCurrency(r)}</td><td>${formatCurrency(c)}</td><td><strong>${formatCurrency(res)}</strong></td><td>${m.toFixed(1).replace('.',',')}%</td><td><span class="badge ${m>=25?'bg-success':'bg-warning text-dark'}">${m>=25?'Dentro da meta':'Acompanhar'}</span></td></tr>`}
+function bloco(t,v){return `<div style="border:1px solid var(--border-color);border-radius:10px;padding:14px"><div class="text-muted fs-xxs">${t}</div><div class="fw-bold mt-1">${v}</div></div>`}
+function proj(h,e,s,sl,o){return `<tr><td><strong>${h}</strong></td><td>${formatCurrency(e)}</td><td>${formatCurrency(s)}</td><td><strong>${formatCurrency(sl)}</strong></td><td>${o}</td></tr>`}

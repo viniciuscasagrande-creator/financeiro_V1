@@ -200,27 +200,29 @@ export const menuFinanceiroCompleto = [
     ]
   },
   {
-    id: 'diskBordero',
-    label: 'FECHAMENTO',
-    icon: 'ph-signature',
+    id: 'diskFechamentos',
+    label: 'FECHAMENTOS E DOSSIÊS',
+    icon: 'ph-folder-lock',
     subItems: [
-      { id: 'diskBordero', label: 'Fechamento Financeiro', filterArg: 'fechamento' },
+      { id: 'diskFechamentos', label: 'Fechamentos e Dossiês', filterArg: 'fechamentos' },
       { id: 'diskBordero', label: 'Borderôs', filterArg: 'borderos' },
-      { id: 'diskBordero', label: 'Fechamento por Evento', filterArg: 'evento' },
-      { id: 'diskBordero', label: 'Fechamento por Produtor', filterArg: 'produtor' },
+      { id: 'diskFechamentos', label: 'Fechamento por Evento', filterArg: 'evento' },
+      { id: 'diskFechamentos', label: 'Dossiê Financeiro', filterArg: 'dossie' },
       { id: 'diskBordero', label: 'Histórico de Fechamentos', filterArg: 'historico' }
     ]
   },
   {
-    id: 'diskControleFinanceiro',
-    label: 'CONTROLE FINANCEIRO',
+    id: 'diskControladoria',
+    label: 'CONTROLADORIA FINANCEIRA',
     icon: 'ph-chart-line-up',
     subItems: [
-      { id: 'diskControleFinanceiro', label: 'Centros de Custos', filterArg: 'centros_custos' },
-      { id: 'diskControleFinanceiro', label: 'Orçamentos', filterArg: 'orcamentos' },
-      { id: 'diskFluxoCaixa', label: 'Fluxo de Caixa', filterArg: 'fluxo' },
-      { id: 'diskFluxoCaixa', label: 'Projeção de Caixa', filterArg: 'projecao' },
-      { id: 'diskControleFinanceiro', label: 'DRE Gerencial', filterArg: 'dre' }
+      { id: 'diskControladoria', label: 'Visão Geral', filterArg: 'visao' },
+      { id: 'diskCentrosCustos', label: 'Centros de Custos', filterArg: 'centros' },
+      { id: 'diskOrcamentos', label: 'Orçamentos', filterArg: 'orcamentos' },
+      { id: 'diskDre', label: 'DRE Gerencial', filterArg: 'dre' },
+      { id: 'diskRentabilidade', label: 'Rentabilidade', filterArg: 'rentabilidade' },
+      { id: 'diskProjecoes', label: 'Projeções de Caixa', filterArg: 'projecoes' },
+      { id: 'diskFluxoCaixa', label: 'Fluxo de Caixa', filterArg: 'fluxo' }
     ]
   },
   {
