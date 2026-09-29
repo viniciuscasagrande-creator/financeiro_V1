@@ -1441,7 +1441,7 @@ class LimitlessFinancialApp {
           viewHtml = renderDiskTaxas(state, this.currentFilterArg);
           break;
         case 'diskGateways':
-          viewHtml = renderDiskGateways(state);
+          viewHtml = renderDiskGateways(state, this.currentFilterArg);
           break;
         case 'diskEstornos':
           viewHtml = renderDiskEstornos(state, this.currentFilterArg);
