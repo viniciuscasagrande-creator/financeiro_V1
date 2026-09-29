@@ -1510,6 +1510,17 @@ a:hover {
   color: #60a5fa !important;
 }
 
+/* Elimina a seta duplicada gerada pelo pseudo-elemento ::after do tema base Limitless (mantendo apenas uma seta única) */
+.nav-sidebar .nav-item-submenu > .nav-link::after,
+.nav-sidebar .nav-item-submenu > .nav-link:after,
+.sidebar .nav-item-submenu > .nav-link::after,
+.sidebar .nav-item-submenu > .nav-link:after,
+.nav-item-submenu > .nav-link::after,
+.nav-item-submenu > .nav-link:after {
+  content: none !important;
+  display: none !important;
+}
+
 /* Estilo do Menu Pai quando o Submenu está Aberto */
 .nav-sidebar .nav-item-submenu.is-open > .nav-link {
   color: #f8fafc !important;
