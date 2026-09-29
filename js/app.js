@@ -1858,7 +1858,7 @@ class LimitlessFinancialApp {
       const hasSubs = Array.isArray(item.subItems) && item.subItems.length > 0;
       const isParentActive = currentView === item.id;
       const badgeHtml = item.badge === 'pendingCount' 
-        ? `<span class="badge rounded-pill bg-danger fs-xxs ms-auto">${pendingCount}</span>` 
+        ? `<span class="badge rounded-pill bg-danger fs-xxs">${pendingCount}</span>` 
         : '';
 
       if (hasSubs) {
@@ -1867,12 +1867,12 @@ class LimitlessFinancialApp {
 
         return `
           <li class="nav-item nav-item-submenu ${isOpen ? 'is-open' : ''}">
-            <a class="nav-link d-flex align-items-center justify-content-between" onclick="this.parentElement.classList.toggle('is-open')">
-              <div class="d-flex align-items-center gap-2">
-                <i class="${item.icon} fs-5"></i>
-                <span>${item.label}</span>
+            <a class="nav-link" onclick="this.parentElement.classList.toggle('is-open')">
+              <div class="nav-item-left">
+                <i class="${item.icon} nav-item-icon"></i>
+                <span class="nav-item-title">${item.label}</span>
               </div>
-              <div class="d-flex align-items-center gap-1">
+              <div class="nav-item-right">
                 ${badgeHtml}
                 <i class="ph-caret-right nav-arrow"></i>
               </div>
@@ -1883,7 +1883,8 @@ class LimitlessFinancialApp {
                   return `
                     <li class="nav-item">
                       <a class="nav-link" onclick="window.app.openPayoutModal()">
-                        <i class="ph-plus-circle me-1"></i> ${sub.label}
+                        <i class="ph-plus-circle"></i>
+                        <span>${sub.label}</span>
                       </a>
                     </li>
                   `;
@@ -1892,7 +1893,8 @@ class LimitlessFinancialApp {
                 return `
                   <li class="nav-item">
                     <a class="nav-link ${isSubActive ? 'active' : ''}" onclick="window.app.navigate('${sub.id}', '${sub.filterArg || 'all'}')">
-                      <i class="ph-caret-right me-1 fs-xxs opacity-50"></i> ${sub.label}
+                      <i class="ph-caret-right"></i>
+                      <span>${sub.label}</span>
                     </a>
                   </li>
                 `;
@@ -1904,12 +1906,12 @@ class LimitlessFinancialApp {
 
       return `
         <li class="nav-item">
-          <a class="nav-link ${isParentActive ? 'active' : ''} d-flex align-items-center justify-content-between" onclick="window.app.navigate('${item.id}')">
-            <div class="d-flex align-items-center gap-2">
-              <i class="${item.icon} fs-5"></i>
-              <span>${item.label}</span>
+          <a class="nav-link ${isParentActive ? 'active' : ''}" onclick="window.app.navigate('${item.id}')">
+            <div class="nav-item-left">
+              <i class="${item.icon} nav-item-icon"></i>
+              <span class="nav-item-title">${item.label}</span>
             </div>
-            ${badgeHtml}
+            ${badgeHtml ? `<div class="nav-item-right">${badgeHtml}</div>` : ''}
           </a>
         </li>
       `;
