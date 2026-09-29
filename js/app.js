@@ -597,6 +597,449 @@ class LimitlessFinancialApp {
   }
 
   // ==========================================================================
+  // MODAL OFICIAL DE ASSINATURA DIGITAL DO PRODUTOR (ICP-BRASIL)
+  // REGRA: O Produtor assina em PRIMEIRO LUGAR. O Financeiro Disk assina por ÚLTIMO.
+  // ==========================================================================
+  openSignDocumentModal(requestId) {
+    const state = financialStore.getState();
+    const item = state.data.approvalQueue.find(a => a.id === requestId);
+    if (!item) return;
+
+    const producer = state.activeProducer;
+    const certNumber = `ICP-BRASIL-A1-${Math.floor(100000 + Math.random() * 900000)}`;
+    const hashDoc = `SHA256:${Array.from({length: 32}, () => Math.floor(Math.random()*16).toString(16)).join('')}`;
+
+    const html = `
+      <div class="modal-card" style="max-width: 640px;">
+        <div class="modal-header bg-success text-white d-flex justify-content-between align-items-center">
+          <div>
+            <span class="fs-xxs text-uppercase fw-bold opacity-75">PORTAL DE ASSINATURAS DIGITAIS &bull; ICP-BRASIL</span>
+            <h5 class="fw-bold mb-0 text-white mt-1">
+              <i class="ph-signature me-1"></i> Assinatura Digital do Produtor
+            </h5>
+          </div>
+          <button class="modal-close-btn text-white border-0 bg-transparent" onclick="window.app.closeModal()">&times;</button>
+        </div>
+
+        <div class="modal-body p-4">
+          <!-- Document Badge & Overview -->
+          <div class="p-3 rounded mb-3" style="background: #f8fafc; border: 1px solid #e2e8f0;">
+            <div class="d-flex justify-content-between align-items-start">
+              <div>
+                <span class="badge bg-primary text-white fs-xxs fw-bold">${item.type.toUpperCase()}</span>
+                <h5 class="fw-bold text-dark mt-1 mb-0">${item.documentTitle || 'Termo de Liberação Financeira'}</h5>
+                <div class="fs-xs text-muted mt-1">Protocolo: <strong>${item.id}</strong> &bull; Documento: <strong>${item.documentId}</strong></div>
+              </div>
+              <div class="text-end">
+                <div class="fs-xxs text-muted text-uppercase fw-bold">Valor da Operação</div>
+                <div class="fs-4 fw-bold text-success">${formatCurrency(item.requestedAmount || item.netAmount)}</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Parties Identification -->
+          <div class="row g-2 mb-3 fs-xs">
+            <div class="col-sm-6 p-2 rounded bg-light border">
+              <div class="text-muted fw-bold fs-xxs text-uppercase">1º Signatário (Produtor Responsável)</div>
+              <div class="fw-bold text-dark mt-1">${state.currentUser.name}</div>
+              <div class="text-muted">${producer.name} (CNPJ: ${producer.cnpj})</div>
+            </div>
+            <div class="col-sm-6 p-2 rounded bg-light border">
+              <div class="text-muted fw-bold fs-xxs text-uppercase">2º Signatário (Financeiro Disk - Assina por Último)</div>
+              <div class="fw-bold text-dark mt-1">Tesouraria Disk Ingressos</div>
+              <div class="text-muted">Disk Ingressos S.A. (CNPJ: 14.829.301/0001-92)</div>
+            </div>
+          </div>
+
+          <!-- Legal & Term Text Preview -->
+          <div class="p-3 rounded mb-3 border fs-xs" style="background: #fffbeb; border-color: #fde68a; max-height: 140px; overflow-y: auto;">
+            <strong>DECLARAÇÃO FORMAL DE AUTORIZAÇÃO:</strong><br>
+            Pelo presente instrumento, o PRODUTOR supra qualificado confirma a veracidade das informações financeiras apuradas na bilheteria do evento <strong>${item.eventName}</strong>, autorizando a transferência do valor líquido de <strong>${formatCurrency(item.requestedAmount || item.netAmount)}</strong> para a conta bancária homologada no contrato: <strong>${item.bankName} (${item.bankAccount})</strong>.<br><br>
+            Fica acordado que esta assinatura é vinculante e que a liberação dos recursos ocorrerá imediatamente após a assinatura de encerramento do FINANCEIRO DISK INGRESSOS.
+          </div>
+
+          <!-- ICP-Brasil Certificate Simulator -->
+          <div class="p-3 rounded mb-3 border bg-white shadow-sm">
+            <div class="d-flex align-items-center gap-2 mb-2">
+              <i class="ph-shield-check fs-4 text-success"></i>
+              <div>
+                <div class="fw-bold fs-xs text-dark">Certificado Digital ICP-Brasil A1 Detectado</div>
+                <div class="fs-xxs text-muted">Emissor: Autoridade Certificadora Raiz Brasileira v5</div>
+              </div>
+            </div>
+            <div class="fs-xxs text-muted font-monospace bg-light p-2 rounded border">
+              Certificado: ${certNumber}<br>
+              Hash do Termo: ${hashDoc}<br>
+              IP de Conexão: 177.136.241.10 (Curitiba, PR) &bull; Timestamp D-0
+            </div>
+          </div>
+
+          <!-- Alert regra central -->
+          <div class="alert alert-info py-2 px-3 fs-xs d-flex align-items-center gap-2 mb-0">
+            <i class="ph-info fs-5 flex-shrink-0"></i>
+            <div>
+              <strong>Regra de Governança:</strong> Após você assinar, o documento será enviado à Mesa da Disk para a assinatura final do Financeiro e pagamento imediato via PIX.
+            </div>
+          </div>
+
+          <div class="modal-footer px-0 pb-0 pt-3 d-flex justify-content-end gap-2">
+            <button type="button" class="btn btn-secondary" onclick="window.app.closeModal()">Cancelar</button>
+            <button type="button" class="btn btn-success fw-bold px-4" onclick="window.app.handleConfirmProducerSign('${item.id}')">
+              ✍️ Assinar Digitalmente Agora (ICP-Brasil)
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    this.showModal(html);
+  }
+
+  handleConfirmProducerSign(requestId) {
+    financialStore.signByProducer(requestId);
+    this.closeModal();
+    this.navigate('repasses');
+  }
+
+  // ==========================================================================
+  // COMPROVANTE OFICIAL DE PAGAMENTO / LIQUIDAÇÃO BANCÁRIA
+  // ==========================================================================
+  showPayoutReceipt(requestId) {
+    const state = financialStore.getState();
+    const item = state.data.approvalQueue.find(a => a.id === requestId);
+    if (!item) return;
+
+    const html = `
+      <div class="modal-card" style="max-width: 580px;">
+        <div class="modal-header d-flex justify-content-between align-items-center" style="background: #0f172a; color: white;">
+          <div>
+            <span class="fs-xxs text-uppercase fw-bold text-success" style="letter-spacing: 0.05em;">COMPROVANTE OFICIAL DE TRANSFERÊNCIA &bull; PIX / TED</span>
+            <h5 class="fw-bold mb-0 text-white mt-1">Liquidação Financeira #${item.id}</h5>
+          </div>
+          <button class="modal-close-btn text-white border-0 bg-transparent" onclick="window.app.closeModal()">&times;</button>
+        </div>
+
+        <div class="modal-body p-4 bg-white">
+          <div class="text-center pb-3 border-bottom">
+            <div class="rounded-circle bg-success text-white d-inline-flex align-items-center justify-content-center mb-2" style="width: 48px; height: 48px;">
+              <i class="ph-check fs-2"></i>
+            </div>
+            <h4 class="fw-bold text-dark mb-0">${formatCurrency(item.requestedAmount || item.netAmount)}</h4>
+            <div class="text-success fw-semibold fs-xs mt-1">Transferência PIX Realizada com Sucesso</div>
+            <div class="text-muted fs-xxs">Data/Hora: ${item.paidDate || new Date().toLocaleString('pt-BR')}</div>
+          </div>
+
+          <div class="py-3 border-bottom d-flex flex-column gap-2 fs-xs">
+            <div class="d-flex justify-content-between">
+              <span class="text-muted">Autenticação Bancária (Bacen):</span>
+              <strong class="font-monospace text-dark">${item.authCode || 'DISK-PIX-TED-8942189012'}</strong>
+            </div>
+            <div class="d-flex justify-content-between">
+              <span class="text-muted">Termo Vinculado:</span>
+              <strong class="text-primary">${item.documentId || 'DOC-8921'}</strong>
+            </div>
+            <div class="d-flex justify-content-between">
+              <span class="text-muted">Tipo da Operação:</span>
+              <strong>${item.type}</strong>
+            </div>
+            <div class="d-flex justify-content-between">
+              <span class="text-muted">Evento de Origem:</span>
+              <strong>${item.eventName}</strong>
+            </div>
+          </div>
+
+          <div class="py-3 border-bottom fs-xs">
+            <div class="fw-bold text-muted text-uppercase fs-xxs mb-2">Dados da Conta Creditada (Produtor)</div>
+            <div class="p-2 rounded bg-light border">
+              <div class="fw-bold text-dark">${item.producerName}</div>
+              <div class="text-muted">Banco: ${item.bankName} &bull; ${item.bankAccount}</div>
+              <div class="text-primary fw-semibold mt-1">Chave PIX: ${item.pixKey || 'Não informada'}</div>
+            </div>
+          </div>
+
+          <div class="py-3 border-bottom fs-xs">
+            <div class="fw-bold text-muted text-uppercase fs-xxs mb-2">Dados da Conta Debitada (Disk Ingressos)</div>
+            <div class="p-2 rounded bg-light border">
+              <div class="fw-bold text-dark">Disk Ingressos Intermediação de Eventos S.A.</div>
+              <div class="text-muted">Banco do Brasil S.A. (001) &bull; Ag 1890-X &bull; C/C 55400-1</div>
+              <div class="text-muted">CNPJ: 14.829.301/0001-92</div>
+            </div>
+          </div>
+
+          <div class="p-2 mt-2 bg-success bg-opacity-10 border border-success rounded text-success fs-xxs text-center">
+            🔒 <strong>Conciliação Ledger Concluída:</strong> Partidas dobradas registradas no Livro-Razão Contábil imutável Disk.
+          </div>
+
+          <div class="modal-footer px-0 pb-0 pt-3 d-flex justify-content-between align-items-center">
+            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="window.print()">
+              <i class="ph-printer me-1"></i> Imprimir Comprovante
+            </button>
+            <button type="button" class="btn btn-primary btn-sm" onclick="window.app.closeModal()">
+              Fechar
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    this.showModal(html);
+  }
+
+  // ==========================================================================
+  // SIMULADOR DE ANTECIPAÇÃO DE RECEBÍVEIS
+  // ==========================================================================
+  onAnticipationRangeChange(val) {
+    const numInput = document.getElementById('antNumberInput');
+    if (numInput) numInput.value = val;
+    this.updateAnticipationSimulation();
+  }
+
+  onAnticipationNumberChange(val) {
+    const rangeInput = document.getElementById('antRangeInput');
+    if (rangeInput) rangeInput.value = val;
+    this.updateAnticipationSimulation();
+  }
+
+  updateAnticipationSimulation() {
+    const state = financialStore.getState();
+    const eventSelect = document.getElementById('antEventSelect');
+    const rangeInput = document.getElementById('antRangeInput');
+    const numInput = document.getElementById('antNumberInput');
+    const simGross = document.getElementById('simGross');
+    const simDiscount = document.getElementById('simDiscount');
+    const simNet = document.getElementById('simNet');
+
+    if (!numInput || !simGross || !simDiscount || !simNet) return;
+
+    const val = parseFloat(numInput.value) || 0;
+    const rate = state.data.anticipations?.monthlyRate || 2.0;
+    const discount = val * (rate / 100);
+    const net = val - discount;
+
+    simGross.innerText = formatCurrency(val);
+    simDiscount.innerText = `- ${formatCurrency(discount)}`;
+    simNet.innerText = formatCurrency(net);
+  }
+
+  submitAnticipation() {
+    const eventSelect = document.getElementById('antEventSelect');
+    const numInput = document.getElementById('antNumberInput');
+    const val = parseFloat(numInput?.value || 50000);
+    const eventId = eventSelect?.value === 'all' ? 'evt-001' : (eventSelect?.value || 'evt-001');
+
+    financialStore.requestAnticipation({
+      eventId: eventId,
+      grossAmount: val,
+      notes: "Solicitação gerada via Simulador Limitless de Antecipação de Cartão."
+    });
+
+    this.navigate('repasses');
+  }
+
+  // ==========================================================================
+  // FORMALIZAÇÃO DO FECHAMENTO DE BORDERÔ COM DUPLA ASSINATURA
+  // ==========================================================================
+  openSubmitBorderoModal(eventId) {
+    const state = financialStore.getState();
+    const bordero = state.data.bordero;
+    const remaining = bordero.summary.remainingBalance || 511318.50;
+
+    const html = `
+      <div class="modal-card" style="max-width: 560px;">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="fw-bold mb-0 text-white"><i class="ph-signature me-2"></i> Fechamento Oficial do Borderô</h5>
+          <button class="modal-close-btn text-white border-0 bg-transparent" onclick="window.app.closeModal()">&times;</button>
+        </div>
+        <div class="modal-body p-4">
+          <p class="fs-xs text-muted mb-3">
+            Submeta o encerramento do evento <strong>${bordero.eventName}</strong> para auditoria contábil e homologação da Disk Ingressos.
+          </p>
+
+          <div class="p-3 bg-light rounded border mb-3 fs-xs">
+            <div class="d-flex justify-content-between mb-1">
+              <span>Arrecadação Bruta Total:</span>
+              <strong>${formatCurrency(bordero.summary.grossRevenue)}</strong>
+            </div>
+            <div class="d-flex justify-content-between mb-1">
+              <span>Resultado Líquido do Evento:</span>
+              <strong class="text-success">${formatCurrency(bordero.summary.netEventBalance)}</strong>
+            </div>
+            <div class="d-flex justify-content-between mb-1">
+              <span>Repasses Anteriores Já Pagos:</span>
+              <strong class="text-muted">-${formatCurrency(bordero.summary.alreadyTransferred)}</strong>
+            </div>
+            <hr class="my-1">
+            <div class="d-flex justify-content-between fs-sm fw-bold">
+              <span>Saldo Remanescente a Liquidar:</span>
+              <span class="text-primary">${formatCurrency(remaining)}</span>
+            </div>
+          </div>
+
+          <div class="alert alert-warning fs-xs py-2 px-3 mb-3">
+            🔒 <strong>Regra de Fechamento:</strong> Este fechamento exige dupla assinatura digital vinculante. O Produtor assina em primeiro lugar e a Auditoria Financeira Disk assina por último para encerramento do borderô.
+          </div>
+
+          <form onsubmit="window.app.handleBorderoClosureSubmit(event, '${eventId}')">
+            <div class="mb-3">
+              <label class="form-label fw-bold fs-xs text-uppercase text-muted">Observações da Produção</label>
+              <textarea class="form-control" id="borderoNotes" rows="3" placeholder="Informações de encerramento, conferência de cortesias ou deduções específicas..."></textarea>
+            </div>
+
+            <div class="modal-footer px-0 pb-0 pt-2 d-flex justify-content-end gap-2">
+              <button type="button" class="btn btn-secondary" onclick="window.app.closeModal()">Cancelar</button>
+              <button type="submit" class="btn btn-primary">
+                Enviar Fechamento para Homologação Disk
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    `;
+
+    this.showModal(html);
+  }
+
+  handleBorderoClosureSubmit(e, eventId) {
+    e.preventDefault();
+    const notes = document.getElementById('borderoNotes')?.value;
+    financialStore.submitBorderoClosure({ eventId, notes });
+    this.closeModal();
+    this.navigate('repasses');
+  }
+
+  // ==========================================================================
+  // GESTÃO DE CONTAS BANCÁRIAS DO PRODUTOR
+  // ==========================================================================
+  openAddBankModal() {
+    const producer = financialStore.getState().activeProducer;
+    const html = `
+      <div class="modal-card" style="max-width: 520px;">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="fw-bold mb-0 text-white"><i class="ph-credit-card me-2"></i> Cadastrar Nova Conta Bancária PJ</h5>
+          <button class="modal-close-btn text-white border-0 bg-transparent" onclick="window.app.closeModal()">&times;</button>
+        </div>
+        <div class="modal-body p-4">
+          <p class="fs-xs text-muted mb-3">
+            Cadastre uma conta corrente PJ homologada vinculada ao CNPJ <strong>${producer.cnpj}</strong>.
+          </p>
+
+          <form onsubmit="window.app.handleAddBankSubmit(event)">
+            <div class="mb-3">
+              <label class="form-label fw-bold fs-xs text-uppercase text-muted">Instituição Bancária *</label>
+              <select class="form-select" id="newBankName" required>
+                <option value="Banco do Brasil (001)">Banco do Brasil (001)</option>
+                <option value="Itaú Unibanco (341)">Itaú Unibanco (341)</option>
+                <option value="Banco Bradesco (237)">Banco Bradesco (237)</option>
+                <option value="Santander Brasil (033)">Santander Brasil (033)</option>
+                <option value="BTG Pactual (208)">BTG Pactual (208)</option>
+                <option value="Nubank PJ (260)">Nubank PJ (260)</option>
+                <option value="Banco Inter (077)">Banco Inter (077)</option>
+                <option value="C6 Bank (336)">C6 Bank (336)</option>
+              </select>
+            </div>
+
+            <div class="row g-2 mb-3">
+              <div class="col-sm-4">
+                <label class="form-label fw-bold fs-xs text-uppercase text-muted">Agência *</label>
+                <input type="text" class="form-control" id="newBankAgency" placeholder="Ex: 0432" required>
+              </div>
+              <div class="col-sm-8">
+                <label class="form-label fw-bold fs-xs text-uppercase text-muted">Conta com Dígito *</label>
+                <input type="text" class="form-control" id="newBankAccount" placeholder="Ex: 48291-0" required>
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label fw-bold fs-xs text-uppercase text-muted">Chave PIX Homologada *</label>
+              <input type="text" class="form-control" id="newBankPix" value="${producer.cnpj}" required>
+              <div class="form-text fs-xxs text-muted">Chaves homologadas devem coincidir com o CNPJ ou e-mail da produtora.</div>
+            </div>
+
+            <div class="form-check mb-3">
+              <input class="form-check-input" type="checkbox" id="newBankDefault">
+              <label class="form-check-label fs-xs text-dark fw-semibold" for="newBankDefault">
+                Definir como conta padrão prioritária para repasses
+              </label>
+            </div>
+
+            <div class="modal-footer px-0 pb-0 pt-2 d-flex justify-content-end gap-2">
+              <button type="button" class="btn btn-secondary" onclick="window.app.closeModal()">Cancelar</button>
+              <button type="submit" class="btn btn-primary">Validar &amp; Salvar Conta</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    `;
+
+    this.showModal(html);
+  }
+
+  handleAddBankSubmit(e) {
+    e.preventDefault();
+    const bankName = document.getElementById('newBankName').value;
+    const agency = document.getElementById('newBankAgency').value;
+    const accountNumber = document.getElementById('newBankAccount').value;
+    const pixKey = document.getElementById('newBankPix').value;
+    const isDefault = document.getElementById('newBankDefault').checked;
+
+    financialStore.addBankAccount({ bankName, agency, accountNumber, pixKey, isDefault });
+    this.closeModal();
+    this.navigate('dadosBancarios');
+  }
+
+  // ==========================================================================
+  // UTILITÁRIOS DA VISÃO DISK E GLOBAIS
+  // ==========================================================================
+  openProducerAccount(producerId) {
+    financialStore.setSelectedProducer(producerId);
+    this.navigate('diskProdutores');
+  }
+
+  toggleRole(role) {
+    if (role === 'producer') {
+      window.switchGlobalRole('PRODUTOR');
+    } else {
+      window.switchGlobalRole('FINANCEIRO');
+    }
+  }
+
+  renderDiskAprovacoesView(filterType) {
+    this.navigate('diskAprovacoes', filterType);
+  }
+
+  searchApprovalQueue(query) {
+    const q = (query || '').toLowerCase();
+    const rows = document.querySelectorAll('#approvalTable tbody tr');
+    rows.forEach(r => {
+      r.style.display = r.innerText.toLowerCase().includes(q) ? '' : 'none';
+    });
+  }
+
+  searchExtrato(query) {
+    const q = (query || '').toLowerCase();
+    const rows = document.querySelectorAll('table tbody tr');
+    rows.forEach(r => {
+      r.style.display = r.innerText.toLowerCase().includes(q) ? '' : 'none';
+    });
+  }
+
+  filterExtrato(filterType) {
+    financialStore.setStatementFilter(filterType);
+  }
+
+  exportCurrentView(format) {
+    financialStore.showToast("Exportação Iniciada", `Exportando dados da visão atual em formato .${format.toUpperCase()}`, "info");
+  }
+
+  generateReport(reportType) {
+    financialStore.showToast("Relatório Gerado", `Relatório financeiro "${reportType}" compilado e pronto para download.`, "success");
+  }
+
+  approvePayoutDisk(payoutId) {
+    this.openApprovalSheet(payoutId);
+  }
+
+  // ==========================================================================
   // MODAIS DE OPERAÇÃO DO PRODUTOR
   // ==========================================================================
   openPayoutModal(defaultEventId = null) {

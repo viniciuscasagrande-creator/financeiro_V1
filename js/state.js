@@ -421,6 +421,10 @@ class CoreFinanceiroStore {
     this.notify();
   }
 
+  signDocumentAsProducer(requestId) {
+    return this.signByProducer(requestId);
+  }
+
   // 5. Financeiro Disk Assina (SEMPRE POR ÚLTIMO) e Formaliza
   signByDisk(requestId) {
     const item = this.data.approvalQueue.find(a => a.id === requestId);
@@ -457,6 +461,10 @@ class CoreFinanceiroStore {
     this.notify();
   }
 
+  signDocumentAsDisk(requestId) {
+    return this.signByDisk(requestId);
+  }
+
   // 6. Liberação Financeira / Transferência (PIX / TED / CNAB) → Ledger → Conciliação → Concluído / Pago
   executeFinalTransfer(requestId) {
     const item = this.data.approvalQueue.find(a => a.id === requestId);
@@ -468,34 +476,53 @@ class CoreFinanceiroStore {
     }
 
     const nowTime = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const nowDate = new Date().toLocaleDateString('pt-BR');
 
     item.status = "Pago";
     item.stepIndex = 5;
-    item.paidDate = `${new Date().toLocaleDateString('pt-BR')} ${nowTime}`;
+    item.paidDate = `${nowDate} ${nowTime}`;
     item.authCode = `DISK-PIX-TED-${Math.floor(1000000000 + Math.random() * 9000000000)}`;
 
     const event = this.data.events.find(e => e.id === item.eventId);
-    if (event) {
-      event.payoutsDone += (item.requestedAmount || item.netAmount);
-    }
     const producer = this.data.producers.find(p => p.id === item.producerId);
+    const finalAmount = item.requestedAmount || item.netAmount;
+
+    if (event) {
+      event.payoutsDone += finalAmount;
+    }
     if (producer) {
-      producer.totals.transferredAmount += (item.requestedAmount || item.netAmount);
+      producer.totals.transferredAmount += finalAmount;
+    }
+
+    if (item.type === "Antecipação" && this.data.anticipations?.history) {
+      const histItem = this.data.anticipations.history.find(h => h.id === item.id);
+      if (histItem) {
+        histItem.status = "Pago";
+        histItem.disbursementDate = `${nowDate} ${nowTime}`;
+      }
+    }
+
+    if (item.type === "Borderô" && this.data.bordero) {
+      this.data.bordero.status = "Fechado & Liquidado";
+      this.data.bordero.closureDate = `${nowDate} (Homologado & Liquidado)`;
+      if (event) event.status = "Encerrado & Conciliado";
     }
 
     // Registra débito oficial no Ledger em partidas dobradas
     const ledgerId = `LEDG-${Math.floor(10000 + Math.random() * 90000)}`;
+    const eventTypeLedger = item.type === "Antecipação" ? "ANTECIPACAO_RECEBIVEIS_PAGA" : (item.type === "Borderô" ? "FECHAMENTO_BORDERO_LIQUIDADO" : "REPASSE_LIQUIDADO_PAGO");
+
     this.data.ledgerEntries.unshift({
       id: ledgerId,
-      timestamp: `${new Date().toLocaleDateString('pt-BR')} ${nowTime}`,
-      eventType: "REPASSE_LIQUIDADO_PAGO",
+      timestamp: `${nowDate} ${nowTime}`,
+      eventType: eventTypeLedger,
       producerId: item.producerId,
       eventId: item.eventId,
       debitAccount: `Passivo: Saldo Produtor ${item.producerName}`,
       creditAccount: `Ativo: Conta Corrente Banco do Brasil (001) Disk`,
-      amount: item.requestedAmount || item.netAmount,
-      netProducer: item.requestedAmount || item.netAmount,
-      feeDisk: 0.00,
+      amount: finalAmount,
+      netProducer: finalAmount,
+      feeDisk: item.discountFee || 0.00,
       refOrder: item.id,
       conciliated: true
     });
@@ -508,11 +535,198 @@ class CoreFinanceiroStore {
 
     this.showToast(
       "💰 Transferência Executada & Conciliada",
-      `${item.id}: R$ ${(item.requestedAmount || item.netAmount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} creditado na conta de ${item.producerName}.`,
+      `${item.id}: R$ ${finalAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} creditado na conta de ${item.producerName}.`,
       "success"
     );
 
     this.notify();
+  }
+
+  // Solicitação de Antecipação de Recebíveis com Deságio Contratual
+  requestAnticipation({ eventId, grossAmount, notes }) {
+    const producer = this.getState().activeProducer;
+    const event = this.data.events.find(e => e.id === eventId) || this.data.events.find(e => e.producerId === producer.id) || this.data.events[0];
+    const numericAmount = parseFloat(grossAmount);
+    const monthlyRate = producer.contract?.anticipationRateMonthly || this.data.anticipations?.monthlyRate || 2.0;
+    const discountFee = numericAmount * (monthlyRate / 100);
+    const netAmount = numericAmount - discountFee;
+    const bank = producer.bankAccounts[0] || { bankName: "Itaú Unibanco (341)", agency: "0432", accountNumber: "48291-0", pixKey: "14.829.301/0001-92" };
+
+    const antId = `ANT-${Math.floor(10000 + Math.random() * 90000)}`;
+    const nowTime = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const nowDate = new Date().toLocaleDateString('pt-BR');
+
+    const newApprovalItem = {
+      id: antId,
+      type: "Antecipação",
+      producerId: producer.id,
+      producerName: producer.name,
+      eventId: event.id,
+      eventName: event.name,
+      requestedAmount: numericAmount,
+      ratePercent: monthlyRate,
+      discountFee: discountFee,
+      netAmount: netAmount,
+      requestDate: `${nowDate} ${nowTime}`,
+      status: "Aguardando análise",
+      stepIndex: 1,
+      documentId: `CONTR-ANT-${Math.floor(1000 + Math.random() * 9000)}`,
+      documentTitle: "Contrato de Cessão & Antecipação de Recebíveis de Cartão",
+      bankName: bank.bankName,
+      bankAccount: `${bank.agency} • ${bank.accountNumber}`,
+      pixKey: bank.pixKey,
+      checklist: {
+        balanceSufficient: numericAmount <= (event.futureReceivables || 245000),
+        bankDataValidated: true,
+        eventRegular: true,
+        noActiveBlocks: !producer.hasBlock,
+        limitPermitted: true,
+        chargebackWarning: event.chargebackCases > 0 ? `${event.chargebackCases} chargeback(s) monitorados` : 'Sem pendências'
+      },
+      auditPosition: {
+        grossSales: event.grossSales,
+        netRevenue: event.netRevenue,
+        availableBefore: event.futureReceivables,
+        requested: numericAmount,
+        availableAfter: Math.max(0, event.futureReceivables - numericAmount)
+      },
+      signatures: {
+        producer: { signed: false, signedBy: null, signedAt: null, ip: null, certAuth: null },
+        disk: { signed: false, signedBy: null, signedAt: null, ip: null, certAuth: null, lockedUntilProducerSigns: true }
+      },
+      auditTrail: [
+        { timestamp: `${nowTime}`, actor: `${this.state.currentUser.name} (Produtor)`, action: "Simulou e solicitou antecipação de recebíveis", details: `Bruto: R$ ${numericAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} | Taxa (${monthlyRate}%): -R$ ${discountFee.toFixed(2)} | Líquido: R$ ${netAmount.toFixed(2)}` },
+        { timestamp: `${nowTime}`, actor: `${this.state.currentUser.name} (Produtor)`, action: "Enviou para a mesa de crédito do Financeiro Disk", details: "Status: Aguardando análise" },
+        { timestamp: `${nowTime}`, actor: "Mesa de Operações Disk", action: "Notificada para análise de risco e margem", details: "Entrou na Central de Aprovações" }
+      ],
+      rejection: null,
+      notes: notes || "Solicitação voluntária de adiantamento de vendas parceladas no cartão de crédito."
+    };
+
+    this.data.approvalQueue.unshift(newApprovalItem);
+
+    if (this.data.anticipations && this.data.anticipations.history) {
+      this.data.anticipations.history.unshift({
+        id: antId,
+        requestDate: nowDate,
+        disbursementDate: "Em análise",
+        eventName: event.name,
+        requestedAmount: numericAmount,
+        discountFee: discountFee,
+        netDisbursed: netAmount,
+        status: "Aguardando análise"
+      });
+    }
+
+    event.futureReceivables = Math.max(0, event.futureReceivables - numericAmount);
+    producer.totals.futureReceivables = Math.max(0, producer.totals.futureReceivables - numericAmount);
+    if (this.data.anticipations.eligibleAmount) {
+      this.data.anticipations.eligibleAmount = Math.max(0, this.data.anticipations.eligibleAmount - numericAmount);
+    }
+
+    this.showToast(
+      "⚡ Solicitação de Antecipação Enviada",
+      `${producer.name} · ${event.name} — R$ ${numericAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} (Líquido: R$ ${netAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}) encaminhado para aprovação da Disk.`,
+      "warning"
+    );
+
+    this.notify();
+    return newApprovalItem;
+  }
+
+  // Formalização e Envio do Borderô Oficial de Fechamento para Homologação
+  submitBorderoClosure({ eventId, notes }) {
+    const producer = this.getState().activeProducer;
+    const event = this.data.events.find(e => e.id === eventId) || this.data.events[0];
+    const bordero = this.data.bordero;
+    const remainingBalance = bordero.summary.remainingBalance || 511318.50;
+    const bank = producer.bankAccounts[0] || { bankName: "Itaú Unibanco (341)", agency: "0432", accountNumber: "48291-0", pixKey: "14.829.301/0001-92" };
+
+    const borderoId = `BOR-${Math.floor(10000 + Math.random() * 90000)}`;
+    const nowTime = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const nowDate = new Date().toLocaleDateString('pt-BR');
+
+    const newApprovalItem = {
+      id: borderoId,
+      type: "Borderô",
+      producerId: producer.id,
+      producerName: producer.name,
+      eventId: event.id,
+      eventName: event.name,
+      requestedAmount: remainingBalance,
+      requestDate: `${nowDate} ${nowTime}`,
+      status: "Aguardando análise",
+      stepIndex: 1,
+      documentId: `DOC-BOR-${Math.floor(1000 + Math.random() * 9000)}`,
+      documentTitle: "Termo de Homologação e Fechamento Definitivo de Borderô",
+      bankName: bank.bankName,
+      bankAccount: `${bank.agency} • ${bank.accountNumber}`,
+      pixKey: bank.pixKey,
+      checklist: {
+        balanceSufficient: true,
+        bankDataValidated: true,
+        eventRegular: true,
+        noActiveBlocks: !producer.hasBlock,
+        limitPermitted: true,
+        chargebackWarning: "Contas e borderô de ingressos conferidos sem divergência"
+      },
+      auditPosition: {
+        grossSales: bordero.summary.grossRevenue,
+        netRevenue: bordero.summary.netEventBalance,
+        availableBefore: bordero.summary.remainingBalance,
+        requested: remainingBalance,
+        availableAfter: 0.00
+      },
+      signatures: {
+        producer: { signed: false, signedBy: null, signedAt: null, ip: null, certAuth: null },
+        disk: { signed: false, signedBy: null, signedAt: null, ip: null, certAuth: null, lockedUntilProducerSigns: true }
+      },
+      auditTrail: [
+        { timestamp: `${nowTime}`, actor: `${this.state.currentUser.name} (Produtor)`, action: "Enviou fechamento oficial do Borderô para homologação", details: `Arrecadação: R$ ${bordero.summary.grossRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} | Saldo a liquidar: R$ ${remainingBalance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` },
+        { timestamp: `${nowTime}`, actor: "Sistema Fiscal Disk", action: "Validação cruzada de ingressos emitidos e borderô contábil", details: "Status: Aguardando análise da Auditoria Disk" }
+      ],
+      rejection: null,
+      notes: notes || "Fechamento definitivo e prestação de contas do evento."
+    };
+
+    this.data.approvalQueue.unshift(newApprovalItem);
+    this.data.bordero.status = "Em Homologação";
+
+    this.showToast(
+      "📑 Fechamento de Borderô Enviado",
+      `${event.name} — Fechamento definitivo submetido à Auditoria e Financeiro Disk com saldo remanescente de R$ ${remainingBalance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}.`,
+      "info"
+    );
+
+    this.notify();
+    return newApprovalItem;
+  }
+
+  // Cadastro de Nova Conta Bancária PJ Homologada
+  addBankAccount({ bankName, accountType, agency, accountNumber, pixKey, isDefault }) {
+    const producer = this.getState().activeProducer;
+    const newAccount = {
+      id: `bnk-${Math.floor(1000 + Math.random() * 9000)}`,
+      bankName: bankName,
+      accountType: accountType || "Conta Corrente PJ",
+      agency: agency,
+      accountNumber: accountNumber,
+      holderName: producer.name,
+      cnpj: producer.cnpj,
+      pixKey: pixKey,
+      isDefault: !!isDefault,
+      status: "Validada & Ativa",
+      validatedAt: `${new Date().toLocaleDateString('pt-BR')} via CIP/Bacen`
+    };
+
+    if (newAccount.isDefault) {
+      producer.bankAccounts.forEach(b => b.isDefault = false);
+    }
+
+    producer.bankAccounts.push(newAccount);
+    this.showToast("Conta Cadastrada", `${bankName} cadastrado com sucesso para recebimento de repasses.`, "success");
+    this.notify();
+    return newAccount;
   }
 
   // ==========================================================================
