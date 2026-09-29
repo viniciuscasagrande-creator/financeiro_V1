@@ -38,6 +38,14 @@ import { renderDiskProdutores } from './views/disk/produtores.js';
 import { renderDiskGateways } from './views/disk/gatewaysMdr.js';
 import { renderDiskLedger } from './views/disk/ledger.js';
 import { renderDiskTesouraria } from './views/disk/tesouraria.js';
+import { renderDiskContasPagar } from './views/disk/diskContasPagar.js';
+import { renderDiskContasReceber } from './views/disk/diskContasReceber.js';
+import { renderDiskFluxoCaixa } from './views/disk/diskFluxoCaixa.js';
+import { renderDiskPix } from './views/disk/diskPix.js';
+import { renderDiskCnab } from './views/disk/diskCnab.js';
+import { renderDiskAgendaPagamentos } from './views/disk/diskAgendaPagamentos.js';
+import { renderDiskPagamentosLote } from './views/disk/diskPagamentosLote.js';
+import { renderDiskTransferencias } from './views/disk/diskTransferencias.js';
 import {
   renderDiskEventos,
   renderDiskSaldos,
@@ -47,10 +55,7 @@ import {
   renderDiskTaxas,
   renderDiskEstornos,
   renderDiskConciliacao,
-  renderDiskContasPagar,
-  renderDiskContasReceber,
   renderDiskBordero,
-  renderDiskFluxoCaixa,
   renderDiskAssinaturas,
   renderDiskRelatorios,
   renderDiskAuditoria,
@@ -1458,6 +1463,21 @@ class LimitlessFinancialApp {
         case 'diskTesouraria':
           viewHtml = renderDiskTesouraria(state);
           break;
+        case 'diskPix':
+          viewHtml = renderDiskPix(state, this.currentFilterArg);
+          break;
+        case 'diskCnab':
+          viewHtml = renderDiskCnab(state, this.currentFilterArg);
+          break;
+        case 'diskAgendaPagamentos':
+          viewHtml = renderDiskAgendaPagamentos(state, this.currentFilterArg);
+          break;
+        case 'diskPagamentosLote':
+          viewHtml = renderDiskPagamentosLote(state, this.currentFilterArg);
+          break;
+        case 'diskTransferencias':
+          viewHtml = renderDiskTransferencias(state, this.currentFilterArg);
+          break;
         case 'diskLedger':
           viewHtml = renderDiskLedger(state);
           break;
@@ -1712,7 +1732,12 @@ class LimitlessFinancialApp {
       'diskConciliacao': { title: 'Conciliação Contábil & Financeira', subtitle: 'Auditoria Multicamadas: Pedido × Gateway × Adquirente × Ledger × Extrato Bancário.' },
       'diskContasPagar': { title: 'Contas a Pagar', subtitle: 'Gestão de fornecedores, centros de custos, agendamentos de pagamentos e autorizações.' },
       'diskContasReceber': { title: 'Contas a Receber', subtitle: 'Previsões de recebimento, liquidação de borderôs, baixas automáticas e inadimplências.' },
-      'diskTesouraria': { title: 'Tesouraria & Contas Bancárias', subtitle: 'Posição consolidada de caixa, contas bancárias, conciliação e remessa/retorno CNAB 240.' },
+      'diskTesouraria': { title: 'Tesouraria & Contas Bancárias', subtitle: 'Posição consolidada de caixa, contas bancárias, conciliação e gestão de liquidez.' },
+      'diskPix': { title: 'PIX e Transferências Instantâneas', subtitle: 'Fila PIX, chaves homologadas, pagamentos instantâneos e retorno bancário.' },
+      'diskCnab': { title: 'CNAB 240 / 400 Bancário', subtitle: 'Remessas e retornos bancários, conciliação de arquivos e ocorrências.' },
+      'diskAgendaPagamentos': { title: 'Agenda de Pagamentos', subtitle: 'Cronograma diário de liquidações, vencimentos e transferências autorizadas.' },
+      'diskPagamentosLote': { title: 'Pagamentos em Lote', subtitle: 'Processamento em massa de obrigações, agrupamento por banco e autorizações.' },
+      'diskTransferencias': { title: 'Transferências entre Contas', subtitle: 'Movimentações entre contas bancárias da Disk, TED/DOC e compensações.' },
       'diskLedger': { title: 'Ledger Financeiro', subtitle: 'Livro-razão contábil de partidas dobradas imutável, conciliação e rastreabilidade total de cada centavo.' },
       'diskBordero': { title: 'Borderôs & Fechamentos', subtitle: 'Conferência final de bilheteria, custos, deduções, aprovação e termo de encerramento assinado.' },
       'diskFluxoCaixa': { title: 'Fluxo de Caixa Realizado & Projetado', subtitle: 'Entradas e saídas operacionais consolidadas e projeção de liquidez futura.' },
@@ -1852,7 +1877,7 @@ class LimitlessFinancialApp {
       profileKey = 'FINANCEIRO';
     }
 
-    const menuItems = menusPorPerfil[profileKey] || menusPorPerfil.PRODUTOR;
+    const menuItems = (menusPorPerfil[profileKey] || menusPorPerfil.PRODUTOR).filter(item => !item.hidden);
 
     this.sidebarNav.innerHTML = menuItems.map(item => {
       const hasSubs = Array.isArray(item.subItems) && item.subItems.length > 0;

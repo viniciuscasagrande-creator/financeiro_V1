@@ -50,17 +50,20 @@ export const menuProdutor = [
   {
     id: 'taxas',
     label: 'Taxas e Descontos',
-    icon: 'ph-percent'
+    icon: 'ph-percent',
+    hidden: true
   },
   {
     id: 'estornos',
     label: 'Estornos e Chargebacks',
-    icon: 'ph-warning-octagon'
+    icon: 'ph-warning-octagon',
+    hidden: true
   },
   {
     id: 'bordero',
     label: 'Borderôs',
     icon: 'ph-signature',
+    hidden: true,
     subItems: [
       { id: 'bordero', label: 'Em Aberto', filterArg: 'aberto' },
       { id: 'bordero', label: 'Aguardando Assinatura', filterArg: 'aguardando' },
@@ -163,13 +166,13 @@ export const menuFinanceiroCompleto = [
     icon: 'ph-vault',
     subItems: [
       { id: 'diskTesouraria', label: 'Contas Bancárias', filterArg: 'contas' },
-      { id: 'diskTesouraria', label: 'PIX', filterArg: 'pix' },
-      { id: 'diskTesouraria', label: 'CNAB', filterArg: 'cnab' },
+      { id: 'diskPix', label: 'PIX', filterArg: 'pix' },
+      { id: 'diskCnab', label: 'CNAB', filterArg: 'cnab' },
       { id: 'diskContasPagar', label: 'Contas a Pagar', filterArg: 'overview' },
       { id: 'diskTesouraria', label: 'Pagamentos', filterArg: 'pagamentos' },
-      { id: 'diskTesouraria', label: 'Pagamentos em Lote', filterArg: 'lote' },
-      { id: 'diskTesouraria', label: 'Transferências', filterArg: 'transferencias' },
-      { id: 'diskTesouraria', label: 'Agenda de Pagamentos', filterArg: 'agenda' }
+      { id: 'diskPagamentosLote', label: 'Pagamentos em Lote', filterArg: 'lote' },
+      { id: 'diskTransferencias', label: 'Transferências', filterArg: 'transferencias' },
+      { id: 'diskAgendaPagamentos', label: 'Agenda de Pagamentos', filterArg: 'agenda' }
     ]
   },
   {
