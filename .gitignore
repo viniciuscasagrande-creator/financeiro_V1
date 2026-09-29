@@ -38,3 +38,7 @@ Thumbs.db
 *.db
 *.db-journal
 dev.db
+
+# Screenshots temporários
+/*.png
+scratch/

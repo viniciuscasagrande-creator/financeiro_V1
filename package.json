@@ -8,6 +8,7 @@
     "start": "node server.js",
     "server": "node server.js",
     "dev": "node server.js",
+    "build": "echo 'Static portal build ready'",
     "prisma:generate": "prisma generate --schema=database/schema.prisma",
     "seed": "node -e \"console.log('Seed mock loaded com sucesso.')\""
   },

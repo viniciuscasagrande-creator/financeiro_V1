@@ -524,6 +524,149 @@ export const initialMockDatabase = {
       totalAmount: 642890.00,
       status: "Pronto para Transmissão VAN Bancária"
     }
+  ],
+
+  // MEIOS DE PAGAMENTO E DISTRIBUIÇÃO DE VENDAS
+  paymentBreakdown: {
+    byMethod: [
+      { method: "PIX (Instantâneo)", share: 48, amount: 427200.00, transactions: 3410, avgTicket: 125.28, color: "#10b981", settlement: "D+0 / Instantâneo" },
+      { method: "Cartão de Crédito à Vista", share: 26, amount: 231400.00, transactions: 1720, avgTicket: 134.53, color: "#3b82f6", settlement: "D+30" },
+      { method: "Cartão Parcelado (2x a 12x)", share: 20, amount: 178000.00, transactions: 980, avgTicket: 181.63, color: "#8b5cf6", settlement: "Conforme Parcelas / Antecipável" },
+      { method: "Boleto Bancário Registrado", share: 6, amount: 53400.00, transactions: 390, avgTicket: 136.92, color: "#f59e0b", settlement: "D+1 Compensação" }
+    ],
+    byChannel: [
+      { channel: "Portal Web Desktop / Mobile", share: 65, amount: 578500.00 },
+      { channel: "Aplicativo DiskIngressos (iOS/Android)", share: 25, amount: 222500.00 },
+      { channel: "PDVs Físicos e Bilheterias Parceiras", share: 10, amount: 89000.00 }
+    ]
+  },
+
+  // ANTECIPAÇÃO DE RECEBÍVEIS
+  anticipations: {
+    eligibleAmount: 245000.00,
+    monthlyRate: 2.0,
+    history: [
+      { id: "ANT-00105", requestDate: "27/09/2026", eventName: "Festival Curitiba 2026", grossRequested: 50000.00, netReleased: 49000.00, feeDeducted: 1000.00, status: "Aguardando análise", effectiveDate: "29/09/2026" },
+      { id: "ANT-00102", requestDate: "15/08/2026", eventName: "Festival Curitiba 2026", grossRequested: 80000.00, netReleased: 78400.00, feeDeducted: 1600.00, status: "Pago", effectiveDate: "15/08/2026" }
+    ]
+  },
+
+  // CONDIÇÕES CONTRATUAIS DE TAXAS DO PRODUTOR
+  producerFeesContract: [
+    { name: "Taxa de Conveniência Disk", type: "Percentual por Ingresso", rate: "10,00%", payer: "Comprador (Cliente)", description: "Cobrada do consumidor final na compra online dos ingressos. Não deduzida da cota do produtor." },
+    { name: "Taxa de Administração Bilheteria", type: "Percentual Bruto", rate: "10,00%", payer: "Produtor (Contratual)", description: "Taxa contratual acordada para operação, plataforma, tecnologia de controle de acesso e conciliação." },
+    { name: "Processamento Adquirência e Antifraude", type: "Percentual Transacional", rate: "2,90%", payer: "Produtor (Contratual)", description: "Cobre MDR transacional unificado de bandeiras Visa, Mastercard, Elo e verificação antifraude de ponta." },
+    { name: "Taxa de Antecipação de Recebíveis", type: "Percentual ao Mês", rate: "2,00% a.m.", payer: "Produtor (Opcional)", description: "Aplicável exclusivamente quando houver contratação voluntária de adiantamento de cartão de crédito." }
+  ],
+
+  // ESTORNOS, CANCELAMENTOS E CHARGEBACKS
+  chargebacksAndRefunds: [
+    { id: "DSP-00041", orderId: "ORD-99120", eventName: "Festival Curitiba 2026", buyer: "Lucas Mendes", date: "28/09/2026", type: "Chargeback (Contestação)", reason: "Alegação de transação não reconhecida junto ao banco emissor.", impact: "- R$ 450,00", status: "Em Disputa" },
+    { id: "CAN-00038", orderId: "ORD-98441", eventName: "Festival Curitiba 2026", buyer: "Juliana Ferreira", date: "25/09/2026", type: "Cancelamento CDC (7 dias)", reason: "Direito de arrependimento formal exercido dentro do prazo legal do CDC.", impact: "- R$ 380,00", status: "Estornado" },
+    { id: "CAN-00032", orderId: "ORD-97100", eventName: "Show Nacional Rock", buyer: "Roberto Alves", date: "18/09/2026", type: "Estorno Voluntário", reason: "Duplicidade de compra reportada pelo cliente e autorizada pela produção.", impact: "- R$ 260,00", status: "Estornado" }
+  ],
+
+  // BORDERÔ OFICIAL DE FECHAMENTO
+  bordero: {
+    eventId: "evt-001",
+    eventName: "Festival Curitiba 2026",
+    venue: "Pedreira Paulo Leminski - Curitiba/PR",
+    closureDate: "29/09/2026 (Prévia Contábil Parcial)",
+    lots: [
+      { sector: "Pista Premium", lot: "1º Lote", price: 240.00, soldQty: 1800, compQty: 50, grossTotal: 432000.00 },
+      { sector: "Pista Comum", lot: "1º Lote", price: 120.00, soldQty: 2400, compQty: 80, grossTotal: 288000.00 },
+      { sector: "Camarote Open Bar", lot: "1º Lote", price: 450.00, soldQty: 350, compQty: 20, grossTotal: 157500.00 },
+      { sector: "Área VIP", lot: "1º Lote", price: 320.00, soldQty: 300, compQty: 15, grossTotal: 96000.00 }
+    ],
+    summary: {
+      totalSoldTickets: 4850,
+      totalComps: 165,
+      grossRevenue: 973500.00,
+      diskFeePercent: 10.0,
+      deductions: {
+        diskServiceFee: 97350.00,
+        processingFee: 28231.50,
+        refundsSubtotal: 15400.00,
+        otherDeductions: 1200.00
+      },
+      netEventBalance: 831318.50,
+      alreadyTransferred: 320000.00,
+      remainingBalance: 511318.50
+    }
+  },
+
+  // LANÇAMENTOS DO EXTRATO / LIVRO-CAIXA
+  statementEntries: [
+    {
+      id: "EXT-00491",
+      eventId: "evt-001",
+      eventName: "Festival Curitiba 2026",
+      date: "29/09/2026 09:15",
+      type: "Venda PIX (Lote Aprovado)",
+      orderRef: "ORD-99840 a ORD-99852",
+      paymentMethod: "PIX",
+      grossAmount: 14800.00,
+      deductions: 1480.00,
+      netAmount: 13320.00,
+      balanceAfter: 310000.00,
+      status: "Liquidado"
+    },
+    {
+      id: "EXT-00490",
+      eventId: "evt-001",
+      eventName: "Festival Curitiba 2026",
+      date: "28/09/2026 18:30",
+      type: "Venda Cartão de Crédito",
+      orderRef: "ORD-99710 a ORD-99732",
+      paymentMethod: "Cartão de Crédito",
+      grossAmount: 28500.00,
+      deductions: 3676.50,
+      netAmount: 24823.50,
+      balanceAfter: 296680.00,
+      status: "A Liquidar (D+30)"
+    },
+    {
+      id: "EXT-00489",
+      eventId: "evt-001",
+      eventName: "Festival Curitiba 2026",
+      date: "26/09/2026 14:00",
+      type: "Repasse Bancário Programado",
+      orderRef: "REP-00288",
+      paymentMethod: "TED / PIX PJ",
+      grossAmount: -80000.00,
+      deductions: 0.00,
+      netAmount: -80000.00,
+      balanceAfter: 271856.50,
+      status: "Pago"
+    },
+    {
+      id: "EXT-00488",
+      eventId: "evt-001",
+      eventName: "Festival Curitiba 2026",
+      date: "25/09/2026 11:20",
+      type: "Estorno CDC (Cancelamento)",
+      orderRef: "ORD-98441",
+      paymentMethod: "Cartão de Crédito",
+      grossAmount: -380.00,
+      deductions: 0.00,
+      netAmount: -380.00,
+      balanceAfter: 351856.50,
+      status: "Estornado"
+    },
+    {
+      id: "EXT-00487",
+      eventId: "evt-002",
+      eventName: "Show Artista A (Teatro)",
+      date: "24/09/2026 16:45",
+      type: "Venda Bilheteria PDV",
+      orderRef: "PDV-001-CUR",
+      paymentMethod: "Cartão de Débito",
+      grossAmount: 9400.00,
+      deductions: 940.00,
+      netAmount: 8460.00,
+      balanceAfter: 352236.50,
+      status: "Liquidado"
+    }
   ]
 };
 

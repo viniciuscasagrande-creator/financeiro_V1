@@ -19,163 +19,29 @@
   <!-- Bootstrap 5 Bundle JS for native dropdowns and accordions -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
-  <!-- Reference Limitless Stylesheet (from financeiropdtnovo.web.app) -->
-  <link rel="stylesheet" crossorigin href="https://financeiropdtnovo.web.app/assets/index-xYg2Sbtr.css">
+  <!-- Reference Limitless Stylesheet (Local offline bundle with Bootstrap 5 and Limitless tokens) -->
+  <link rel="stylesheet" href="css/limitless-base.css">
 
   <!-- Core Custom Stylesheet (Enhanced Limitless Tokens, Modals, Signatures, Simulator) -->
   <link rel="stylesheet" href="css/limitless.css">
 </head>
-<body class="navbar-top">
+<body>
 
-  <!-- Main Top Navbar (Limitless navbar from reference app) -->
-  <div class="navbar navbar-dark navbar-expand-lg navbar-static border-bottom border-bottom-white border-opacity-10 fixed-top" style="background: #16191f; z-index: 1020; min-height: 56px;">
-    <div class="container-fluid px-3">
-      
-      <!-- Mobile sidebar main toggle button -->
-      <div class="d-flex d-lg-none me-2">
-        <button type="button" class="navbar-toggler sidebar-mobile-main-toggle rounded-pill text-white border-0" aria-label="Abrir menu lateral" title="Abrir menu lateral" onclick="window.app && window.app.toggleSidebar()">
-          <i class="ph-list fs-4"></i>
-        </button>
-      </div>
+  <!-- AppShell: Shell Visual do Financeiro Disk (Layout Flexbox Oficial) -->
+  <div class="app-shell" id="appShell">
 
-      <!-- Navbar Brand logo area -->
-      <div class="navbar-brand flex-1 flex-lg-0 me-3">
-        <a href="#" class="d-inline-flex align-items-center text-white text-decoration-none" title="Página Inicial DiskIngressos" onclick="window.app && window.app.navigate(financialStore.getState().viewMode === 'disk' ? 'diskDashboard' : 'overview'); return false;">
-          <img src="https://financeiropdtnovo.web.app/assets/diskingressos-branca-CaqZxoZS.png" alt="DiskIngressos" class="navbar-logo" style="height: 32px;" onerror="this.onerror=null; this.src=''; this.outerHTML='<span class=\'fw-bold fs-5 text-white tracking-wider\'>DISK<span class=\'text-primary\'>INGRESSOS</span></span>';">
-        </a>
-      </div>
-
-      <!-- Global Search Box -->
-      <div class="navbar-collapse justify-content-center flex-lg-1 order-2 order-lg-1 collapse show" id="navbar_search">
-        <div class="navbar-search flex-fill position-relative mt-2 mt-lg-0 mx-lg-3" style="max-width: 520px;">
-          <div class="form-control-feedback form-control-feedback-start flex-grow-1 position-relative" data-color-theme="dark">
-            <input type="text" id="global-search" class="form-control bg-transparent rounded-pill text-white ps-5" style="border: 1px solid rgba(255,255,255,0.2); font-size: 13px;" placeholder="Pesquisa global (eventos, produtores, pedidos, repasses...)" aria-label="Pesquisa global" oninput="window.app && window.app.handleGlobalSearch(this.value)">
-            <div class="form-control-feedback-icon position-absolute" style="left: 16px; top: 50%; transform: translateY(-50%); pointer-events: none; color: rgba(255,255,255,0.5);">
-              <i class="ph-magnifying-glass fs-5"></i>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Right user dropdown menu links -->
-      <ul class="nav flex-row justify-content-end order-1 order-lg-2 align-items-center gap-2 list-unstyled mb-0 ms-auto">
-        
-        <!-- Language Selector Dropdown -->
-        <li class="nav-item dropdown d-none d-sm-block">
-          <a href="#" class="navbar-nav-link align-items-center rounded-pill p-1 text-white text-decoration-none d-flex" data-bs-toggle="dropdown" id="language-dropdown-toggle">
-            <div class="d-flex align-items-center justify-content-center me-lg-2" style="width: 36px; height: 36px; border-radius: 50%; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: white; transition: background 0.2s;">
-              <i class="ph-globe" style="font-size: 18px;"></i>
-            </div>
-            <span class="d-none d-lg-inline-block fs-xs fw-semibold text-white-50" id="current-language-text">Português (BR)</span>
-          </a>
-          <div class="dropdown-menu dropdown-menu-end shadow border-0" style="border-radius: 8px;">
-            <a href="#" class="dropdown-item fs-xs py-2" onclick="window.app && window.app.changeLanguage('pt'); return false;"><span class="me-2">🇧🇷</span> Português</a>
-            <a href="#" class="dropdown-item fs-xs py-2" onclick="window.app && window.app.changeLanguage('en'); return false;"><span class="me-2">🇺🇸</span> English</a>
-            <a href="#" class="dropdown-item fs-xs py-2" onclick="window.app && window.app.changeLanguage('es'); return false;"><span class="me-2">🇪🇸</span> Español</a>
-          </div>
-        </li>
-
-        <!-- Notification Dropdown with Dynamic Approval Queue alerts -->
-        <li class="nav-item dropdown ms-lg-1">
-          <a href="#" class="navbar-nav-link align-items-center rounded-pill p-1 text-white position-relative text-decoration-none d-flex" data-bs-toggle="dropdown" id="notification-dropdown-toggle">
-            <div class="d-flex align-items-center justify-content-center" style="width: 36px; height: 36px; border-radius: 50%; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: white; transition: background 0.2s;">
-              <i class="ph-bell" style="font-size: 18px;"></i>
-            </div>
-            <span class="position-absolute badge rounded-pill bg-danger" id="notification-badge" style="font-size: 9px; padding: 2px 5px; top: -2px; right: -2px;">3</span>
-          </a>
-          <div class="dropdown-menu dropdown-menu-end shadow p-0 border-0" style="width: 330px; border-radius: 12px; overflow: hidden; margin-top: 10px;">
-            <div class="d-flex align-items-center justify-content-between p-3 bg-light border-bottom">
-              <h6 class="fw-bold mb-0 text-dark fs-xs">Notificações</h6>
-              <span class="badge bg-primary rounded-pill fs-xxs" id="notification-count-badge">3 Novas</span>
-            </div>
-            <div id="notification-list-container" style="max-height: 280px; overflow-y: auto;">
-              <!-- Dynamically populated by app.js -->
-            </div>
-            <div class="p-2 border-top text-center bg-light">
-              <a href="#" class="text-primary fw-semibold fs-xxs d-block py-1 text-decoration-none" onclick="window.app && window.app.clearNotifications(event); return false;">Marcar todas como lidas</a>
-            </div>
-          </div>
-        </li>
-
-        <!-- Seletor de Perfil Global (Simulação: Produtor vs Financeiro Disk vs Master) -->
-        <li class="nav-item dropdown ms-lg-1" id="navbar-role-mode-selector">
-          <button class="btn btn-xs rounded-pill d-flex align-items-center gap-1 border-0" id="navbar-role-badge-btn" data-bs-toggle="dropdown" style="background: rgba(255,255,255,0.12); color: white; padding: 6px 14px; font-size: 12px; font-weight: 600;" title="Alternar papel de simulação">
-            <i class="ph-user text-primary" id="navbar-role-icon"></i>
-            <span id="navbar-role-label">Produtor</span>
-            <i class="ph-caret-down fs-xxs ms-1 opacity-50"></i>
-          </button>
-          <div class="dropdown-menu dropdown-menu-end shadow border-0" style="border-radius: 8px; min-width: 250px;">
-            <div class="px-3 py-2 text-muted fs-xxs fw-bold text-uppercase border-bottom">Alternar Perfil (Simulação)</div>
-            <a href="#" class="dropdown-item d-flex align-items-center gap-2 py-2" id="nav-switch-role-disk" onclick="window.switchGlobalRole('FINANCEIRO'); return false;">
-              <i class="ph-shield-check text-success fs-5"></i>
-              <div>
-                <div class="fw-bold fs-xs text-dark">Financeiro Disk</div>
-                <div class="text-muted fs-xxs">Menu transversal &bull; Backoffice &bull; Aprovação</div>
-              </div>
-            </a>
-            <a href="#" class="dropdown-item d-flex align-items-center gap-2 py-2" id="nav-switch-role-produtor" onclick="window.switchGlobalRole('PRODUTOR'); return false;">
-              <i class="ph-user text-primary fs-5"></i>
-              <div>
-                <div class="fw-bold fs-xs text-dark">Produtor</div>
-                <div class="text-muted fs-xxs">Menu reduzido (8 itens) &bull; Apenas próprios</div>
-              </div>
-            </a>
-            <a href="#" class="dropdown-item d-flex align-items-center gap-2 py-2" id="nav-switch-role-admin" onclick="window.switchGlobalRole('ADMINISTRADOR'); return false;">
-              <i class="ph-crown text-warning fs-5"></i>
-              <div>
-                <div class="fw-bold fs-xs text-dark">Administrador Master</div>
-                <div class="text-muted fs-xxs">Acesso total irrestrito</div>
-              </div>
-            </a>
-          </div>
-        </li>
-
-        <!-- User Profile & Single Login Switcher -->
-        <li class="nav-item nav-item-dropdown-lg dropdown ms-lg-1">
-          <a href="#" class="navbar-nav-link align-items-center rounded-pill p-1 text-white text-decoration-none d-flex" data-bs-toggle="dropdown">
-            <div class="status-indicator-container d-inline-block position-relative">
-              <div class="avatar-circle" id="user-avatar-circle" style="width: 36px; height: 36px; border-radius: 50%; background: #3b82f6; color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; border: 1px solid rgba(255,255,255,0.2);">ABC</div>
-              <span class="status-indicator bg-success" style="position: absolute; bottom: 0; right: 0; width: 9px; height: 9px; border: 2px solid #16191f; border-radius: 50%;"></span>
-            </div>
-            <span class="d-none d-lg-inline-block mx-lg-2 fs-sm fw-medium text-white" id="user-display-email">joao@produtoraabc.com.br</span>
-          </a>
-          <div class="dropdown-menu dropdown-menu-end shadow border-0" style="border-radius: 8px; min-width: 230px;">
-            <div class="px-3 py-2 border-bottom bg-light">
-              <div class="fw-bold fs-xs text-dark" id="user-dropdown-name">João Silva</div>
-              <div class="text-muted fs-xxs" id="user-dropdown-role">Produtora ABC Ltda. (Diretor)</div>
-            </div>
-            <a href="#" class="dropdown-item fs-xs py-2" onclick="window.app && window.app.openLoginModal(); return false;"><i class="ph-users me-2 text-primary"></i> Alternar Produtor / Usuário</a>
-            <a href="#" class="dropdown-item fs-xs py-2" onclick="window.app && window.app.navigate('dadosBancarios'); return false;"><i class="ph-credit-card me-2 text-success"></i> Dados Bancários &amp; PIX</a>
-            <a href="#" class="dropdown-item fs-xs py-2" onclick="window.app && window.app.openTransferModal(); return false;"><i class="ph-arrows-clockwise me-2 text-info"></i> Transferência entre Eventos</a>
-            <div class="dropdown-divider my-1"></div>
-            <a href="#" class="dropdown-item fs-xs text-danger py-2" onclick="financialStore.resetDemoData(); return false;"><i class="ph-arrow-counter-clockwise me-2"></i> Reiniciar Demonstração</a>
-          </div>
-        </li>
-
-      </ul>
-    </div>
-  </div>
-
-  <!-- Page Content Wrapper (Main Viewport) -->
-  <div class="page-content d-flex flex-row" style="margin-top: 56px; min-height: calc(100vh - 56px); width: 100%;">
-    
-    <!-- Main Collapsible Sidebar (Limitless Sidebar classes matching reference app) -->
-    <div class="sidebar sidebar-dark sidebar-main sidebar-expand-lg" id="appSidebar" style="background: #181b22; width: 270px; flex-shrink: 0; min-height: calc(100vh - 56px);">
+    <!-- 1. SIDEBAR (100vh, única sidebar à esquerda, sem sobreposições) -->
+    <aside class="app-sidebar sidebar sidebar-dark sidebar-main sidebar-expand-lg" id="appSidebar">
       <div class="sidebar-content d-flex flex-column h-100">
         
-        <!-- Sidebar Header and Resize toggler -->
-        <div class="sidebar-section sidebar-section-header-fixed border-bottom border-white border-opacity-10">
-          <div class="sidebar-section-body d-flex justify-content-between align-items-center py-2 px-3">
-            <h6 class="sidebar-resize-hide flex-grow-1 my-auto text-uppercase fs-xs fw-bold text-muted" style="letter-spacing: 0.5px;">Navegação</h6>
-            <div>
-              <button type="button" class="btn btn-flat-white btn-icon btn-sm rounded-pill border-transparent sidebar-control sidebar-main-resize d-none d-lg-inline-flex text-white-50" aria-label="Redimensionar menu lateral" onclick="document.body.classList.toggle('sidebar-main-resized')">
-                <i class="ph-arrows-left-right"></i>
-              </button>
-              <button type="button" class="btn btn-flat-white btn-icon btn-sm rounded-pill border-transparent sidebar-mobile-main-toggle d-lg-none text-white-50" aria-label="Fechar menu lateral" onclick="window.app && window.app.toggleSidebar()">
-                <i class="ph-x"></i>
-              </button>
-            </div>
-          </div>
+        <!-- Sidebar Brand Header (Logo Disk Ingressos) -->
+        <div class="sidebar-brand-header p-3 d-flex align-items-center justify-content-between border-bottom border-white border-opacity-10">
+          <a href="#" class="d-flex align-items-center gap-2 text-white text-decoration-none" onclick="window.app && window.app.navigate(financialStore.getState().viewMode === 'disk' ? 'diskDashboard' : 'overview'); return false;">
+            <img src="img/diskingressos-logo.svg" alt="DiskIngressos" style="height: 28px;">
+          </a>
+          <button type="button" class="btn btn-sm btn-icon rounded-pill text-white-50 border-0 d-lg-none" onclick="window.app && window.app.toggleSidebar()">
+            <i class="ph-x fs-5"></i>
+          </button>
         </div>
 
         <!-- Producer / Backoffice Context Header Card -->
@@ -189,87 +55,168 @@
           </div>
         </div>
 
-        <!-- Dynamic Navigation Accordion Area -->
-        <div class="sidebar-section sidebar-navigation-scroll-area flex-grow-1 overflow-y-auto" id="sidebar-nav-scroll-area">
-          <ul class="nav nav-sidebar flex-column gap-1 p-2" id="main-sidebar-nav" data-nav-type="accordion">
-            <!-- Rendered dynamically by app.js based on role mode (Financeiro Disk vs Produtor) -->
+        <!-- Navigation Accordion Area (Scroll Interno Independente) -->
+        <div class="sidebar-navigation-scroll-area flex-grow-1 overflow-y-auto" id="sidebar-nav-scroll-area">
+          <ul class="nav nav-sidebar flex-column gap-1 p-2" id="main-sidebar-nav">
+            <!-- Renderizado dinamicamente por app.js conforme o perfil autenticado -->
           </ul>
         </div>
 
         <!-- Quick Actions Sidebar Footer -->
-        <div class="sidebar-section mt-auto border-top border-white border-opacity-10 py-3 px-3 sidebar-resize-hide">
-          <div class="d-flex flex-column gap-2">
+        <div class="sidebar-footer border-top border-white border-opacity-10 py-3 px-3 mt-auto">
+          <div class="d-flex flex-column gap-2" id="sidebar-quick-actions">
             <button class="btn btn-warning w-100 btn-sm text-black fw-bold d-flex align-items-center justify-content-center gap-1" id="quick-new-event-btn" onclick="alert('Criar Novo Evento: Redirecionando para o Assistente de Configuração de Lotes...')">
               <i class="ph-calendar-plus"></i> <span>Criar Evento</span>
             </button>
             <button class="btn btn-success w-100 btn-sm fw-bold d-flex align-items-center justify-content-center gap-1" id="quick-repasse-btn" onclick="window.app && window.app.openPayoutModal()">
               <i class="ph-hand-coins"></i> <span>Solicitar Repasse</span>
             </button>
-            <button class="btn btn-light w-100 btn-sm text-dark fw-bold d-flex align-items-center justify-content-center gap-1" id="quick-report-btn" onclick="window.app && window.app.navigate('relatorios')">
-              <i class="ph-chart-bar"></i> <span>Relatório Rápido</span>
-            </button>
           </div>
-          <div class="text-center text-muted fs-xxs mt-2 opacity-50">Build: 1.0.4 (Disk Financeiro Enterprise)</div>
+          <div class="text-center text-muted fs-xxs mt-2 opacity-50">Disk Financeiro v1 &bull; 2026</div>
         </div>
 
       </div>
-    </div>
+    </aside>
 
-    <!-- Main Content Area -->
-    <div class="content-wrapper d-flex flex-column flex-grow-1" style="background: #f8fafc; min-width: 0; min-height: calc(100vh - 56px);">
-      
-      <!-- Limitless Page Header -->
-      <div class="page-header page-header-light shadow-sm bg-white border-bottom">
-        <div class="page-header-content d-lg-flex py-3 px-4 justify-content-between align-items-center">
-          <div class="d-flex flex-column">
-            <div class="d-flex align-items-center gap-2 mb-1">
-              <span class="badge bg-primary-subtle text-primary fw-bold fs-xxs" id="header-domain-badge">FINANCEIRO ENTERPRISE</span>
-              <span class="text-muted fs-xxs">&bull;</span>
-              <span class="text-muted fs-xxs" id="header-event-badge">Festival Curitiba 2026</span>
+    <!-- 2. APP AREA (Header no topo e MainContent abaixo ocupando toda a largura restante) -->
+    <div class="app-area" id="appArea">
+
+      <!-- HEADER (Topo da App Area, inicia depois da Sidebar) -->
+      <header class="app-header navbar navbar-dark" id="appHeader">
+        <div class="d-flex align-items-center gap-2">
+          <!-- Mobile sidebar toggle -->
+          <button type="button" class="btn btn-sm text-white border-0 d-lg-none p-1" onclick="window.app && window.app.toggleSidebar()">
+            <i class="ph-list fs-4"></i>
+          </button>
+          <span class="badge bg-primary text-white fw-bold fs-xxs px-2 py-1" id="navbar-role-indicator">PORTAL DO PRODUTOR</span>
+        </div>
+
+        <!-- Global Search Box -->
+        <div class="flex-grow-1 mx-3" style="max-width: 480px;">
+          <div class="position-relative">
+            <input type="text" id="global-search" class="form-control bg-transparent rounded-pill text-white ps-5" style="border: 1px solid rgba(255,255,255,0.2); font-size: 13px;" placeholder="Pesquisa global (eventos, produtores, pedidos, repasses...)" aria-label="Pesquisa global" oninput="window.app && window.app.handleGlobalSearch(this.value)">
+            <div class="position-absolute" style="left: 14px; top: 50%; transform: translateY(-50%); pointer-events: none; color: rgba(255,255,255,0.5);">
+              <i class="ph-magnifying-glass fs-5"></i>
             </div>
-            <h4 class="page-title mb-0 fw-bold text-dark" id="active-view-title">Visão Geral Financeira</h4>
-            <div class="text-muted fs-sm mt-1" id="active-view-subtitle">Resumo executivo consolidado das vendas, saldos disponíveis, repasses e retenções.</div>
           </div>
+        </div>
+
+        <!-- Right Header Items: Idioma, Notificações e Usuário -->
+        <div class="d-flex align-items-center gap-2 ms-auto">
           
-          <div class="d-flex flex-wrap gap-2 align-items-center mt-2 mt-lg-0" id="header-action-toolbar">
-            <!-- Global Event Selector Dropdown -->
-            <div class="event-selector-box d-flex align-items-center">
-              <select class="form-select form-select-sm fw-semibold shadow-sm" id="globalEventSelect" style="min-width: 270px;" onchange="window.app && window.app.setSelectedEvent(this.value)">
-                <option value="all">Todos os Eventos (Consolidado)</option>
-                <option value="evt-001" selected>Festival Curitiba 2026 (Pedreira)</option>
-                <option value="evt-002">Show Artista A (Teatro Guaíra)</option>
-                <option value="evt-003">Evento Corporativo Tech Summit</option>
-              </select>
+          <!-- Language Selector -->
+          <div class="dropdown d-none d-sm-block">
+            <a href="#" class="rounded-pill p-1 text-white text-decoration-none d-flex align-items-center" data-bs-toggle="dropdown" id="language-dropdown-toggle">
+              <div class="d-flex align-items-center justify-content-center me-1" style="width: 34px; height: 34px; border-radius: 50%; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: white;">
+                <i class="ph-globe fs-5"></i>
+              </div>
+              <span class="d-none d-lg-inline fs-xs fw-semibold text-white-50" id="current-language-text">Português (BR)</span>
+            </a>
+            <div class="dropdown-menu dropdown-menu-end shadow border-0" style="border-radius: 8px;">
+              <a href="#" class="dropdown-item fs-xs py-2" onclick="window.app && window.app.changeLanguage('pt'); return false;"><span class="me-2">🇧🇷</span> Português</a>
+              <a href="#" class="dropdown-item fs-xs py-2" onclick="window.app && window.app.changeLanguage('en'); return false;"><span class="me-2">🇺🇸</span> English</a>
+              <a href="#" class="dropdown-item fs-xs py-2" onclick="window.app && window.app.changeLanguage('es'); return false;"><span class="me-2">🇪🇸</span> Español</a>
             </div>
-            <button class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1 shadow-sm" id="dashboard-refresh-btn" onclick="window.app && window.app.refreshData()">
-              <i class="ph-arrows-counter-clockwise"></i> <span>Atualizar</span>
-            </button>
-            <button class="btn btn-sm btn-primary d-flex align-items-center gap-1 shadow-sm" id="header-primary-btn" onclick="window.app && window.app.openPayoutModal()">
-              <i class="ph-hand-coins"></i> <span>Solicitar Repasse</span>
-            </button>
+          </div>
+
+          <!-- Notification Dropdown -->
+          <div class="dropdown">
+            <a href="#" class="rounded-pill p-1 text-white position-relative text-decoration-none d-flex align-items-center" data-bs-toggle="dropdown" id="notification-dropdown-toggle">
+              <div class="d-flex align-items-center justify-content-center" style="width: 34px; height: 34px; border-radius: 50%; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: white;">
+                <i class="ph-bell fs-5"></i>
+              </div>
+              <span class="position-absolute badge rounded-pill bg-danger" id="notification-badge" style="font-size: 9px; padding: 2px 5px; top: -2px; right: -2px;">6</span>
+            </a>
+            <div class="dropdown-menu dropdown-menu-end shadow p-0 border-0" style="width: 330px; border-radius: 12px; overflow: hidden; margin-top: 10px;">
+              <div class="d-flex align-items-center justify-content-between p-3 bg-light border-bottom">
+                <h6 class="fw-bold mb-0 text-dark fs-xs">Notificações</h6>
+                <span class="badge bg-primary rounded-pill fs-xxs" id="notification-count-badge">6 Pendentes</span>
+              </div>
+              <div id="notification-list-container" style="max-height: 280px; overflow-y: auto;">
+              </div>
+              <div class="p-2 border-top text-center bg-light">
+                <a href="#" class="text-primary fw-semibold fs-xxs d-block py-1 text-decoration-none" onclick="window.app && window.app.clearNotifications(event); return false;">Marcar todas como lidas</a>
+              </div>
+            </div>
+          </div>
+
+          <!-- User Profile Dropdown -->
+          <div class="dropdown">
+            <a href="#" class="rounded-pill p-1 text-white text-decoration-none d-flex align-items-center" data-bs-toggle="dropdown" id="user-profile-toggle">
+              <div class="status-indicator-container d-inline-block position-relative">
+                <div class="avatar-circle" id="user-avatar-circle" style="width: 34px; height: 34px; border-radius: 50%; background: #3b82f6; color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; border: 1px solid rgba(255,255,255,0.2);">ABC</div>
+                <span class="status-indicator bg-success" style="position: absolute; bottom: 0; right: 0; width: 8px; height: 8px; border: 2px solid #16191f; border-radius: 50%;"></span>
+              </div>
+              <span class="d-none d-lg-inline-block mx-2 fs-sm fw-medium text-white" id="user-display-email">joao@produtoraabc.com.br</span>
+              <i class="ph-caret-down fs-xxs opacity-50 text-white"></i>
+            </a>
+            <div class="dropdown-menu dropdown-menu-end shadow border-0" style="border-radius: 8px; min-width: 230px;">
+              <div class="px-3 py-2 border-bottom bg-light">
+                <div class="fw-bold fs-xs text-dark" id="user-dropdown-name">João Silva</div>
+                <div class="text-muted fs-xxs" id="user-dropdown-role">Produtora ABC Ltda. (Diretor)</div>
+              </div>
+              <a href="#" class="dropdown-item fs-xs py-2" onclick="window.app && window.app.navigate('dadosBancarios'); return false;"><i class="ph-credit-card me-2 text-success"></i> Dados Bancários &amp; PIX</a>
+              <a href="#" class="dropdown-item fs-xs py-2" onclick="window.app && window.app.openTransferModal(); return false;"><i class="ph-arrows-clockwise me-2 text-info"></i> Transferência entre Eventos</a>
+              <div class="dropdown-divider my-1"></div>
+              <a href="#" class="dropdown-item fs-xs text-danger py-2" onclick="financialStore.resetDemoData(); return false;"><i class="ph-arrow-counter-clockwise me-2"></i> Reiniciar Demonstração</a>
+            </div>
+          </div>
+
+        </div>
+      </header>
+
+      <!-- 3. MAIN CONTENT (Scroll independente, ocupa toda a área restante) -->
+      <main class="app-main-content" id="appMainContent">
+        
+        <!-- Limitless Page Header -->
+        <div class="page-header page-header-light shadow-sm bg-white border-bottom">
+          <div class="page-header-content d-lg-flex py-3 px-4 justify-content-between align-items-center">
+            <div class="d-flex flex-column">
+              <div class="d-flex align-items-center gap-2 mb-1">
+                <span class="badge bg-primary-subtle text-primary fw-bold fs-xxs" id="header-domain-badge">PORTAL DO PRODUTOR</span>
+                <span class="text-muted fs-xxs">&bull;</span>
+                <span class="text-muted fs-xxs" id="header-event-badge">Festival Curitiba 2026</span>
+              </div>
+              <h4 class="page-title mb-0 fw-bold text-dark" id="active-view-title">Visão Geral Financeira</h4>
+              <div class="text-muted fs-sm mt-1" id="active-view-subtitle">Resumo executivo consolidado das vendas, saldos disponíveis, repasses e retenções.</div>
+            </div>
+            
+            <div class="d-flex flex-wrap gap-2 align-items-center mt-2 mt-lg-0" id="header-action-toolbar">
+              <!-- Global Event Selector Dropdown -->
+              <div class="event-selector-box d-flex align-items-center">
+                <select class="form-select form-select-sm fw-semibold shadow-sm" id="globalEventSelect" style="min-width: 270px;" onchange="window.app && window.app.setSelectedEvent(this.value)">
+                  <option value="all">Todos os Eventos (Consolidado)</option>
+                  <option value="evt-001" selected>Festival Curitiba 2026 (Pedreira)</option>
+                  <option value="evt-002">Show Artista A (Teatro Guaíra)</option>
+                  <option value="evt-003">Evento Corporativo Tech Summit</option>
+                </select>
+              </div>
+              <button class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1 shadow-sm" id="dashboard-refresh-btn" onclick="window.app && window.app.refreshData()">
+                <i class="ph-arrows-counter-clockwise"></i> <span>Atualizar</span>
+              </button>
+              <button class="btn btn-sm btn-primary d-flex align-items-center gap-1 shadow-sm" id="header-primary-btn" onclick="window.app && window.app.openPayoutModal()">
+                <i class="ph-hand-coins"></i> <span>Solicitar Repasse</span>
+              </button>
+            </div>
           </div>
         </div>
-      </div>
 
-      <!-- Page Sections Container (SPA viewport) -->
-      <div class="content p-3 p-lg-4 flex-grow-1" id="main-content">
-        <div id="view-container">
-          <!-- Dynamic View content rendered by app.js -->
+        <!-- Dynamic View Container -->
+        <div class="content p-3 p-lg-4 flex-grow-1" id="main-content">
+          <div id="view-container">
+            <!-- Dynamic View content rendered by app.js -->
+          </div>
         </div>
-      </div>
+
+      </main>
 
     </div>
 
-  </div>
+    <!-- 4. FLOATING DEMO TOOLBAR -->
+    <div class="demo-floating-bar" id="demoFloatingBar">
+      <!-- Rendered dynamically by app.js -->
+    </div>
 
-  <!-- Global Modal Overlay -->
-  <div class="modal-overlay" id="modal-overlay">
-    <div id="modal-dynamic-content"></div>
-  </div>
-
-  <!-- Floating Demo Simulation Bar -->
-  <div class="demo-floating-bar" id="demoFloatingBar">
-    <!-- Rendered dynamically by app.js -->
   </div>
 
   <!-- Toast Notification Container -->

@@ -991,21 +991,18 @@ class LimitlessFinancialApp {
     const isDisk = state.viewMode === 'disk';
     const isMaster = state.currentUser.role === 'admin';
 
-    // Role Badge Button
-    const badgeBtn = document.getElementById('navbar-role-badge-btn');
-    const badgeIcon = document.getElementById('navbar-role-icon');
-    const badgeLabel = document.getElementById('navbar-role-label');
-
-    if (badgeLabel && badgeIcon) {
+    // Role Indicator Badge in Header
+    const roleIndicator = document.getElementById('navbar-role-indicator');
+    if (roleIndicator) {
       if (isMaster) {
-        badgeIcon.className = 'ph-crown text-warning';
-        badgeLabel.innerText = 'Administrador Master';
+        roleIndicator.innerText = 'ADMINISTRADOR MASTER';
+        roleIndicator.className = 'badge bg-warning text-dark fw-bold fs-xxs px-2 py-1';
       } else if (isDisk) {
-        badgeIcon.className = 'ph-shield-check text-success';
-        badgeLabel.innerText = 'Financeiro Disk';
+        roleIndicator.innerText = 'FINANCEIRO DISK (BACKOFFICE)';
+        roleIndicator.className = 'badge bg-success text-white fw-bold fs-xxs px-2 py-1';
       } else {
-        badgeIcon.className = 'ph-user text-primary';
-        badgeLabel.innerText = 'Produtor';
+        roleIndicator.innerText = 'PORTAL DO PRODUTOR';
+        roleIndicator.className = 'badge bg-primary text-white fw-bold fs-xxs px-2 py-1';
       }
     }
 
@@ -1058,6 +1055,30 @@ class LimitlessFinancialApp {
         prodAvatar.style.background = '#2563eb';
         prodName.innerText = state.activeProducer.name;
         prodBadge.innerText = state.activeProducer.rating || 'Produtor Homologado';
+      }
+    }
+
+    // Sidebar Quick Action Buttons (conforme o perfil ativo)
+    const quickActions = document.getElementById('sidebar-quick-actions');
+    if (quickActions) {
+      if (isDisk || isMaster) {
+        quickActions.innerHTML = `
+          <button class="btn btn-warning w-100 btn-sm text-dark fw-bold d-flex align-items-center justify-content-center gap-1" onclick="window.app.navigate('diskAprovacoes')">
+            <i class="ph-scales"></i> <span>Mesa de Aprovações</span>
+          </button>
+          <button class="btn btn-success w-100 btn-sm fw-bold d-flex align-items-center justify-content-center gap-1" onclick="window.app.navigate('diskTesouraria')">
+            <i class="ph-vault"></i> <span>Lote CNAB 240</span>
+          </button>
+        `;
+      } else {
+        quickActions.innerHTML = `
+          <button class="btn btn-warning w-100 btn-sm text-black fw-bold d-flex align-items-center justify-content-center gap-1" id="quick-new-event-btn" onclick="alert('Criar Novo Evento: Redirecionando para o Assistente de Configuração de Lotes...')">
+            <i class="ph-calendar-plus"></i> <span>Criar Evento</span>
+          </button>
+          <button class="btn btn-success w-100 btn-sm fw-bold d-flex align-items-center justify-content-center gap-1" id="quick-repasse-btn" onclick="window.app.openPayoutModal()">
+            <i class="ph-hand-coins"></i> <span>Solicitar Repasse</span>
+          </button>
+        `;
       }
     }
   }
@@ -1138,365 +1159,233 @@ class LimitlessFinancialApp {
   }
 
   // ==========================================================================
-  // RENDERIZADOR DA SIDEBAR (ACCORDION & CANONICAL SUBMENUS)
+  // RENDERIZADOR DA SIDEBAR (ACCORDION & CANONICAL SUBMENUS POR PERFIL)
+  // REGRA: Nunca renderizar menus duplicados. Uma única sidebar muda seus itens por perfil.
   // ==========================================================================
   renderSidebar(state) {
     if (!this.sidebarNav) return;
 
     const isDisk = state.viewMode === 'disk';
+    const isMaster = state.currentUser.role === 'admin';
     const pendingCount = state.pendingApprovalsCount || 17;
+    const currentView = state.currentView;
 
-    // Se estiver no FINANCEIRO DISK (Menu corporativo completo de 10 domínios)
-    if (isDisk) {
+    const active = (view) => currentView === view ? 'active' : '';
+
+    if (isDisk || isMaster) {
+      // MENU FINANCEIRO DISK (BACKOFFICE ENTERPRISE) / ADMIN MASTER
       this.sidebarNav.innerHTML = `
-        <!-- TODOS OS EVENTOS -->
         <li class="nav-item">
-          <a class="nav-link ${state.currentView === 'saldos' ? 'active' : ''}" onclick="window.app.navigate('saldos')">
-            <i class="ph-calendar"></i>
-            <span>Todos os Eventos</span>
+          <a class="nav-link ${active('diskDashboard')}" onclick="window.app.navigate('diskDashboard')">
+            <i class="ph-chart-pie-slice fs-5"></i>
+            <span>Dashboard Geral</span>
           </a>
         </li>
 
-        <!-- PAINEL GERAL -->
-        <li class="nav-item nav-item-submenu ${['diskDashboard', 'overview'].includes(state.currentView) ? 'is-open' : ''}">
-          <a class="nav-link" onclick="this.parentElement.classList.toggle('is-open')">
-            <i class="ph-gauge"></i>
-            <span>Painel Geral</span>
-            <i class="ph-caret-right nav-arrow"></i>
-          </a>
-          <ul class="nav-group-sub">
-            <li class="nav-item"><a class="nav-link ${state.currentView === 'diskDashboard' ? 'active' : ''}" onclick="window.app.navigate('diskDashboard')">Dashboard</a></li>
-            <li class="nav-item"><a class="nav-link" onclick="window.app.navigate('diskTesouraria')">Agenda</a></li>
-            <li class="nav-item"><a class="nav-link" onclick="window.app.navigate('relatorios')">Indicadores</a></li>
-          </ul>
-        </li>
-
-        <!-- MEUS EVENTOS -->
-        <li class="nav-item nav-item-submenu">
-          <a class="nav-link" onclick="this.parentElement.classList.toggle('is-open')">
-            <i class="ph-calendar"></i>
-            <span>Meus Eventos</span>
-            <span class="badge rounded-pill ms-auto" style="background: #f38d4f; color: white;">2</span>
-            <i class="ph-caret-right nav-arrow"></i>
-          </a>
-          <ul class="nav-group-sub">
-            <li class="nav-item"><a class="nav-link" onclick="window.app.navigate('saldos')">Todos Eventos</a></li>
-            <li class="nav-item"><a class="nav-link" onclick="alert('Assistente de Novo Evento')">Novo Evento</a></li>
-            <li class="nav-item"><a class="nav-link" onclick="window.app.navigate('vendas')">Lotes &amp; Cupons</a></li>
-            <li class="nav-item"><a class="nav-link" onclick="window.app.navigate('vendas')">Check-in &amp; Participantes</a></li>
-          </ul>
-        </li>
-
-        <!-- CONSULTA DE INGRESSOS -->
         <li class="nav-item">
-          <a class="nav-link" onclick="window.app.navigate('vendas')">
-            <i class="ph-ticket"></i>
-            <span>Consulta de Ingressos</span>
+          <a class="nav-link ${active('diskAprovacoes')} d-flex align-items-center justify-content-between" onclick="window.app.navigate('diskAprovacoes')">
+            <div class="d-flex align-items-center gap-2">
+              <i class="ph-scales fs-5 text-warning"></i>
+              <span>Central de Aprovações</span>
+            </div>
+            <span class="badge rounded-pill bg-danger fs-xxs">${pendingCount}</span>
           </a>
         </li>
 
-        <!-- MARKETING HUB -->
-        <li class="nav-item nav-item-submenu">
-          <a class="nav-link" onclick="this.parentElement.classList.toggle('is-open')">
-            <i class="ph-megaphone"></i>
-            <span>Marketing</span>
-            <span class="badge bg-primary rounded-pill ms-auto">Hub</span>
-            <i class="ph-caret-right nav-arrow"></i>
-          </a>
-          <ul class="nav-group-sub">
-            <li class="nav-item"><a class="nav-link" onclick="window.app.navigate('relatorios')">Visão Geral</a></li>
-            <li class="nav-item"><a class="nav-link" onclick="alert('Campanhas de Marketing')">Campanhas &amp; WhatsApp</a></li>
-            <li class="nav-item"><a class="nav-link" onclick="alert('Carrinho Abandonado')">Carrinho Abandonado</a></li>
-          </ul>
-        </li>
-
-        <!-- ========================================================================== -->
-        <!-- FINANCEIRO ENTERPRISE (Fase 28.15.3 — Arquitetura de 10 Domínios) -->
-        <!-- ========================================================================== -->
-        <li class="nav-item nav-item-submenu is-open" id="nav-item-financeiro">
-          <a class="nav-link" onclick="this.parentElement.classList.toggle('is-open')" style="color: #60a5fa !important;">
-            <i class="ph-wallet"></i>
-            <span class="fw-bold">Financeiro</span>
-            <span class="badge bg-success rounded-pill ms-auto">Enterprise</span>
-            <i class="ph-caret-right nav-arrow"></i>
-          </a>
-          <ul class="nav-group-sub">
-            
-            <!-- Visão Financeira -->
-            <li class="nav-item-section-divider"><i class="ph-chart-pie"></i> Visão Financeira</li>
-
-            <!-- 1. VISÃO GERAL -->
-            <li class="nav-item-header"><i class="ph-squares-four me-1 text-primary"></i> 1. Visão Geral</li>
-            <li class="nav-item"><a class="nav-link ${state.currentView === 'diskDashboard' ? 'active' : ''}" onclick="window.app.navigate('diskDashboard')"><i class="ph-chart-pie-slice me-2"></i> Dashboard Financeiro</a></li>
-            <li class="nav-item"><a class="nav-link" onclick="window.app.navigate('diskDashboard')"><i class="ph-chart-line-up me-2 text-primary"></i> Posição Geral</a></li>
-            <li class="nav-item"><a class="nav-link ${state.currentView === 'saldos' ? 'active' : ''}" onclick="window.app.navigate('saldos')"><i class="ph-currency-circle-dollar me-2 text-success"></i> Saldos</a></li>
-            <li class="nav-item"><a class="nav-link ${state.currentView === 'taxas' ? 'active' : ''}" onclick="window.app.navigate('taxas')"><i class="ph-percent me-2 text-warning"></i> Taxas e Custos</a></li>
-            <li class="nav-item"><a class="nav-link ${state.currentView === 'bordero' ? 'active' : ''}" onclick="window.app.navigate('bordero')"><i class="ph-file-lock me-2 text-warning"></i> Fechamento Financeiro</a></li>
-            
-            <!-- Central de Aprovações com Badge Destacado -->
-            <li class="nav-item">
-              <a class="nav-link ${state.currentView === 'diskAprovacoes' ? 'active' : ''} d-flex justify-content-between align-items-center" onclick="window.app.navigate('diskAprovacoes')" style="color: #fbbf24 !important; font-weight: 700;">
-                <span><i class="ph-scales me-2 text-warning"></i> Aprovações</span>
-                <span class="badge rounded-pill bg-danger fs-xxs">${pendingCount}</span>
-              </a>
-            </li>
-
-            <li class="nav-item"><a class="nav-link" onclick="window.app.navigate('diskAprovacoes')"><i class="ph-files me-2 text-primary"></i> Minhas Solicitações</a></li>
-            <li class="nav-item"><a class="nav-link" onclick="window.app.navigate('relatorios')"><i class="ph-brain me-2 text-info"></i> Inteligência Financeira</a></li>
-            <li class="nav-item"><a class="nav-link" onclick="window.app.navigate('diskDashboard')"><i class="ph-gauge me-2"></i> Indicadores</a></li>
-
-            <!-- Tesouraria & Cadastros -->
-            <li class="nav-item-section-divider"><i class="ph-vault"></i> Tesouraria &amp; Cadastros</li>
-
-            <!-- 2. TESOURARIA -->
-            <li class="nav-item-header"><i class="ph-vault me-1 text-primary"></i> 2. Tesouraria</li>
-            <li class="nav-item"><a class="nav-link ${state.currentView === 'diskTesouraria' ? 'active' : ''}" onclick="window.app.navigate('diskTesouraria')"><i class="ph-bank me-2"></i> Conta Financeira</a></li>
-            <li class="nav-item"><a class="nav-link" onclick="window.app.navigate('saldos')"><i class="ph-arrows-left-right me-2"></i> Gestão de Saldos</a></li>
-            <li class="nav-item"><a class="nav-link" onclick="window.app.openTransferModal()"><i class="ph-arrows-clockwise me-2"></i> Transferência entre Eventos</a></li>
-            <li class="nav-item"><a class="nav-link ${state.currentView === 'diskGateways' ? 'active' : ''}" onclick="window.app.navigate('diskGateways')"><i class="ph-cpu me-2 text-primary"></i> Gateways e Adquirentes</a></li>
-            <li class="nav-item"><a class="nav-link ${state.currentView === 'dadosBancarios' ? 'active' : ''}" onclick="window.app.navigate('dadosBancarios')"><i class="ph-credit-card me-2"></i> Contas Bancárias</a></li>
-            <li class="nav-item"><a class="nav-link" onclick="window.app.navigate('diskTesouraria')"><i class="ph-qr-code me-2"></i> PIX</a></li>
-            <li class="nav-item"><a class="nav-link" onclick="window.app.navigate('diskTesouraria')"><i class="ph-file-code me-2"></i> CNAB 240</a></li>
-            <li class="nav-item"><a class="nav-link" onclick="window.app.navigate('diskTesouraria')"><i class="ph-stack me-2"></i> Pagamentos em Lote</a></li>
-
-            <!-- Operações Financeiras -->
-            <li class="nav-item-section-divider"><i class="ph-arrows-clockwise"></i> Operações Financeiras</li>
-
-            <!-- 3. CONTAS -->
-            <li class="nav-item-header"><i class="ph-coins me-1 text-primary"></i> 3. Contas</li>
-            <li class="nav-item"><a class="nav-link" onclick="window.app.navigate('vendas')"><i class="ph-arrow-up-right me-2"></i> Contas a Receber</a></li>
-            <li class="nav-item"><a class="nav-link" onclick="window.app.navigate('diskTesouraria')"><i class="ph-trend-down me-2"></i> Contas a Pagar</a></li>
-            <li class="nav-item"><a class="nav-link ${state.currentView === 'antecipacoes' ? 'active' : ''}" onclick="window.app.navigate('antecipacoes')"><i class="ph-hand-coins me-2"></i> Antecipações</a></li>
-            <li class="nav-item"><a class="nav-link ${state.currentView === 'repasses' ? 'active' : ''}" onclick="window.app.navigate('repasses')"><i class="ph-money me-2"></i> Repasses</a></li>
-            <li class="nav-item"><a class="nav-link" onclick="window.app.navigate('diskTesouraria')"><i class="ph-calendar-check me-2"></i> Agenda Financeira</a></li>
-
-            <!-- 4. COMPRAS -->
-            <li class="nav-item-header"><i class="ph-shopping-cart me-1 text-primary"></i> 4. Compras (P2P)</li>
-            <li class="nav-item"><a class="nav-link" onclick="window.app.navigate('diskAprovacoes')"><i class="ph-check-circle me-2 text-warning"></i> Central de Solicitações</a></li>
-            <li class="nav-item"><a class="nav-link" onclick="window.app.navigate('diskTesouraria')"><i class="ph-file-plus me-2"></i> Pedidos &amp; Cotações</a></li>
-
-            <!-- 5. FORNECEDORES -->
-            <li class="nav-item-header"><i class="ph-buildings me-1 text-primary"></i> 5. Fornecedores</li>
-            <li class="nav-item"><a class="nav-link ${state.currentView === 'diskProdutores' ? 'active' : ''}" onclick="window.app.navigate('diskProdutores')"><i class="ph-identification-badge me-2"></i> Cadastro de Produtores</a></li>
-            <li class="nav-item"><a class="nav-link" onclick="window.app.navigate('diskProdutores')"><i class="ph-arrows-out-card me-2"></i> Visão 360 do Fornecedor</a></li>
-
-            <!-- 6. CONTRATOS -->
-            <li class="nav-item-header"><i class="ph-scroll me-1 text-primary"></i> 6. Contratos</li>
-            <li class="nav-item"><a class="nav-link" onclick="window.app.navigate('diskGateways')"><i class="ph-file-text me-2"></i> Central de Contratos</a></li>
-
-            <!-- 7. CONTROLADORIA -->
-            <li class="nav-item-header"><i class="ph-presentation-chart me-1 text-primary"></i> 7. Controladoria</li>
-            <li class="nav-item"><a class="nav-link ${state.currentView === 'diskLedger' ? 'active' : ''}" onclick="window.app.navigate('diskLedger')"><i class="ph-book-bookmark me-2"></i> Ledger de Partidas Dobradas</a></li>
-            <li class="nav-item"><a class="nav-link" onclick="window.app.navigate('diskLedger')"><i class="ph-presentation me-2"></i> DRE Gerencial</a></li>
-            <li class="nav-item"><a class="nav-link" onclick="window.app.navigate('diskDashboard')"><i class="ph-chart-line-up me-2"></i> Fluxo de Caixa</a></li>
-
-            <!-- 8. CONCILIAÇÃO -->
-            <li class="nav-item-section-divider"><i class="ph-check-square-offset"></i> Controle &amp; Conciliação</li>
-            <li class="nav-item-header"><i class="ph-check-square-offset me-1 text-primary"></i> 8. Conciliação</li>
-            <li class="nav-item"><a class="nav-link" onclick="window.app.navigate('diskTesouraria')"><i class="ph-arrows-left-right me-2"></i> Bancária &amp; Retorno</a></li>
-            <li class="nav-item"><a class="nav-link" onclick="window.app.navigate('diskGateways')"><i class="ph-shield-check me-2"></i> Gateways &amp; MDR</a></li>
-
-            <!-- 9. OPERAÇÃO -->
-            <li class="nav-item-header"><i class="ph-gear me-1 text-primary"></i> 9. Operação</li>
-            <li class="nav-item"><a class="nav-link" onclick="window.app.navigate('vendas')"><i class="ph-storefront me-2"></i> PDV &amp; Métodos</a></li>
-            <li class="nav-item"><a class="nav-link ${state.currentView === 'estornos' ? 'active' : ''}" onclick="window.app.navigate('estornos')"><i class="ph-arrow-counter-clockwise me-2"></i> Estornos &amp; Chargebacks</a></li>
-
-            <!-- 10. RELATÓRIOS -->
-            <li class="nav-item-header"><i class="ph-file-text me-1 text-primary"></i> 10. Relatórios</li>
-            <li class="nav-item"><a class="nav-link ${state.currentView === 'extrato' ? 'active' : ''}" onclick="window.app.navigate('extrato')"><i class="ph-receipt me-2"></i> Extrato Financeiro</a></li>
-            <li class="nav-item"><a class="nav-link ${state.currentView === 'bordero' ? 'active' : ''}" onclick="window.app.navigate('bordero')"><i class="ph-signature me-2"></i> Borderôs</a></li>
-            <li class="nav-item"><a class="nav-link ${state.currentView === 'relatorios' ? 'active' : ''}" onclick="window.app.navigate('relatorios')"><i class="ph-chart-bar me-2"></i> Relatório Consolidado</a></li>
-
-          </ul>
-        </li>
-
-        <!-- CONTABILIDADE ENTERPRISE -->
         <li class="nav-item">
-          <a class="nav-link ${state.currentView === 'diskLedger' ? 'active' : ''}" onclick="window.app.navigate('diskLedger')">
-            <i class="ph-book-open"></i>
-            <span>Contabilidade</span>
-            <span class="badge bg-primary rounded-pill ms-auto">Enterprise</span>
+          <a class="nav-link ${active('diskProdutores')}" onclick="window.app.navigate('diskProdutores')">
+            <i class="ph-buildings fs-5 text-primary"></i>
+            <span>Produtores 360</span>
           </a>
         </li>
 
-        <!-- RELATÓRIOS -->
         <li class="nav-item">
-          <a class="nav-link ${state.currentView === 'relatorios' ? 'active' : ''}" onclick="window.app.navigate('relatorios')">
-            <i class="ph-file-text"></i>
-            <span>Relatórios</span>
+          <a class="nav-link ${active('diskGateways')}" onclick="window.app.navigate('diskGateways')">
+            <i class="ph-cpu fs-5 text-info"></i>
+            <span>Gateways &amp; Adquirentes</span>
           </a>
         </li>
 
-        <!-- CONFIGURAÇÕES -->
         <li class="nav-item">
-          <a class="nav-link ${state.currentView === 'dadosBancarios' ? 'active' : ''}" onclick="window.app.navigate('dadosBancarios')">
-            <i class="ph-gear"></i>
-            <span>Configurações</span>
+          <a class="nav-link ${active('diskLedger')}" onclick="window.app.navigate('diskLedger')">
+            <i class="ph-book-bookmark fs-5 text-success"></i>
+            <span>Ledger Contábil</span>
           </a>
         </li>
+
+        <li class="nav-item">
+          <a class="nav-link ${active('diskTesouraria')}" onclick="window.app.navigate('diskTesouraria')">
+            <i class="ph-vault fs-5 text-warning"></i>
+            <span>Tesouraria &amp; CNAB 240</span>
+          </a>
+        </li>
+
+        <li class="nav-item-section-divider"><i class="ph-stack"></i> Operação &amp; Saldos</li>
+
+        <li class="nav-item">
+          <a class="nav-link ${active('saldos')}" onclick="window.app.navigate('saldos')">
+            <i class="ph-currency-circle-dollar fs-5"></i>
+            <span>Gestão de Saldos</span>
+          </a>
+        </li>
+
+        <li class="nav-item">
+          <a class="nav-link ${active('bordero')}" onclick="window.app.navigate('bordero')">
+            <i class="ph-signature fs-5"></i>
+            <span>Borderôs &amp; Fechamentos</span>
+          </a>
+        </li>
+
+        <li class="nav-item">
+          <a class="nav-link ${active('extrato')}" onclick="window.app.navigate('extrato')">
+            <i class="ph-receipt fs-5"></i>
+            <span>Extrato Financeiro</span>
+          </a>
+        </li>
+
+        <li class="nav-item">
+          <a class="nav-link ${active('relatorios')}" onclick="window.app.navigate('relatorios')">
+            <i class="ph-file-text fs-5"></i>
+            <span>Relatórios Gerenciais</span>
+          </a>
+        </li>
+
+        ${isMaster ? `
+          <li class="nav-item-section-divider"><i class="ph-crown"></i> Governança Master</li>
+          <li class="nav-item">
+            <a class="nav-link ${active('taxas')}" onclick="window.app.navigate('taxas')">
+              <i class="ph-percent fs-5 text-warning"></i>
+              <span>Taxas Contratuais &amp; Spread</span>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link ${active('estornos')}" onclick="window.app.navigate('estornos')">
+              <i class="ph-warning-octagon fs-5 text-danger"></i>
+              <span>Monitoramento Chargebacks</span>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link ${active('dadosBancarios')}" onclick="window.app.navigate('dadosBancarios')">
+              <i class="ph-gear fs-5 text-secondary"></i>
+              <span>Configurações Bancárias</span>
+            </a>
+          </li>
+        ` : ''}
       `;
       return;
     }
 
-    // ==========================================================================
-    // MENU REDUZIDO DO PRODUTOR (8 ITENS CANÔNICOS CONFORME REFERENCE APP)
-    // ==========================================================================
+    // MENU OFICIAL DO PRODUTOR (CANÔNICO DE 11 ITENS, SEM MENUS FLUTUANTES)
     this.sidebarNav.innerHTML = `
-      <!-- TODOS OS EVENTOS -->
       <li class="nav-item">
-        <a class="nav-link ${state.currentView === 'saldos' ? 'active' : ''}" onclick="window.app.navigate('saldos')">
-          <i class="ph-calendar"></i>
-          <span>Todos os Eventos</span>
+        <a class="nav-link ${active('overview')}" onclick="window.app.navigate('overview')">
+          <i class="ph-chart-pie-slice fs-5"></i>
+          <span>Visão Geral</span>
         </a>
       </li>
 
-      <!-- PAINEL GERAL -->
-      <li class="nav-item nav-item-submenu ${state.currentView === 'overview' ? 'is-open' : ''}">
+      <li class="nav-item">
+        <a class="nav-link ${active('saldos')}" onclick="window.app.navigate('saldos')">
+          <i class="ph-currency-circle-dollar fs-5"></i>
+          <span>Saldos</span>
+        </a>
+      </li>
+
+      <li class="nav-item">
+        <a class="nav-link ${active('extrato')}" onclick="window.app.navigate('extrato')">
+          <i class="ph-receipt fs-5"></i>
+          <span>Extrato Financeiro</span>
+        </a>
+      </li>
+
+      <!-- REPASSES -->
+      <li class="nav-item nav-item-submenu ${['repasses'].includes(currentView) ? 'is-open' : ''}">
         <a class="nav-link" onclick="this.parentElement.classList.toggle('is-open')">
-          <i class="ph-gauge"></i>
-          <span>Painel Geral</span>
-          <i class="ph-caret-right nav-arrow"></i>
+          <i class="ph-hand-coins fs-5"></i>
+          <span>Repasses</span>
+          <i class="ph-caret-right nav-arrow ms-auto"></i>
         </a>
         <ul class="nav-group-sub">
-          <li class="nav-item"><a class="nav-link ${state.currentView === 'overview' ? 'active' : ''}" onclick="window.app.navigate('overview')">Dashboard</a></li>
-          <li class="nav-item"><a class="nav-link" onclick="window.app.navigate('saldos')">Agenda</a></li>
-          <li class="nav-item"><a class="nav-link" onclick="window.app.navigate('relatorios')">Indicadores</a></li>
+          <li class="nav-item">
+            <a class="nav-link" onclick="window.app.openPayoutModal()">
+              <i class="ph-plus-circle me-1"></i> Solicitar Repasse
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link ${active('repasses')}" onclick="window.app.navigate('repasses')">
+              <i class="ph-clock-countdown me-1"></i> Minhas Solicitações
+            </a>
+          </li>
         </ul>
       </li>
 
-      <!-- MEUS EVENTOS -->
-      <li class="nav-item nav-item-submenu">
+      <!-- ANTECIPAÇÕES -->
+      <li class="nav-item nav-item-submenu ${['antecipacoes'].includes(currentView) ? 'is-open' : ''}">
         <a class="nav-link" onclick="this.parentElement.classList.toggle('is-open')">
-          <i class="ph-calendar"></i>
-          <span>Meus Eventos</span>
-          <span class="badge rounded-pill ms-auto" style="background: #f38d4f; color: white;">2</span>
-          <i class="ph-caret-right nav-arrow"></i>
+          <i class="ph-trend-up fs-5"></i>
+          <span>Antecipações</span>
+          <i class="ph-caret-right nav-arrow ms-auto"></i>
         </a>
         <ul class="nav-group-sub">
-          <li class="nav-item"><a class="nav-link" onclick="window.app.navigate('saldos')">Festival Curitiba 2026</a></li>
-          <li class="nav-item"><a class="nav-link" onclick="window.app.navigate('saldos')">Show Artista A</a></li>
-          <li class="nav-item"><a class="nav-link" onclick="alert('Criar Evento')">Novo Evento</a></li>
+          <li class="nav-item">
+            <a class="nav-link ${active('antecipacoes')}" onclick="window.app.navigate('antecipacoes')">
+              <i class="ph-calculator me-1"></i> Simular Antecipação
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" onclick="window.app.navigate('antecipacoes')">
+              <i class="ph-files me-1"></i> Minhas Solicitações
+            </a>
+          </li>
         </ul>
       </li>
 
-      <!-- CONSULTA DE INGRESSOS -->
       <li class="nav-item">
-        <a class="nav-link" onclick="window.app.navigate('vendas')">
-          <i class="ph-ticket"></i>
-          <span>Consulta de Ingressos</span>
+        <a class="nav-link ${active('vendas')}" onclick="window.app.navigate('vendas')">
+          <i class="ph-shopping-cart fs-5"></i>
+          <span>Vendas &amp; Recebimentos</span>
         </a>
       </li>
 
-      <!-- MARKETING HUB -->
       <li class="nav-item">
-        <a class="nav-link" onclick="window.app.navigate('relatorios')">
-          <i class="ph-megaphone"></i>
-          <span>Marketing</span>
-          <span class="badge bg-primary rounded-pill ms-auto">Hub</span>
+        <a class="nav-link ${active('taxas')}" onclick="window.app.navigate('taxas')">
+          <i class="ph-percent fs-5"></i>
+          <span>Taxas &amp; Descontos</span>
         </a>
       </li>
 
-      <!-- ========================================================================== -->
-      <!-- PORTAL DO PRODUTOR: MENU FINANCEIRO REDUZIDO (8 ITENS CANÔNICOS) -->
-      <!-- ========================================================================== -->
-      <li class="nav-item nav-item-submenu is-open" id="nav-item-financeiro-produtor">
-        <a class="nav-link" onclick="this.parentElement.classList.toggle('is-open')" style="color: #60a5fa !important;">
-          <i class="ph-wallet"></i>
-          <span class="fw-bold">Financeiro</span>
-          <span class="badge bg-success rounded-pill ms-auto">Enterprise</span>
-          <i class="ph-caret-right nav-arrow"></i>
+      <li class="nav-item">
+        <a class="nav-link ${active('estornos')}" onclick="window.app.navigate('estornos')">
+          <i class="ph-warning-octagon fs-5"></i>
+          <span>Estornos &amp; Chargebacks</span>
         </a>
-        <ul class="nav-group-sub">
-          
-          <li class="nav-item-section-divider"><i class="ph-user-circle"></i> Portal do Produtor</li>
-
-          <!-- 1. Visão Financeira -->
-          <li class="nav-item">
-            <a class="nav-link ${state.currentView === 'overview' ? 'active' : ''}" onclick="window.app.navigate('overview')">
-              <i class="ph-chart-pie-slice me-2 text-primary"></i> <span>Visão Financeira</span>
-            </a>
-          </li>
-
-          <!-- 2. Meus Saldos -->
-          <li class="nav-item">
-            <a class="nav-link ${state.currentView === 'saldos' ? 'active' : ''}" onclick="window.app.navigate('saldos')">
-              <i class="ph-currency-circle-dollar me-2 text-success"></i> <span>Meus Saldos</span>
-            </a>
-          </li>
-
-          <!-- 3. Solicitar Repasse -->
-          <li class="nav-item">
-            <a class="nav-link ${state.currentView === 'repasses' ? 'active' : ''}" onclick="window.app.navigate('repasses')">
-              <i class="ph-hand-coins me-2 text-warning"></i> <span>Solicitar Repasse</span>
-            </a>
-          </li>
-
-          <!-- 4. Solicitar Antecipação -->
-          <li class="nav-item">
-            <a class="nav-link ${state.currentView === 'antecipacoes' ? 'active' : ''}" onclick="window.app.navigate('antecipacoes')">
-              <i class="ph-trend-up me-2 text-info"></i> <span>Solicitar Antecipação</span>
-            </a>
-          </li>
-
-          <!-- 5. Transferir entre Eventos -->
-          <li class="nav-item">
-            <a class="nav-link" onclick="window.app.openTransferModal()">
-              <i class="ph-arrows-clockwise me-2 text-primary"></i> <span>Transferir entre Eventos</span>
-            </a>
-          </li>
-
-          <!-- 6. Minhas Solicitações -->
-          <li class="nav-item">
-            <a class="nav-link ${state.currentView === 'repasses' ? 'active' : ''} d-flex justify-content-between align-items-center" onclick="window.app.navigate('repasses')">
-              <span><i class="ph-files me-2 text-success"></i> Minhas Solicitações</span>
-              ${pendingCount > 0 ? `<span class="badge rounded-pill bg-warning text-dark fs-xxs">${pendingCount}</span>` : ''}
-            </a>
-          </li>
-
-          <!-- 7. Extrato -->
-          <li class="nav-item">
-            <a class="nav-link ${state.currentView === 'extrato' ? 'active' : ''}" onclick="window.app.navigate('extrato')">
-              <i class="ph-receipt me-2 text-secondary"></i> <span>Extrato</span>
-            </a>
-          </li>
-
-          <!-- 8. Dados Bancários -->
-          <li class="nav-item">
-            <a class="nav-link ${state.currentView === 'dadosBancarios' ? 'active' : ''}" onclick="window.app.navigate('dadosBancarios')">
-              <i class="ph-credit-card me-2 text-danger"></i> <span>Dados Bancários</span>
-            </a>
-          </li>
-
-          <!-- Ferramentas Complementares de Auditoria do Produtor -->
-          <li class="nav-item-section-divider"><i class="ph-scales"></i> Fechamento &amp; Relatórios</li>
-          <li class="nav-item"><a class="nav-link ${state.currentView === 'bordero' ? 'active' : ''}" onclick="window.app.navigate('bordero')"><i class="ph-signature me-2 text-warning"></i> <span>Borderô do Evento</span></a></li>
-          <li class="nav-item"><a class="nav-link ${state.currentView === 'taxas' ? 'active' : ''}" onclick="window.app.navigate('taxas')"><i class="ph-percent me-2 text-info"></i> <span>Taxas Contratuais</span></a></li>
-          <li class="nav-item"><a class="nav-link ${state.currentView === 'estornos' ? 'active' : ''}" onclick="window.app.navigate('estornos')"><i class="ph-warning-octagon me-2 text-danger"></i> <span>Estornos &amp; Chargebacks</span></a></li>
-          <li class="nav-item"><a class="nav-link ${state.currentView === 'relatorios' ? 'active' : ''}" onclick="window.app.navigate('relatorios')"><i class="ph-file-text me-2"></i> <span>Relatórios Financeiros</span></a></li>
-
-        </ul>
       </li>
 
-      <!-- RELATÓRIOS -->
       <li class="nav-item">
-        <a class="nav-link ${state.currentView === 'relatorios' ? 'active' : ''}" onclick="window.app.navigate('relatorios')">
-          <i class="ph-file-text"></i>
+        <a class="nav-link ${active('bordero')}" onclick="window.app.navigate('bordero')">
+          <i class="ph-signature fs-5"></i>
+          <span>Borderôs</span>
+        </a>
+      </li>
+
+      <li class="nav-item">
+        <a class="nav-link ${active('relatorios')}" onclick="window.app.navigate('relatorios')">
+          <i class="ph-file-text fs-5"></i>
           <span>Relatórios</span>
         </a>
       </li>
 
-      <!-- CONFIGURAÇÕES -->
       <li class="nav-item">
-        <a class="nav-link ${state.currentView === 'dadosBancarios' ? 'active' : ''}" onclick="window.app.navigate('dadosBancarios')">
-          <i class="ph-gear"></i>
-          <span>Configurações</span>
+        <a class="nav-link ${active('dadosBancarios')}" onclick="window.app.navigate('dadosBancarios')">
+          <i class="ph-credit-card fs-5"></i>
+          <span>Dados Bancários &amp; PIX</span>
         </a>
       </li>
     `;
   }
 
   // ==========================================================================
-  // BARRA FLUTUANTE DO MODO DEMONSTRAÇÃO
+  // BARRA FLUTUANTE DO MODO DEMONSTRAÇÃO (ISOLADA DA NAVEGAÇÃO OFICIAL)
   // ==========================================================================
   renderFloatingDemoBar(state) {
     let bar = document.getElementById('demoFloatingBar');
@@ -1507,8 +1396,27 @@ class LimitlessFinancialApp {
       document.body.appendChild(bar);
     }
 
+    const isDisk = state.viewMode === 'disk';
+    const isMaster = state.currentUser.role === 'admin';
+    const isProducer = !isDisk && !isMaster;
+
     bar.innerHTML = `
       <span class="demo-badge-pill">🎮 Modo Demonstração</span>
+
+      <div class="d-flex align-items-center gap-1 ms-1 me-2">
+        <button class="demo-role-btn ${isProducer ? 'active-produtor' : ''}" onclick="window.switchGlobalRole('PRODUTOR')" title="Alternar para perfil Produtor">
+          <i class="ph-user"></i> <span>Produtor</span>
+        </button>
+        <button class="demo-role-btn ${isDisk && !isMaster ? 'active-disk' : ''}" onclick="window.switchGlobalRole('FINANCEIRO')" title="Alternar para Mesa Financeira Disk (Backoffice)">
+          <i class="ph-shield-check"></i> <span>Financeiro Disk</span>
+        </button>
+        <button class="demo-role-btn ${isMaster ? 'active-admin' : ''}" onclick="window.switchGlobalRole('ADMINISTRADOR')" title="Alternar para Administrador Master (Acesso Total)">
+          <i class="ph-crown"></i> <span>Admin Master</span>
+        </button>
+      </div>
+
+      <span style="width: 1px; height: 22px; background: rgba(255,255,255,0.2); margin: 0 4px;"></span>
+
       <button class="demo-action-btn" onclick="window.app.simulateCardSale()" title="Simula venda de R$ 1.000 no cartão via Cielo">
         + Venda Cartão (R$ 1.000)
       </button>
@@ -1573,6 +1481,10 @@ window.switchGlobalRole = function(role) {
   }
 };
 
-document.addEventListener('DOMContentLoaded', () => {
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    window.app = new LimitlessFinancialApp();
+  });
+} else {
   window.app = new LimitlessFinancialApp();
-});
+}

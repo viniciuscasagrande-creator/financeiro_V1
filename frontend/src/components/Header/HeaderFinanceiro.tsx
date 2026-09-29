@@ -30,7 +30,7 @@ export const HeaderFinanceiro: React.FC = () => {
     <header className="navbar navbar-dark navbar-expand-lg border-bottom border-bottom-white border-opacity-10 fixed-top" style={{ background: '#16191f', minHeight: '64px', zIndex: 1020 }}>
       <div className="container-fluid px-3 d-flex flex-wrap align-items-center justify-content-between gap-3">
         
-        <!-- Logo e Identificação do Ambiente -->
+        {/* Logo e Identificação do Ambiente */}
         <div className="d-flex align-items-center gap-3">
           <a href="#" className="d-inline-flex align-items-center text-white text-decoration-none">
             <span className="fw-bold fs-5 tracking-wider text-white">DISK<span className="text-primary">INGRESSOS</span></span>
@@ -38,7 +38,7 @@ export const HeaderFinanceiro: React.FC = () => {
           </a>
         </div>
 
-        <!-- 🔎 Barra de Busca Global Transversal (Produtor, CNPJ, Evento, CPF...) -->
+        {/* 🔎 Barra de Busca Global Transversal (Produtor, CNPJ, Evento, CPF...) */}
         <div className="flex-grow-1 mx-lg-3" style={{ maxWidth: '420px' }}>
           <div className="position-relative">
             <input
@@ -55,9 +55,9 @@ export const HeaderFinanceiro: React.FC = () => {
           </div>
         </div>
 
-        <!-- Seletores de Contexto Operacional: Produtor e Evento -->
+        {/* Seletores de Contexto Operacional: Produtor e Evento */}
         <div className="d-flex align-items-center gap-2">
-          <!-- Seletor de Produtor -->
+          {/* Seletor de Produtor */}
           <div className="d-flex align-items-center gap-1 bg-dark bg-opacity-50 px-2 py-1 rounded border border-secondary border-opacity-25">
             <span className="fs-xxs text-uppercase fw-bold text-muted">Produtor:</span>
             <select
@@ -75,7 +75,7 @@ export const HeaderFinanceiro: React.FC = () => {
             </select>
           </div>
 
-          <!-- Seletor de Evento -->
+          {/* Seletor de Evento */}
           <div className="d-flex align-items-center gap-1 bg-dark bg-opacity-50 px-2 py-1 rounded border border-secondary border-opacity-25">
             <span className="fs-xxs text-uppercase fw-bold text-muted">Evento:</span>
             <select
@@ -94,7 +94,7 @@ export const HeaderFinanceiro: React.FC = () => {
           </div>
         </div>
 
-        <!-- Alternador Rápido de Perfil para a Demonstração -->
+        {/* Alternador Rápido de Perfil para a Demonstração */}
         <div className="d-flex align-items-center gap-2 ms-auto">
           <div className="dropdown">
             <button className="btn btn-xs rounded-pill d-flex align-items-center gap-1 border-0 text-white" style={{ background: 'rgba(255,255,255,0.12)', padding: '6px 12px', fontSize: '12px' }} data-bs-toggle="dropdown">
