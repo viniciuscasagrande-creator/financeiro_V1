@@ -54,7 +54,9 @@ import {
   renderDiskAssinaturas,
   renderDiskRelatorios,
   renderDiskAuditoria,
-  renderDiskConfiguracoes
+  renderDiskConfiguracoes,
+  renderDiskFornecedores,
+  renderDiskControleFinanceiro
 } from './views/disk/enterpriseViews.js';
 
 class LimitlessFinancialApp {
@@ -116,6 +118,17 @@ class LimitlessFinancialApp {
 
   exportCurrentView(format = 'excel') {
     financialStore.showToast("Exportação Iniciada", `Gerando demonstrativo analítico .${format === 'excel' ? 'xlsx' : 'pdf'}...`, "info");
+  }
+
+  setSelectedPeriod(period) {
+    const labels = {
+      'month': 'Mês Atual (Março/2026)',
+      '30d': 'Últimos 30 dias',
+      '90d': 'Últimos 90 dias',
+      'year': 'Ano de 2026',
+      'all': 'Todo o Histórico'
+    };
+    financialStore.showToast("Filtro Temporal", `Visão consolidada atualizada para: ${labels[period] || period}`, "info");
   }
 
   navigate(viewName, filterArg = null) {
@@ -1465,6 +1478,12 @@ class LimitlessFinancialApp {
         case 'diskConfiguracoes':
           viewHtml = renderDiskConfiguracoes(state, this.currentFilterArg);
           break;
+        case 'diskFornecedores':
+          viewHtml = renderDiskFornecedores(state, this.currentFilterArg);
+          break;
+        case 'diskControleFinanceiro':
+          viewHtml = renderDiskControleFinanceiro(state, this.currentFilterArg);
+          break;
         default:
           viewHtml = renderDiskDashboard(state);
       }
@@ -1627,27 +1646,38 @@ class LimitlessFinancialApp {
     const isMaster = state.currentUser.role === 'admin';
 
     if (domainBadge) {
-      domainBadge.innerText = (isDisk || isMaster) ? 'FINANCEIRO DISK' : 'PORTAL DO PRODUTOR';
-      domainBadge.className = (isDisk || isMaster) ? 'badge bg-dark text-white fw-bold fs-xxs' : 'badge bg-primary-subtle text-primary fw-bold fs-xxs';
+      domainBadge.innerText = (isDisk || isMaster) ? 'FINANCEIRO DISK' : 'FINANCEIRO DO PRODUTOR';
+      domainBadge.className = (isDisk || isMaster) ? 'badge bg-dark text-white fw-bold fs-xxs' : 'badge bg-primary text-white fw-bold fs-xxs';
     }
 
     if (eventBadge) {
       if (isDisk || isMaster) {
-        if (state.selectedProducerId === 'all') {
-          eventBadge.innerHTML = '<strong>Todos os Produtores</strong> &bull; Visão Geral Consolidada';
+        const isAllProducers = state.selectedProducerId === 'all';
+        const isAllEvents = state.selectedEventId === 'all';
+        const p = state.data.producers.find(pr => pr.id === state.selectedProducerId);
+        const pName = p ? p.name : 'Todos os Produtores';
+        const ev = state.data.events.find(e => e.id === state.selectedEventId);
+        const eName = ev ? ev.name : 'Todos os Eventos';
+
+        let levelHtml = '';
+        if (isAllProducers && isAllEvents) {
+          levelHtml = '<span class="badge bg-dark text-white fw-bold fs-xxs px-2 py-1"><i class="ph-bank me-1"></i> NÍVEL 1 &bull; DISK (Todos os Produtores)</span>';
+        } else if (!isAllProducers && isAllEvents) {
+          levelHtml = `<span class="badge bg-primary text-white fw-bold fs-xxs px-2 py-1"><i class="ph-buildings me-1"></i> NÍVEL 2 &bull; PRODUTOR (${pName})</span>`;
         } else {
-          const p = state.data.producers.find(pr => pr.id === state.selectedProducerId);
-          const pName = p ? p.name : 'Produtor';
-          if (state.selectedEventId === 'all') {
-            eventBadge.innerHTML = `<strong>${pName}</strong> &bull; Todos os Eventos`;
-          } else {
-            const ev = state.data.events.find(e => e.id === state.selectedEventId);
-            eventBadge.innerHTML = `<strong>${pName}</strong> &bull; ${ev ? ev.name : 'Evento Selecionado'}`;
-          }
+          levelHtml = `<span class="badge bg-success text-white fw-bold fs-xxs px-2 py-1"><i class="ph-ticket me-1"></i> NÍVEL 3 &bull; EVENTO (${eName})</span>`;
         }
+
+        eventBadge.innerHTML = `
+          ${levelHtml}
+          <span class="text-muted fs-xxs mx-1">&bull;</span>
+          <span class="fs-xs text-muted">Produtor selecionado: <strong class="text-dark">${isAllProducers ? 'Todos' : pName}</strong></span>
+          <span class="text-muted fs-xxs mx-1">&bull;</span>
+          <span class="fs-xs text-muted">Evento selecionado: <strong class="text-dark">${isAllEvents ? 'Todos' : eName}</strong></span>
+        `;
       } else {
         const currentEvent = state.data.events.find(e => e.id === state.selectedEventId);
-        eventBadge.innerText = currentEvent ? currentEvent.name : 'Todos os Eventos (Consolidado)';
+        eventBadge.innerHTML = `Produtor: <strong>${state.activeProducer.name}</strong> &bull; Evento: <strong>${currentEvent ? currentEvent.name : 'Festival Curitiba 2026'}</strong>`;
       }
     }
 
@@ -1665,30 +1695,32 @@ class LimitlessFinancialApp {
       'relatorios': { title: 'Relatórios Financeiros', subtitle: 'Demonstrativos gerenciais, curva de vendas e exportação oficial em PDF e Excel.' },
       'dadosBancarios': { title: 'Dados Bancários & Chaves PIX', subtitle: 'Contas bancárias PJ homologadas para recebimento dos repasses automáticos.' },
 
-      // Financeiro Disk — 23 Seções Canônicas
-      'diskDashboard': { title: '1. Dashboard Geral', subtitle: 'Painel executivo com volume transacionado, obrigações com produtores e liquidez.' },
-      'diskProdutores': { title: '2. Gestão 360 de Produtores', subtitle: 'Contas financeiras, contratos, travas, limites e histórico de todos os produtores.' },
-      'diskEventos': { title: '3. Gestão Transversal de Eventos', subtitle: 'Posição financeira individual e fechamentos de bilheteria de toda a grade Disk Ingressos.' },
-      'diskSolicitacoes': { title: '4. Central Unificada de Solicitações', subtitle: 'Acompanhamento transversal de repasses, antecipações e fechamentos de borderô.' },
-      'diskAprovacoes': { title: '5. Central de Aprovações', subtitle: 'Workflow transversal &bull; Governança Maker/Checker &bull; Assinaturas sequenciais &bull; SLA.' },
-      'diskSaldos': { title: '6. Gestão de Saldos & Custódia', subtitle: 'Consolidação de saldos disponíveis, a receber, bloqueios e reservas por produtor e evento.' },
-      'diskRepasses': { title: '7. Central de Repasses', subtitle: 'Gestão do ciclo de repasses: análise, aprovação, programação e liquidação bancária.' },
-      'diskAntecipacoes': { title: '8. Central de Antecipações', subtitle: 'Análise de elegibilidade de risco, simulações, taxas e contratação de antecipações.' },
-      'diskRecebiveis': { title: '9. Agenda de Recebíveis & Liquidações', subtitle: 'Previsão de caixa futuro por adquirente, bandeira e método de pagamento (PIX e Cartão).' },
-      'diskTaxas': { title: '10. Taxas e Regras Comerciais', subtitle: 'Configuração de MDR, spread comercial Disk (1,22%), parcelamento e vigências contratuais.' },
-      'diskGateways': { title: '11. Gateways e Adquirentes', subtitle: 'Roteamento inteligente de transações, taxas de adquirência e split de pagamentos.' },
-      'diskEstornos': { title: '12. Estornos e Chargebacks', subtitle: 'Monitoramento de cancelamentos voluntários, contestações de compras e reservas cautelares.' },
-      'diskConciliacao': { title: '13. Conciliação Contábil & Financeira', subtitle: 'Auditoria Multicamadas: Pedido × Gateway × Adquirente × Ledger × Extrato Bancário.' },
-      'diskContasPagar': { title: '14. Contas a Pagar', subtitle: 'Gestão de fornecedores, centros de custos, agendamentos de pagamentos e autorizações.' },
-      'diskContasReceber': { title: '15. Contas a Receber', subtitle: 'Previsões de recebimento, liquidação de borderôs, baixas automáticas e inadimplências.' },
-      'diskTesouraria': { title: '16. Tesouraria & CNAB 240', subtitle: 'Posição consolidada de caixa, conciliação de contas bancárias e remessa/retorno CNAB 240.' },
-      'diskLedger': { title: '17. Ledger Financeiro Contábil', subtitle: 'Livro-razão contábil de partidas dobradas imutável, conciliação e rastreabilidade total de cada centavo.' },
-      'diskBordero': { title: '18. Borderôs e Fechamentos', subtitle: 'Conferência final de bilheteria, custos, deduções, aprovação e termo de encerramento assinado.' },
-      'diskFluxoCaixa': { title: '19. Fluxo de Caixa', subtitle: 'Entradas e saídas operacionais consolidadas e projeção de liquidez futura.' },
-      'diskAssinaturas': { title: '20. Assinaturas Digitais', subtitle: 'Formalização de termos com certificados digitais ICP-Brasil (Financeiro é sempre o último signatário).' },
-      'diskRelatorios': { title: '21. Relatórios Gerenciais', subtitle: 'Demonstrativos gerenciais de vendas, conciliação, balancetes e exportações oficiais.' },
-      'diskAuditoria': { title: '22. Auditoria e Governança', subtitle: 'Log imutável de operações manuais, aprovações, alterações de taxas e acessos sensíveis.' },
-      'diskConfiguracoes': { title: '23. Configurações Financeiras', subtitle: 'Políticas de repasse, travas de antecipação, alçadas de aprovação e calendário operacional.' }
+      // Financeiro Disk — 15 Domínios Administrativos
+      'diskDashboard': { title: 'Dashboard Financeiro', subtitle: 'Painel executivo com volume transacionado, obrigações com produtores e liquidez.' },
+      'diskProdutores': { title: 'Produtores & Contas Financeiras', subtitle: 'Gestão cadastral, contas financeiras, contratos, travas e limites de todos os produtores.' },
+      'diskEventos': { title: 'Eventos & Posição Financeira', subtitle: 'Posição financeira individual e fechamentos de bilheteria de toda a grade Disk Ingressos.' },
+      'diskSolicitacoes': { title: 'Central de Solicitações', subtitle: 'Acompanhamento transversal de repasses, antecipações e fechamentos de borderô de todos os produtores.' },
+      'diskAprovacoes': { title: 'Central de Aprovações', subtitle: 'Workflow transversal &bull; Governança Maker/Checker &bull; Assinaturas sequenciais &bull; SLA.' },
+      'diskSaldos': { title: 'Saldos por Produtor & por Evento', subtitle: 'Consolidação de saldos disponíveis, a receber, bloqueios e reservas por produtor e evento.' },
+      'diskRepasses': { title: 'Repasses & Liquidação Bancária', subtitle: 'Gestão do ciclo de repasses: análise, aprovação, programação e liquidação bancária.' },
+      'diskAntecipacoes': { title: 'Antecipações de Recebíveis', subtitle: 'Análise de elegibilidade de risco, simulações, taxas e contratação de antecipações.' },
+      'diskRecebiveis': { title: 'Recebíveis & Liquidações', subtitle: 'Previsão de caixa futuro por adquirente, bandeira e método de pagamento (PIX e Cartão).' },
+      'diskTaxas': { title: 'Taxas & Regras Comerciais', subtitle: 'Configuração de MDR, spread comercial Disk (1,22%), parcelamento e vigências contratuais.' },
+      'diskGateways': { title: 'Gateways & Adquirentes', subtitle: 'Roteamento inteligente de transações, taxas de adquirência e split de pagamentos.' },
+      'diskEstornos': { title: 'Estornos & Chargebacks', subtitle: 'Monitoramento de cancelamentos voluntários, contestações de compras e reservas cautelares.' },
+      'diskConciliacao': { title: 'Conciliação Contábil & Financeira', subtitle: 'Auditoria Multicamadas: Pedido × Gateway × Adquirente × Ledger × Extrato Bancário.' },
+      'diskContasPagar': { title: 'Contas a Pagar', subtitle: 'Gestão de fornecedores, centros de custos, agendamentos de pagamentos e autorizações.' },
+      'diskContasReceber': { title: 'Contas a Receber', subtitle: 'Previsões de recebimento, liquidação de borderôs, baixas automáticas e inadimplências.' },
+      'diskTesouraria': { title: 'Tesouraria & Contas Bancárias', subtitle: 'Posição consolidada de caixa, contas bancárias, conciliação e remessa/retorno CNAB 240.' },
+      'diskLedger': { title: 'Ledger Financeiro', subtitle: 'Livro-razão contábil de partidas dobradas imutável, conciliação e rastreabilidade total de cada centavo.' },
+      'diskBordero': { title: 'Borderôs & Fechamentos', subtitle: 'Conferência final de bilheteria, custos, deduções, aprovação e termo de encerramento assinado.' },
+      'diskFluxoCaixa': { title: 'Fluxo de Caixa Realizado & Projetado', subtitle: 'Entradas e saídas operacionais consolidadas e projeção de liquidez futura.' },
+      'diskAssinaturas': { title: 'Assinaturas Digitais', subtitle: 'Formalização de termos com certificados digitais ICP-Brasil (Financeiro é sempre o último signatário).' },
+      'diskRelatorios': { title: 'Relatórios Financeiros Consolidados', subtitle: 'Demonstrativos gerenciais de vendas, conciliação, balancetes e exportações oficiais.' },
+      'diskAuditoria': { title: 'Auditoria & Governança', subtitle: 'Log imutável de operações manuais, aprovações, alterações de taxas e acessos sensíveis.' },
+      'diskConfiguracoes': { title: 'Configurações Administrativas', subtitle: 'Políticas de repasse, travas de antecipação, alçadas de aprovação e calendário operacional.' },
+      'diskFornecedores': { title: 'Gestão de Fornecedores & Contratos', subtitle: 'Cadastro, contratos, documentos, cotações, pedidos, parcelas e vencimentos.' },
+      'diskControleFinanceiro': { title: 'Controle Financeiro, Orçamentos & DRE', subtitle: 'Centros de custos, orçamentos, fluxo de caixa, projeções de caixa e DRE gerencial.' }
     };
 
     const currentInfo = titlesMap[state.currentView] || { title: 'Módulo Financeiro', subtitle: 'Sistema integrado de gestão financeira Disk Ingressos.' };
@@ -1699,9 +1731,9 @@ class LimitlessFinancialApp {
     const toolbar = document.getElementById('header-action-toolbar');
     if (toolbar) {
       if (isDisk || isMaster) {
-        let producerOptions = `<option value="all" ${state.selectedProducerId === 'all' ? 'selected' : ''}>Produtor: Todos os Produtores ▼</option>`;
+        let producerOptions = `<option value="all" ${state.selectedProducerId === 'all' ? 'selected' : ''}>Buscar produtor... (Todos) ▼</option>`;
         state.data.producers.forEach(p => {
-          producerOptions += `<option value="${p.id}" ${state.selectedProducerId === p.id ? 'selected' : ''}>${p.name}</option>`;
+          producerOptions += `<option value="${p.id}" ${state.selectedProducerId === p.id ? 'selected' : ''}>Produtor: ${p.name}</option>`;
         });
 
         let availableEvents = state.data.events;
@@ -1709,7 +1741,7 @@ class LimitlessFinancialApp {
           availableEvents = availableEvents.filter(e => e.producerId === state.selectedProducerId);
         }
 
-        let eventOptions = `<option value="all" ${state.selectedEventId === 'all' ? 'selected' : ''}>Evento: Todos os Eventos ▼</option>`;
+        let eventOptions = `<option value="all" ${state.selectedEventId === 'all' ? 'selected' : ''}>Todos os eventos ▼</option>`;
         availableEvents.forEach(e => {
           eventOptions += `<option value="${e.id}" ${state.selectedEventId === e.id ? 'selected' : ''}>${e.name}</option>`;
         });
@@ -1723,15 +1755,24 @@ class LimitlessFinancialApp {
             </select>
           </div>
           <div class="event-selector-box d-flex align-items-center">
-            <select class="form-select form-select-sm fw-semibold shadow-sm" id="globalEventSelect" style="min-width: 220px;" onchange="window.app && window.app.setSelectedEvent(this.value)">
+            <select class="form-select form-select-sm fw-semibold shadow-sm" id="globalEventSelect" style="min-width: 210px;" onchange="window.app && window.app.setSelectedEvent(this.value)">
               ${eventOptions}
+            </select>
+          </div>
+          <div class="period-selector-box d-flex align-items-center">
+            <select class="form-select form-select-sm fw-semibold shadow-sm" id="globalPeriodSelect" style="min-width: 165px;" onchange="window.app && window.app.setSelectedPeriod(this.value)">
+              <option value="month" selected>Período: Mês Atual ▼</option>
+              <option value="30d">Período: Últimos 30 dias ▼</option>
+              <option value="90d">Período: Últimos 90 dias ▼</option>
+              <option value="year">Período: Ano 2026 ▼</option>
+              <option value="all">Período: Todo o Histórico ▼</option>
             </select>
           </div>
           <button class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1 shadow-sm" onclick="window.app && window.app.refreshData()" title="Sincronizar">
             <i class="ph-arrows-counter-clockwise"></i> <span class="d-none d-md-inline">Atualizar</span>
           </button>
           <button class="btn btn-sm btn-warning text-dark fw-bold d-flex align-items-center gap-1 shadow-sm" onclick="window.app && window.app.navigate('diskAprovacoes')">
-            <i class="ph-bell fs-5"></i> <span>Solicitações e Aprovações</span>
+            <i class="ph-bell fs-5"></i> <span>Central de Aprovações</span>
             <span class="badge rounded-pill bg-danger text-white fs-xxs ms-1">${pendingCount}</span>
           </button>
         `;

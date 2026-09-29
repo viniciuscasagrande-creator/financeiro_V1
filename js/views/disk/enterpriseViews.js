@@ -688,3 +688,177 @@ export function renderDiskConfiguracoes(state, filter = 'regras') {
     </div>
   `;
 }
+
+// FORNECEDORES (Cadastro, Contratos, Documentos, Cotações, Pedidos, Recebimentos, Parcelas, Vencimentos)
+export function renderDiskFornecedores(state, filter = 'cadastro') {
+  const fornecedores = [
+    { id: 'FORN-001', name: 'Master Security Segurança Ltda.', cnpj: '12.345.678/0001-90', category: 'Segurança Operacional', contract: 'CTR-2026-08', value: 45000, due: '15/10/2026', status: 'Ativo' },
+    { id: 'FORN-002', name: 'Stage & Light Sonorização Profissional', cnpj: '98.765.432/0001-11', category: 'Infraestrutura de Palco', contract: 'CTR-2026-12', value: 82000, due: '20/10/2026', status: 'Ativo' },
+    { id: 'FORN-003', name: 'Clean & Eco Serviços de Limpeza', cnpj: '44.555.666/0001-22', category: 'Higienização e Facilities', contract: 'CTR-2026-19', value: 18500, due: '25/10/2026', status: 'Em Análise' },
+    { id: 'FORN-004', name: 'Ticketing Cloud Infraestrutura AWS', cnpj: '33.222.111/0001-33', category: 'Tecnologia / Cloud', contract: 'CTR-2026-01', value: 34000, due: '05/11/2026', status: 'Ativo' }
+  ];
+
+  return `
+    ${createHeader('Gestão de Fornecedores & Contratos', 'Homologação de prestadores, gestão contratual, pedidos, parcelas e vencimentos.', filter)}
+    <div class="limitless-content">
+      <div class="kpi-grid">
+        <div class="kpi-card highlight">
+          <div class="kpi-header"><span class="kpi-title">Fornecedores Homologados</span></div>
+          <div class="kpi-value">${fornecedores.length} PJ</div>
+          <div class="kpi-subtext"><span>Cadastros ativos e validados</span></div>
+        </div>
+        <div class="kpi-card success-accent">
+          <div class="kpi-header"><span class="kpi-title">Contratos Vigentes</span></div>
+          <div class="kpi-value">R$ 179.500,00</div>
+          <div class="kpi-subtext"><span>Compromissos acordados</span></div>
+        </div>
+        <div class="kpi-card warning-accent">
+          <div class="kpi-header"><span class="kpi-title">Vencimentos do Mês</span></div>
+          <div class="kpi-value">R$ 145.500,00</div>
+          <div class="kpi-subtext"><span>Previsto na Tesouraria</span></div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-header"><span class="kpi-title">Cotações Abertas</span></div>
+          <div class="kpi-value">3 Pedidos</div>
+          <div class="kpi-subtext"><span>Em cotação com compras</span></div>
+        </div>
+      </div>
+
+      <div class="card-panel">
+        <div class="card-header-bar">
+          <div class="card-title-group">
+            <h2>Fornecedores &amp; Compromissos Contratuais</h2>
+            <p class="card-subtitle">Filtro ativo: ${filter.toUpperCase()}</p>
+          </div>
+          <div class="d-flex gap-2">
+            <span class="badge bg-primary text-white">4 Fornecedores Cadastrados</span>
+          </div>
+        </div>
+        <div class="card-body card-body-no-padding">
+          <div class="table-responsive">
+            <table class="limitless-table">
+              <thead>
+                <tr>
+                  <th>Código</th>
+                  <th>Razão Social / Fornecedor</th>
+                  <th>CNPJ</th>
+                  <th>Categoria</th>
+                  <th>Contrato</th>
+                  <th style="text-align: right;">Valor</th>
+                  <th>Vencimento</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${fornecedores.map(f => `
+                  <tr>
+                    <td><code>${f.id}</code></td>
+                    <td class="fw-bold text-dark">${f.name}</td>
+                    <td class="text-muted fs-xs">${f.cnpj}</td>
+                    <td><span class="badge bg-light text-dark">${f.category}</span></td>
+                    <td><code>${f.contract}</code></td>
+                    <td style="text-align: right;" class="fw-bold">${formatCurrency(f.value)}</td>
+                    <td>${f.due}</td>
+                    <td><span class="badge ${f.status === 'Ativo' ? 'bg-success' : 'bg-warning text-dark'}">${f.status}</span></td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// CONTROLE FINANCEIRO (Centros de Custos, Orçamentos, Fluxo de Caixa, Projeção de Caixa, DRE Gerencial)
+export function renderDiskControleFinanceiro(state, filter = 'centros_custos') {
+  return `
+    ${createHeader('Controle Financeiro, Orçamentos & DRE', 'Controladoria executiva, centros de custos, projeções de fluxo e DRE gerencial.', filter)}
+    <div class="limitless-content">
+      <div class="kpi-grid">
+        <div class="kpi-card highlight">
+          <div class="kpi-header"><span class="kpi-title">Receita Bruta Gerencial</span></div>
+          <div class="kpi-value">R$ 1.540.000,00</div>
+          <div class="kpi-subtext"><span>Volume consolidado apurado</span></div>
+        </div>
+        <div class="kpi-card success-accent">
+          <div class="kpi-header"><span class="kpi-title">Spread & Taxas Disk</span></div>
+          <div class="kpi-value" style="color: #059669;">R$ 154.000,00</div>
+          <div class="kpi-subtext"><span>Take rate médio de 10%</span></div>
+        </div>
+        <div class="kpi-card warning-accent">
+          <div class="kpi-header"><span class="kpi-title">Custos de Processamento</span></div>
+          <div class="kpi-value" style="color: #d97706;">R$ 38.500,00</div>
+          <div class="kpi-subtext"><span>Adquirência, gateways e antifraude</span></div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-header"><span class="kpi-title">Margem de Contribuição</span></div>
+          <div class="kpi-value" style="color: #2563eb;">R$ 115.500,00</div>
+          <div class="kpi-subtext"><span>75% de margem operacional</span></div>
+        </div>
+      </div>
+
+      <div class="card-panel">
+        <div class="card-header-bar">
+          <div class="card-title-group">
+            <h2>Demonstrativo de Resultado do Exercício (DRE Gerencial)</h2>
+            <p class="card-subtitle">Visão consolidada da operação Disk Ingressos • Competência 2026</p>
+          </div>
+        </div>
+        <div class="card-body card-body-no-padding">
+          <div class="table-responsive">
+            <table class="limitless-table">
+              <thead>
+                <tr>
+                  <th>Linha do DRE Gerencial</th>
+                  <th style="text-align: right;">Valor Acumulado</th>
+                  <th style="text-align: right;">% da Receita</th>
+                  <th>Comentário / Detalhe</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr class="fw-bold" style="background: #f8fafc;">
+                  <td>(+) Receita Bruta de Serviços (Taxas de Conveniência)</td>
+                  <td style="text-align: right;" class="text-success">R$ 154.000,00</td>
+                  <td style="text-align: right;">100.0%</td>
+                  <td>Taxas contratuais sobre bilheteria total de R$ 1.54M</td>
+                </tr>
+                <tr>
+                  <td class="ps-4">(-) Custos de Adquirência (MDR Médio 1,77%)</td>
+                  <td style="text-align: right;" class="text-danger">-R$ 27.258,00</td>
+                  <td style="text-align: right;">-17.7%</td>
+                  <td>Cielo, Stone, Rede e Mercado Pago</td>
+                </tr>
+                <tr>
+                  <td class="ps-4">(-) Custos Antifraude &amp; Gateway</td>
+                  <td style="text-align: right;" class="text-danger">-R$ 11.242,00</td>
+                  <td style="text-align: right;">-7.3%</td>
+                  <td>R$ 0,35 por transação analisada</td>
+                </tr>
+                <tr class="fw-bold" style="background: #f0fdf4;">
+                  <td>(=) Margem Operacional Líquida Disk</td>
+                  <td style="text-align: right;" class="text-success fs-base">R$ 115.500,00</td>
+                  <td style="text-align: right;" class="text-success">75.0%</td>
+                  <td>Spread operacional retido pela Disk Ingressos</td>
+                </tr>
+                <tr>
+                  <td class="ps-4">(+) Spread de Antecipações Financeiras</td>
+                  <td style="text-align: right;" class="text-primary">+R$ 18.420,00</td>
+                  <td style="text-align: right;">+12.0%</td>
+                  <td>Spread de 1,22% sobre R$ 150k antecipados</td>
+                </tr>
+                <tr class="fw-bold" style="background: #eff6ff;">
+                  <td>(=) EBITDA Financeiro Consolidado</td>
+                  <td style="text-align: right;" class="text-primary fs-5">R$ 133.920,00</td>
+                  <td style="text-align: right;" class="text-primary">87.0%</td>
+                  <td>Resultado líquido operacional da operação financeira</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
