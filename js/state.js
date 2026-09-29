@@ -6,8 +6,13 @@ import { getFreshDatabase } from './mockData.js';
 
 class CoreFinanceiroStore {
   constructor() {
-    this.data = getFreshDatabase();
-    this.enrichApprovalQueueWithAuditAndSignatures();
+    this.storageKey = 'disk-financeiro-v1-p12';
+    this.data = this.loadPersistedData() || getFreshDatabase();
+    if (!this.data.__p12Enriched) {
+      this.enrichApprovalQueueWithAuditAndSignatures();
+      this.data.__p12Enriched = true;
+    }
+    this.ensureOperationModel();
 
     this.state = {
       isLoggedIn: true,
@@ -102,6 +107,55 @@ class CoreFinanceiroStore {
     });
   }
 
+  loadPersistedData() {
+    try {
+      if (typeof localStorage === 'undefined') return null;
+      const raw = localStorage.getItem(this.storageKey);
+      return raw ? JSON.parse(raw) : null;
+    } catch (_) { return null; }
+  }
+
+  persist() {
+    try {
+      if (typeof localStorage !== 'undefined') localStorage.setItem(this.storageKey, JSON.stringify(this.data));
+    } catch (_) {}
+  }
+
+  ensureOperationModel() {
+    this.data.operationEvents = this.data.operationEvents || [];
+    this.data.approvalQueue = (this.data.approvalQueue || []).map(item => ({
+      ...item,
+      protocol: item.protocol || item.id,
+      workflowId: item.workflowId || `WF-${item.id}`,
+      updatedAt: item.updatedAt || item.requestDate || new Date().toLocaleString('pt-BR')
+    }));
+  }
+
+  recordOperationEvent(item, action, details = '', module = 'Core Financeiro') {
+    if (!item) return;
+    const event = {
+      id: `EVT-${Date.now()}-${Math.floor(Math.random()*1000)}`,
+      workflowId: item.workflowId || `WF-${item.id}`,
+      protocol: item.protocol || item.id,
+      producerId: item.producerId,
+      eventId: item.eventId,
+      module,
+      action,
+      details,
+      actor: this.state?.currentUser?.name || 'Sistema Disk',
+      timestamp: new Date().toLocaleString('pt-BR')
+    };
+    item.updatedAt = event.timestamp;
+    this.data.operationEvents.unshift(event);
+    item.auditTrail = item.auditTrail || [];
+    item.auditTrail.push({ timestamp: event.timestamp, actor: event.actor, action, details });
+    this.persist();
+  }
+
+  findOperation(protocol) {
+    return this.data.approvalQueue.find(i => i.id === protocol || i.protocol === protocol || i.workflowId === protocol);
+  }
+
   getState() {
     const isAllProducers = this.state.selectedProducerId === 'all' || !this.state.selectedProducerId;
     let activeProd = null;
@@ -175,6 +229,7 @@ class CoreFinanceiroStore {
   }
 
   notify() {
+    this.persist();
     const currentState = this.getState();
     this.listeners.forEach(listener => listener(currentState));
   }
@@ -300,12 +355,24 @@ class CoreFinanceiroStore {
     const bank = producer.bankAccounts.find(b => b.id === bankAccountId) || producer.bankAccounts[0];
     const numericAmount = parseFloat(amount);
 
+    if (this.state.currentUser.role !== 'producer') {
+      alert("Somente o Produtor pode criar esta solicitação no Portal do Produtor.");
+      return null;
+    }
+    if (!event || event.producerId !== producer.id) {
+      alert("Evento inválido para este produtor.");
+      return null;
+    }
     if (!numericAmount || numericAmount <= 0) {
       alert("Informe um valor válido para o repasse.");
       return null;
     }
     if (numericAmount > event.availableBalance) {
       alert(`Saldo insuficiente: O valor solicitado (${numericAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}) excede o saldo disponível de ${event.name} (${event.availableBalance.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}).`);
+      return null;
+    }
+    if (!bank) {
+      alert("Cadastre ou selecione uma conta bancária válida.");
       return null;
     }
 
@@ -315,6 +382,8 @@ class CoreFinanceiroStore {
 
     const newApprovalItem = {
       id: payoutId,
+      protocol: payoutId,
+      workflowId: `WF-${payoutId}`,
       type: "Repasse",
       producerId: producer.id,
       producerName: producer.name,
@@ -373,12 +442,17 @@ class CoreFinanceiroStore {
       "warning"
     );
 
+    this.recordOperationEvent(newApprovalItem, 'Solicitação enviada', 'Saldo reservado e encaminhado ao Financeiro Disk', 'Ambiente Produtor');
     this.notify();
     return newApprovalItem;
   }
 
   // 2. Financeiro Disk: Aprova a Operação (Gera Documento e Aguarda Assinatura do Produtor)
   approveOperationByDisk(requestId) {
+    if (!['disk', 'admin'].includes(this.state.currentUser.role)) {
+      alert("Aprovação permitida somente ao Financeiro Disk.");
+      return;
+    }
     const item = this.data.approvalQueue.find(a => a.id === requestId);
     if (!item) return;
 
@@ -398,6 +472,8 @@ class CoreFinanceiroStore {
       { timestamp: `${nowTime}`, actor: "Sistema de Formalização", action: `Gerou documento ${item.documentId}`, details: "Aguardando assinatura digital do Produtor" }
     );
 
+    this.recordOperationEvent(item, 'Operação aprovada', 'Documento liberado para assinatura do Produtor', 'Central de Aprovações');
+
     this.showToast(
       "✓ Solicitação Aprovada pelo Financeiro",
       `Documento ${item.documentId} gerado. Aguardando assinatura digital do Produtor para posterior liberação da Disk.`,
@@ -409,6 +485,14 @@ class CoreFinanceiroStore {
 
   // 3. Financeiro Disk: Rejeita a Operação Formalmente (com motivo obrigatório e devolução automática da reserva)
   rejectOperationByDisk(requestId, { reasonCategory, observation }) {
+    if (!['disk', 'admin'].includes(this.state.currentUser.role)) {
+      alert("Rejeição permitida somente ao Financeiro Disk.");
+      return;
+    }
+    if (!reasonCategory || !observation?.trim()) {
+      alert("Informe o motivo e a observação para rejeitar a operação.");
+      return;
+    }
     const item = this.data.approvalQueue.find(a => a.id === requestId);
     if (!item) return;
 
@@ -460,6 +544,8 @@ class CoreFinanceiroStore {
       { timestamp: `${nowTime}`, actor: `${operator} (Financeiro Disk)`, action: "Rejeitou a solicitação", details: `Motivo: ${reasonCategory} — Obs: ${observation} (Reserva estornada com sucesso)` }
     );
 
+    this.recordOperationEvent(item, 'Operação rejeitada', `${reasonCategory}: ${observation}`, 'Central de Aprovações');
+
     this.showToast(
       "✕ Solicitação Rejeitada",
       `A solicitação ${item.id} foi rejeitada (${reasonCategory}). O produtor foi notificado e o saldo reservado foi restabelecido.`,
@@ -471,6 +557,10 @@ class CoreFinanceiroStore {
 
   // 4. Produtor Assina Digitalmente em Primeiro Lugar
   signByProducer(requestId) {
+    if (this.state.currentUser.role !== 'producer') {
+      alert("A assinatura do Produtor deve ocorrer no ambiente do Produtor.");
+      return;
+    }
     const item = this.data.approvalQueue.find(a => a.id === requestId);
     if (!item) return;
 
@@ -497,6 +587,8 @@ class CoreFinanceiroStore {
       { timestamp: `${nowTime}`, actor: "Sistema de Assinaturas", action: "Notificou o Financeiro Disk para assinatura final", details: "Status: Aguardando assinatura do Financeiro" }
     );
 
+    this.recordOperationEvent(item, 'Assinatura do Produtor concluída', `Documento ${item.documentId}`, 'Assinaturas');
+
     this.showToast(
       "✍️ Documento Assinado pelo Produtor",
       `O documento ${item.documentId} foi assinado por ${signer}. Encaminhado para a assinatura final do Financeiro Disk.`,
@@ -512,6 +604,10 @@ class CoreFinanceiroStore {
 
   // 5. Financeiro Disk Assina (SEMPRE POR ÚLTIMO) e Formaliza
   signByDisk(requestId) {
+    if (!['disk', 'admin'].includes(this.state.currentUser.role)) {
+      alert("Assinatura final permitida somente ao Financeiro Disk.");
+      return;
+    }
     const item = this.data.approvalQueue.find(a => a.id === requestId);
     if (!item) return;
 
@@ -537,6 +633,8 @@ class CoreFinanceiroStore {
       { timestamp: `${nowTime}`, actor: "Sistema de Formalização", action: "Documento Formalizado e Concluído", details: "Operação liberada para transferência financeira" }
     );
 
+    this.recordOperationEvent(item, 'Assinatura final da Disk concluída', `Documento ${item.documentId}`, 'Assinaturas');
+
     this.showToast(
       "📜 Documento Formalizado com Sucesso",
       `Ambas as partes assinaram o documento ${item.documentId}. Liberado para pagamento na Tesouraria.`,
@@ -552,6 +650,10 @@ class CoreFinanceiroStore {
 
   // 6. Liberação Financeira / Transferência (PIX / TED / CNAB) → Ledger → Conciliação → Concluído / Pago
   executeFinalTransfer(requestId) {
+    if (!['disk', 'admin'].includes(this.state.currentUser.role)) {
+      alert("Liquidação permitida somente ao Financeiro Disk.");
+      return;
+    }
     const item = this.data.approvalQueue.find(a => a.id === requestId);
     if (!item) return;
 
@@ -632,6 +734,13 @@ class CoreFinanceiroStore {
       { timestamp: `${nowTime}`, actor: "Conciliação Bancária", action: "Conciliação confirmada em D-0", details: "Status: PAGO / CONCLUÍDO" }
     );
 
+    this.recordOperationEvent(
+      item,
+      'Pagamento liquidado e conciliado',
+      `Autenticação bancária: ${item.authCode} | Ledger: ${ledgerId} | Valor: R$ ${finalAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+      'Tesouraria / Conciliação'
+    );
+
     this.showToast(
       "💰 Transferência Executada & Conciliada",
       `${item.id}: R$ ${finalAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} creditado na conta de ${item.producerName}.`,
@@ -657,6 +766,8 @@ class CoreFinanceiroStore {
 
     const newApprovalItem = {
       id: antId,
+      protocol: antId,
+      workflowId: `WF-${antId}`,
       type: "Antecipação",
       producerId: producer.id,
       producerName: producer.name,
@@ -733,6 +844,7 @@ class CoreFinanceiroStore {
       "warning"
     );
 
+    this.recordOperationEvent(newApprovalItem, 'Antecipação solicitada', `Bruto R$ ${numericAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} com reserva de recebíveis futuros`, 'Antecipações');
     this.notify();
     return newApprovalItem;
   }
@@ -751,6 +863,8 @@ class CoreFinanceiroStore {
 
     const newApprovalItem = {
       id: borderoId,
+      protocol: borderoId,
+      workflowId: `WF-${borderoId}`,
       type: "Borderô",
       producerId: producer.id,
       producerName: producer.name,
@@ -801,6 +915,7 @@ class CoreFinanceiroStore {
       "info"
     );
 
+    this.recordOperationEvent(newApprovalItem, 'Fechamento de borderô submetido', `Arrecadação R$ ${bordero.summary.grossRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} | Saldo R$ ${remainingBalance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 'Borderôs');
     this.notify();
     return newApprovalItem;
   }
@@ -933,8 +1048,11 @@ class CoreFinanceiroStore {
   }
 
   resetDemoData() {
+    try { if (typeof localStorage !== 'undefined') localStorage.removeItem(this.storageKey); } catch (_) {}
     this.data = getFreshDatabase();
     this.enrichApprovalQueueWithAuditAndSignatures();
+    this.data.__p12Enriched = true;
+    this.ensureOperationModel();
     this.state.selectedProducerId = 'prod-abc';
     this.state.selectedEventId = 'all';
     this.showToast(

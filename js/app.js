@@ -51,6 +51,7 @@ import { renderDiskFechamentos } from './views/disk/diskFechamentos.js';
 import { renderDiskControladoria } from './views/disk/diskControladoria.js';
 import { renderDiskAssinaturasIntegracoes } from './views/disk/diskAssinaturasIntegracoes.js';
 import { renderDiskGovernanca } from './views/disk/diskGovernanca.js';
+import { renderDiskCentralTrabalho } from './views/disk/diskCentralTrabalho.js';
 import {
   renderDiskEventos,
   renderDiskSaldos,
@@ -1582,6 +1583,26 @@ class LimitlessFinancialApp {
         case 'diskProjecoes':
           viewHtml = renderDiskControladoria(state, 'projecoes');
           break;
+        case 'diskCentralTrabalho':
+        case 'diskTrabalho_central':
+        case 'diskTrabalho_visaoGeral':
+          viewHtml = renderDiskCentralTrabalho(state, 'central');
+          break;
+        case 'diskTrabalho_alertas':
+          viewHtml = renderDiskCentralTrabalho(state, 'alertas');
+          break;
+        case 'diskTrabalho_sla':
+          viewHtml = renderDiskCentralTrabalho(state, 'sla');
+          break;
+        case 'diskTrabalho_pendencias':
+          viewHtml = renderDiskCentralTrabalho(state, 'pendencias');
+          break;
+        case 'diskTrabalho_agenda':
+          viewHtml = renderDiskCentralTrabalho(state, 'agenda');
+          break;
+        case 'diskTrabalho_notificacoes':
+          viewHtml = renderDiskCentralTrabalho(state, 'notificacoes');
+          break;
         default:
           viewHtml = renderDiskDashboard(state);
       }
@@ -1857,7 +1878,15 @@ class LimitlessFinancialApp {
       'diskOrcamentos': { title: 'Controle Orçamentário', subtitle: 'Acompanhamento de orçamentos previstos, realizados, comprometidos e governança de versões.' },
       'diskDre': { title: 'DRE Gerencial', subtitle: 'Demonstrativo de Resultado do Exercício gerencial da Disk (Receitas, Adquirência, Operação e Margem).' },
       'diskRentabilidade': { title: 'Rentabilidade por Evento & Produtor', subtitle: 'Margem de contribuição, resultado líquido e composição de custos por produção.' },
-      'diskProjecoes': { title: 'Projeções de Caixa', subtitle: 'Horizontes de liquidez em 7, 15, 30 e 60 dias (cenários não alteram o Ledger).' }
+      'diskProjecoes': { title: 'Projeções de Caixa', subtitle: 'Horizontes de liquidez em 7, 15, 30 e 60 dias (cenários não alteram o Ledger).' },
+      'diskCentralTrabalho': { title: 'Central de Trabalho Financeiro', subtitle: 'Painel operacional prioritário, fila de atividades, monitoramento de SLA e alertas do dia.' },
+      'diskTrabalho_central': { title: 'Central de Trabalho Financeiro', subtitle: 'Painel operacional prioritário, fila de atividades, monitoramento de SLA e alertas do dia.' },
+      'diskTrabalho_visaoGeral': { title: 'Central de Trabalho • Visão Geral', subtitle: 'Painel operacional prioritário, fila de atividades, monitoramento de SLA e alertas do dia.' },
+      'diskTrabalho_alertas': { title: 'Alertas Financeiros Críticos', subtitle: 'Notificações ativas de risco, divergências e ações imediatas da mesa financeira.' },
+      'diskTrabalho_sla': { title: 'SLA & Prazos Operacionais', subtitle: 'Metas e tempos de resposta de repasses, antecipações e fechamentos de borderô.' },
+      'diskTrabalho_pendencias': { title: 'Pendências Financeiras', subtitle: 'Fila consolidada de itens aguardando ação, aprovação, assinatura ou conciliação.' },
+      'diskTrabalho_agenda': { title: 'Agenda Operacional', subtitle: 'Compromissos, vencimentos de lotes bancários e cronograma financeiro diário.' },
+      'diskTrabalho_notificacoes': { title: 'Notificações Operacionais', subtitle: 'Histórico de eventos, avisos e notificações da mesa financeira.' }
     };
 
     const currentInfo = titlesMap[state.currentView] || { title: 'Módulo Financeiro', subtitle: 'Sistema integrado de gestão financeira Disk Ingressos.' };
@@ -2158,7 +2187,8 @@ class LimitlessFinancialApp {
       'ver-fluxo-caixa': 'diskFluxoCaixa',
       'ver-pix': 'diskPix',
       'ver-cnab': 'diskCnab',
-      'ver-pagamentos-lote': 'diskPagamentosLote'
+      'ver-pagamentos-lote': 'diskPagamentosLote',
+      'abrir-central-trabalho': 'diskCentralTrabalho'
     };
 
     const labels = {
@@ -2180,12 +2210,15 @@ class LimitlessFinancialApp {
       'executar-pagamento': `Ordem de pagamento ${id || ''} autorizada e enviada para liquidação PIX/CNAB.`,
       'conciliar-movimento': `Lançamento ${id || ''} conciliado com sucesso no Ledger e extrato bancário.`,
       'ajustar-ledger': 'Solicitação de ajuste contábil enviada para validação da Controladoria.',
-      'exportar-dados': 'Relatório analítico exportado com sucesso em formato CSV.'
+      'exportar-dados': 'Relatório analítico exportado com sucesso em formato CSV.',
+      'atualizar-central': 'Fila da Central de Trabalho atualizada com sucesso.'
     };
 
     // Ações operacionais que alteram o estado do sistema e refletem em tempo real
     if (action === 'aprovar-operacao' && id) {
-      if (typeof financialStore.approveRequest === 'function') {
+      if (typeof financialStore.approveOperationByDisk === 'function') {
+        financialStore.approveOperationByDisk(id);
+      } else if (typeof financialStore.approveRequest === 'function') {
         financialStore.approveRequest(id, 'Aprovado via Governança/Ações Financeiras');
       }
       financialStore.showToast('Operação Aprovada', labels[action] || `Operação ${id} aprovada.`, 'success');
@@ -2194,7 +2227,12 @@ class LimitlessFinancialApp {
     }
 
     if (action === 'rejeitar-operacao' && id) {
-      if (typeof financialStore.rejectRequest === 'function') {
+      if (typeof financialStore.rejectOperationByDisk === 'function') {
+        financialStore.rejectOperationByDisk(id, {
+          reasonCategory: 'Política de Risco',
+          observation: 'Rejeitado por política de governança e alçadas'
+        });
+      } else if (typeof financialStore.rejectRequest === 'function') {
         financialStore.rejectRequest(id, 'Rejeitado por política de risco');
       }
       financialStore.showToast('Operação Rejeitada', labels[action] || `Operação ${id} rejeitada.`, 'warning');
@@ -2234,6 +2272,101 @@ class LimitlessFinancialApp {
       this.navigate(routes[action]);
     }
   }
+
+  // ==========================================================================
+  // BARRAMENTO FUNCIONAL DE AÇÕES INTEGRADAS (PACOTE 11 / PACOTE 12)
+  // Comunicação transversal: Ação → Feedback → Módulo de Destino → Atualização
+  // ==========================================================================
+  integratedAction(action, options = {}) {
+    const opts = typeof options === 'string' || typeof options === 'number' ? { id: String(options) } : (options || {});
+    const id = opts.id || opts.protocol || '';
+
+    const actionRoutes = {
+      'novo-repasse': { route: 'repasses', msg: 'Formulário de solicitação de repasse iniciado.', type: 'info' },
+      'nova-antecipacao': { route: 'antecipacoes', msg: 'Simulador de antecipação de recebíveis aberto.', type: 'info' },
+      'abrir-aprovacoes': { route: 'diskAprovacoes', msg: 'Central de Aprovações carregada.', type: 'info' },
+      'abrir-solicitacoes': { route: 'diskSolicitacoes', msg: 'Central de Solicitações carregada.', type: 'info' },
+      'abrir-assinaturas': { route: 'diskAssinaturas', msg: 'Central de Assinaturas digitais carregada.', type: 'info' },
+      'abrir-tesouraria': { route: 'diskTesouraria', msg: 'Módulo de Tesouraria e Contas Bancárias aberto.', type: 'info' },
+      'abrir-conciliacao': { route: 'diskConciliacao', msg: 'Central de Conciliação Financeira carregada.', type: 'info' },
+      'abrir-ledger': { route: 'diskLedger', msg: 'Livro-Razão Contábil (Ledger) carregado.', type: 'info' },
+      'abrir-pix': { route: 'diskPix', msg: 'Módulo de transferências PIX carregado.', type: 'info' },
+      'abrir-cnab': { route: 'diskCnab', msg: 'Processamento de Remessas e Retornos CNAB aberto.', type: 'info' },
+      'abrir-autentique': { route: 'diskIntegracao_autentique', msg: 'Painel de integração Autentique carregado.', type: 'info' },
+      'abrir-contaazul': { route: 'diskIntegracao_contaazul', msg: 'Painel de sincronização Conta Azul carregado.', type: 'info' },
+      'abrir-governanca': { route: 'diskGovernanca', msg: 'Painel de Governança e Alçadas carregado.', type: 'info' },
+      'abrir-central-trabalho': { route: 'diskCentralTrabalho', msg: 'Central de Trabalho Financeiro aberta.', type: 'info' },
+      'aprovar-operacao': { route: 'diskAprovacoes', msg: `Operação ${id} aprovada com sucesso.`, type: 'success' },
+      'rejeitar-operacao': { route: 'diskAprovacoes', msg: `Operação ${id} rejeitada formalmente.`, type: 'warning' },
+      'assinar-termo': { route: 'diskAssinaturas', msg: `Termo vinculado à operação ${id} assinado.`, type: 'success' },
+      'liquidar-operacao': { route: 'diskPix', msg: `Ordem de pagamento ${id} liquidada na Tesouraria.`, type: 'success' },
+      'conciliar-operacao': { route: 'diskConciliacao', msg: `Operação ${id} conciliada no Ledger.`, type: 'success' },
+      'sincronizar-erp': { route: 'diskIntegracao_sincronizacoes', msg: 'Sincronização com ERP enfileirada.', type: 'info' },
+      'gerar-cnab': { route: 'diskCnab', msg: 'Arquivo de remessa CNAB 240 gerado com sucesso.', type: 'success' },
+      'definir-conta-padrao': { route: 'dadosBancarios', msg: 'Conta bancária homologada definida como padrão.', type: 'success' },
+      'exportar-relatorio': { route: null, msg: 'Relatório financeiro exportado com sucesso.', type: 'success' }
+    };
+
+    const targetDef = actionRoutes[action];
+
+    if (action === 'novo-repasse') {
+      if (typeof this.openPayoutModal === 'function') {
+        this.openPayoutModal();
+      } else {
+        this.navigate('repasses');
+      }
+      return;
+    }
+
+    if (action === 'aprovar-operacao' && id) {
+      if (typeof financialStore.approveOperationByDisk === 'function') {
+        financialStore.approveOperationByDisk(id);
+      } else if (typeof financialStore.approveRequest === 'function') {
+        financialStore.approveRequest(id, opts.note || 'Aprovado via Ação Integrada');
+      }
+      this.navigate('diskAprovacoes');
+      return;
+    }
+
+    if (action === 'rejeitar-operacao' && id) {
+      if (typeof financialStore.rejectOperationByDisk === 'function') {
+        financialStore.rejectOperationByDisk(id, {
+          reasonCategory: opts.reasonCategory || 'Divergência Documental / Risco',
+          observation: opts.observation || opts.reason || 'Rejeição formal solicitada via fluxo operacional.'
+        });
+      } else if (typeof financialStore.rejectRequest === 'function') {
+        financialStore.rejectRequest(id, opts.reason || 'Rejeição via Ação Integrada');
+      }
+      this.navigate('diskAprovacoes');
+      return;
+    }
+
+    if (action === 'assinar-termo' && id) {
+      const state = financialStore.getState();
+      if (state.currentUser.role === 'producer') {
+        financialStore.signByProducer(id);
+      } else {
+        financialStore.signByDisk(id);
+      }
+      this.navigate('diskAssinaturas');
+      return;
+    }
+
+    if (action === 'liquidar-operacao' && id) {
+      financialStore.executeFinalTransfer(id);
+      this.navigate('diskPix');
+      return;
+    }
+
+    const message = opts.message || targetDef?.msg || `Ação ${action} processada com sucesso.`;
+    const toastType = targetDef?.type || 'info';
+    financialStore.showToast('Fluxo Integrado', message, toastType);
+
+    const targetRoute = opts.target || targetDef?.route;
+    if (targetRoute) {
+      this.navigate(targetRoute, opts.filterArg || 'all');
+    }
+  }
 }
 
 // ============================================================================
@@ -2249,6 +2382,18 @@ window.switchGlobalRole = function(role) {
   } else if (role === 'ADMINISTRADOR') {
     financialStore.login('admin');
     window.app.navigate('diskDashboard');
+  }
+};
+
+window.integratedAction = function(action, options) {
+  if (window.app && typeof window.app.integratedAction === 'function') {
+    return window.app.integratedAction(action, options);
+  }
+};
+
+window.financeAction = function(action, id, data) {
+  if (window.app && typeof window.app.financeAction === 'function') {
+    return window.app.financeAction(action, id, data);
   }
 };
 
