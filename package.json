@@ -1,0 +1,33 @@
+{
+  "name": "disk-financeiro",
+  "version": "1.0.0",
+  "description": "Core Financeiro Unificado Disk Ingressos (ERP / CRM) - Portal do Produtor e Backoffice Financeiro Disk",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "server": "node server.js",
+    "dev": "node server.js",
+    "prisma:generate": "prisma generate --schema=database/schema.prisma",
+    "seed": "node -e \"console.log('Seed mock loaded com sucesso.')\""
+  },
+  "keywords": [
+    "disk-ingressos",
+    "financeiro",
+    "erp",
+    "crm",
+    "workflow",
+    "assinatura-digital",
+    "ledger",
+    "limitless"
+  ],
+  "author": "Disk Ingressos",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@prisma/client": "^5.10.0"
+  },
+  "devDependencies": {
+    "prisma": "^5.10.0",
+    "typescript": "^5.3.3"
+  }
+}

@@ -1,0 +1,340 @@
+// ============================================================================
+// DISK INGRESSOS - CORE FINANCEIRO ENTERPRISE (ERP / CRM)
+// Prisma Schema - Modelagem de Dados Relacional
+// ============================================================================
+
+datasource db {
+  provider = "sqlite" // SQLite para facilidade de execução local no VS Code (ou postgresql para produção)
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ----------------------------------------------------------------------------
+// ENUMS DE GOVERNANÇA E FLUXO FINANCEIRO
+// ----------------------------------------------------------------------------
+
+enum PerfilUsuario {
+  PRODUTOR
+  FINANCEIRO
+  ADMINISTRADOR
+}
+
+enum TipoSolicitacao {
+  REPASSE
+  ANTECIPACAO
+  BORDERO
+}
+
+enum StatusSolicitacao {
+  RASCUNHO
+  ENVIADO
+  AGUARDANDO_ANALISE
+  EM_ANALISE
+  APROVADO
+  REJEITADO
+  AGUARDANDO_ASSINATURA_PRODUTOR
+  AGUARDANDO_ASSINATURA_FINANCEIRO
+  ASSINADO
+  PROGRAMADO
+  PAGO
+  CONCLUIDO
+}
+
+enum StatusOperacao {
+  ATIVO
+  BLOQUEADO
+  ENCERRADO
+}
+
+enum TipoLancamentoLedger {
+  CREDITO
+  DEBITO
+}
+
+enum MetodoPagamento {
+  PIX
+  CARTAO_CREDITO
+  CARTAO_DEBITO
+  BOLETO
+}
+
+// ----------------------------------------------------------------------------
+// MODELOS DE USUÁRIOS E PRODUTORES
+// ----------------------------------------------------------------------------
+
+model Usuario {
+  id           String        @id @default(uuid())
+  nome         String
+  email        String        @unique
+  senhaHash    String
+  perfil       PerfilUsuario
+  cargo        String
+  telefone     String?
+  ativo        Boolean       @default(true)
+  
+  // Vínculo quando o perfil for PRODUTOR (Isolamento de Tenant)
+  produtorId   String?
+  produtor     Produtor?     @relation(fields: [produtorId], references: [id])
+  
+  solicitacoesCriadas SolicitacaoFinanceira[] @relation("Solicitante")
+  analisesRealizadas  SolicitacaoFinanceira[] @relation("Analista")
+  assinaturas         AssinaturaDigital[]
+  logsAuditoria       AuditLog[]
+
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+model Produtor {
+  id              String          @id @default(uuid())
+  razaoSocial     String
+  nomeFantasia    String
+  cnpj            String          @unique
+  email           String
+  telefone        String
+  gerenteConta    String
+  rating          String          @default("Tier A - Homologado")
+  status          StatusOperacao  @default(ATIVO)
+  scoreRisco      Int             @default(95)
+  bloqueioAtivo   Boolean         @default(false)
+  motivoBloqueio  String?
+  
+  // Regras Comerciais Contratuais
+  taxaDiskPercent         Float   @default(10.0)
+  taxaProcessamentoMdr    Float   @default(2.9)
+  taxaAntecipacaoMensal   Float   @default(2.0)
+  regraLiquidacaoDias     String  @default("D+2 após o evento")
+
+  // Relacionamentos
+  usuarios        Usuario[]
+  contasBancarias ContaBancaria[]
+  eventos         Evento[]
+  solicitacoes    SolicitacaoFinanceira[]
+
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+}
+
+model ContaBancaria {
+  id            String    @id @default(uuid())
+  produtorId    String
+  produtor      Produtor  @relation(fields: [produtorId], references: [id])
+  bancoNome     String
+  bancoCodigo   String
+  agencia       String
+  numeroConta   String
+  tipoConta     String    @default("Conta Corrente PJ")
+  chavePix      String?
+  titular       String
+  cnpjTitular   String
+  padrao        Boolean   @default(false)
+  validadaBacen Boolean   @default(true)
+  validadaEm    DateTime?
+
+  solicitacoes  SolicitacaoFinanceira[]
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+// ----------------------------------------------------------------------------
+// MODELOS DE EVENTOS E BILHETERIA
+// ----------------------------------------------------------------------------
+
+model Evento {
+  id                String          @id @default(uuid())
+  produtorId        String
+  produtor          Produtor        @relation(fields: [produtorId], references: [id])
+  nome              String
+  categoria         String
+  dataEvento        DateTime
+  local             String
+  cidade            String          @default("Curitiba/PR")
+  capacidadeTotal   Int
+  ingressosVendidos Int             @default(0)
+  status            StatusOperacao  @default(ATIVO)
+
+  // Saldos e Posição Financeira em Tempo Real
+  saldo             SaldoEvento?
+  vendas            Venda[]
+  recebiveis        Recebivel[]
+  solicitacoes      SolicitacaoFinanceira[]
+  lancamentosLedger LedgerEntry[]
+
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+}
+
+model SaldoEvento {
+  id                    String    @id @default(uuid())
+  eventoId              String    @unique
+  evento                Evento    @relation(fields: [eventoId], references: [id])
+  
+  // Fechamento exato conforme regras de negócio
+  vendasBrutas          Float     @default(0.0)
+  cancelamentos         Float     @default(0.0)
+  taxasDisk             Float     @default(0.0)
+  chargebacks           Float     @default(0.0)
+  liquidoApurado        Float     @default(0.0)
+  repassadoAcumulado    Float     @default(0.0)
+  recebiveisFuturos     Float     @default(0.0) // D+X
+  bloqueadoReserva      Float     @default(0.0)
+  disponivelImediato    Float     @default(0.0)
+
+  updatedAt             DateTime  @updatedAt
+}
+
+model Venda {
+  id              String          @id @default(uuid())
+  eventoId        String
+  evento          Evento          @relation(fields: [eventoId], references: [id])
+  codigoPedido    String          @unique
+  compradorNome   String
+  compradorCpf    String
+  quantidade      Int
+  valorBruto      Float
+  taxaDisk        Float
+  taxaGateway     Float
+  valorLiquido    Float
+  metodo          MetodoPagamento
+  gateway         String          @default("Cielo")
+  status          String          @default("Aprovado")
+  liquidado       Boolean         @default(false)
+  dataVenda       DateTime        @default(now())
+}
+
+model Recebivel {
+  id              String    @id @default(uuid())
+  eventoId        String
+  evento          Evento    @relation(fields: [eventoId], references: [id])
+  adquirente      String    // Cielo, Rede, Stone, PagBank
+  valorBruto      Float
+  taxaMdr         Float
+  taxaSpreadDisk  Float     @default(1.22) // 1.22% de spread comercial Disk
+  valorLiquido    Float
+  dataVencimento  DateTime
+  antecipado      Boolean   @default(false)
+  status          String    @default("A Vencer")
+}
+
+// ----------------------------------------------------------------------------
+// NÚCLEO DO MOTOR DE WORKFLOW E OPERAÇÕES FINANCEIRAS
+// ----------------------------------------------------------------------------
+
+model SolicitacaoFinanceira {
+  id              String            @id @default(uuid())
+  codigo          String            @unique // Ex: REP-000129, ANT-000104, BOR-000042
+  tipo            TipoSolicitacao
+  status          StatusSolicitacao @default(AGUARDANDO_ANALISE)
+  
+  // Hierarquia: Produtor -> Evento -> Operação -> Valor
+  produtorId      String
+  produtor        Produtor          @relation(fields: [produtorId], references: [id])
+  eventoId        String?
+  evento          Evento?           @relation(fields: [eventoId], references: [id])
+  
+  // Valores da Operação
+  valorSolicitado Float
+  taxaOperacao    Float             @default(0.0)
+  valorLiquido    Float
+  
+  // Conta bancária de destino
+  contaBancariaId String?
+  contaBancaria   ContaBancaria?    @relation(fields: [contaBancariaId], references: [id])
+  
+  // Trilha de Decisão do Financeiro Disk
+  solicitadoPorId String
+  solicitadoPor   Usuario           @relation("Solicitante", fields: [solicitadoPorId], references: [id])
+  solicitadoEm    DateTime          @default(now())
+  
+  analisadoPorId  String?
+  analisadoPor    Usuario?          @relation("Analista", fields: [analisadoPorId], references: [id])
+  analisadoEm     DateTime?
+  decisao         String?           // "APROVADO" ou "REJEITADO"
+  motivoRejeicao  String?           // Categoria oficial
+  justificativaRejeicao String?     // Observação detalhada obrigatória
+  
+  // Esteira de Formalização e Assinaturas Digitais Sequenciais
+  documentoId     String?
+  termoDocumento  String?           // URL ou conteúdo do termo gerado
+  
+  assinaturas     AssinaturaDigital[]
+  logsAuditoria   AuditLog[]
+  lancamentosLedger LedgerEntry[]
+
+  // Liquidação
+  pagoEm          DateTime?
+  codigoAutenticacao String?        // Autenticação Bancária / Hash PIX
+  concluidoEm     DateTime?
+
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+}
+
+model AssinaturaDigital {
+  id                String                @id @default(uuid())
+  solicitacaoId     String
+  solicitacao       SolicitacaoFinanceira @relation(fields: [solicitacaoId], references: [id])
+  usuarioId         String
+  usuario           Usuario               @relation(fields: [usuarioId], references: [id])
+  
+  // Papel na esteira: PRODUTOR (deve ser o 1º) ou FINANCEIRO (SEMPRE O ÚLTIMO)
+  papelSignatario   PerfilUsuario
+  ordemAssinatura   Int                   // 1: Produtor, 2: Financeiro Disk
+  
+  assinadoEm        DateTime              @default(now())
+  ipOrigem          String
+  certificado       String                // ICP-Brasil, Token, ou Certificado e-CNPJ
+  hashAssinatura    String
+
+  createdAt         DateTime              @default(now())
+}
+
+// ----------------------------------------------------------------------------
+// LEDGER CONTÁBIL (PARTIDAS DOBRADAS) & AUDITORIA IMUTÁVEL
+// ----------------------------------------------------------------------------
+
+model LedgerEntry {
+  id              String                @id @default(uuid())
+  solicitacaoId   String?
+  solicitacao     SolicitacaoFinanceira? @relation(fields: [solicitacaoId], references: [id])
+  eventoId        String?
+  evento          Evento?               @relation(fields: [eventoId], references: [id])
+  
+  dataLancamento  DateTime              @default(now())
+  descricao       String
+  contaDebito     String                // Ex: "Passivo Produtor: Produtora ABC"
+  contaCredito    String                // Ex: "Banco Itaú - Conta Movimento Disk"
+  valor           Float
+  documentoRef    String
+  conciliado      Boolean               @default(false)
+  dataConciliacao DateTime?
+}
+
+model AuditLog {
+  id              String                @id @default(uuid())
+  solicitacaoId   String?
+  solicitacao     SolicitacaoFinanceira? @relation(fields: [solicitacaoId], references: [id])
+  usuarioId       String?
+  usuario         Usuario?              @relation(fields: [usuarioId], references: [id])
+  
+  acao            String                // "CRIOU_SOLICITACAO", "ANALISOU", "APROVOU", "ASSINOU_PRODUTOR", etc.
+  detalhes        String
+  ip              String?
+  criadoEm        DateTime              @default(now())
+}
+
+model GatewayConfig {
+  id              String    @id @default(uuid())
+  nome            String    // Cielo, Rede, Stone, PagBank
+  mdrDebito       Float     @default(1.18)
+  mdrCreditoVista Float     @default(2.28)
+  mdrParcelado    Float     @default(3.88)
+  spreadDisk      Float     @default(1.22) // 1.22% retido para o Disk
+  prazoLiquidacao String    @default("D+1 útil")
+  status          String    @default("Operacional 100%")
+  chaveApi        String?
+}
