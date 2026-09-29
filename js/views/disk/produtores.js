@@ -66,7 +66,7 @@ export function renderDiskProdutores(state) {
         <div class="card-header-bar">
           <div class="card-title-group">
             <h2>Posição Financeira Consolidada de ${activeProducer.name}</h2>
-            <p class="card-subtitle">Contrato nº ${activeProducer.contract.number} • Taxa Disk: ${activeProducer.contract.diskFeePercent}% • Antecipação: ${activeProducer.contract.anticipationRateMonthly}% a.m.</p>
+            <p class="card-subtitle">Contrato nº ${activeProducer.contract?.number || 'CON-MASTER'} • Taxa Disk: ${activeProducer.contract?.diskFeePercent || 10.0}% • Antecipação: ${activeProducer.contract?.anticipationRateMonthly || 2.5}% a.m.</p>
           </div>
         </div>
         <div class="card-body">

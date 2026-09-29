@@ -27,6 +27,9 @@ import { renderBordero } from './views/bordero.js';
 import { renderRelatorios } from './views/relatorios.js';
 import { renderDadosBancarios } from './views/dadosBancarios.js';
 
+// Configuração oficial de menus dinâmicos por perfil
+import { menusPorPerfil } from './menuConfig.js';
+
 // Import Views do Financeiro Disk (Backoffice Enterprise)
 import { renderDiskDashboard } from './views/disk/dashboard.js';
 import { renderDiskAprovacoes } from './views/disk/aprovacoes.js';
@@ -34,6 +37,25 @@ import { renderDiskProdutores } from './views/disk/produtores.js';
 import { renderDiskGateways } from './views/disk/gatewaysMdr.js';
 import { renderDiskLedger } from './views/disk/ledger.js';
 import { renderDiskTesouraria } from './views/disk/tesouraria.js';
+import {
+  renderDiskEventos,
+  renderDiskSolicitacoes,
+  renderDiskSaldos,
+  renderDiskRepasses,
+  renderDiskAntecipacoes,
+  renderDiskRecebiveis,
+  renderDiskTaxas,
+  renderDiskEstornos,
+  renderDiskConciliacao,
+  renderDiskContasPagar,
+  renderDiskContasReceber,
+  renderDiskBordero,
+  renderDiskFluxoCaixa,
+  renderDiskAssinaturas,
+  renderDiskRelatorios,
+  renderDiskAuditoria,
+  renderDiskConfiguracoes
+} from './views/disk/enterpriseViews.js';
 
 class LimitlessFinancialApp {
   constructor() {
@@ -84,8 +106,16 @@ class LimitlessFinancialApp {
     }
   }
 
+  setSelectedProducer(producerId) {
+    financialStore.setSelectedProducer(producerId);
+  }
+
   selectProducerInDisk(producerId) {
     financialStore.setSelectedProducer(producerId);
+  }
+
+  exportCurrentView(format = 'excel') {
+    financialStore.showToast("Exportação Iniciada", `Gerando demonstrativo analítico .${format === 'excel' ? 'xlsx' : 'pdf'}...`, "info");
   }
 
   navigate(viewName, filterArg = null) {
@@ -99,27 +129,27 @@ class LimitlessFinancialApp {
     const aliasMap = {
       'financial-dashboard': isDisk ? 'diskDashboard' : 'overview',
       'financial-posicao-geral': 'diskDashboard',
-      'financial-saldos': 'saldos',
+      'financial-saldos': isDisk ? 'diskSaldos' : 'saldos',
       'financial-approvals': 'diskAprovacoes',
-      'financial-repass': isDisk ? 'diskAprovacoes' : 'repasses',
-      'financial-advance': 'antecipacoes',
-      'financial-statement': 'extrato',
+      'financial-repass': isDisk ? 'diskRepasses' : 'repasses',
+      'financial-advance': isDisk ? 'diskAntecipacoes' : 'antecipacoes',
+      'financial-statement': isDisk ? 'diskLedger' : 'extrato',
       'financial-gateways-adquirentes': 'diskGateways',
-      'financial-accounts': 'dadosBancarios',
-      'financial-bordero': 'bordero',
-      'financial-taxas-custos': 'taxas',
-      'financial-fechamento': 'bordero',
-      'financial-balance': 'diskTesouraria',
-      'financial-event-transfers': 'saldos',
-      'financial-refunds': 'estornos',
-      'financial-analytics': 'relatorios',
+      'financial-accounts': isDisk ? 'diskTesouraria' : 'dadosBancarios',
+      'financial-bordero': isDisk ? 'diskBordero' : 'bordero',
+      'financial-taxas-custos': isDisk ? 'diskTaxas' : 'taxas',
+      'financial-fechamento': isDisk ? 'diskBordero' : 'bordero',
+      'financial-balance': isDisk ? 'diskTesouraria' : 'saldos',
+      'financial-event-transfers': isDisk ? 'diskTesouraria' : 'saldos',
+      'financial-refunds': isDisk ? 'diskEstornos' : 'estornos',
+      'financial-analytics': isDisk ? 'diskRelatorios' : 'relatorios',
       'dashboard-main': isDisk ? 'diskDashboard' : 'overview',
-      'dashboard-agenda': 'diskTesouraria',
-      'dashboard-indicators': 'relatorios',
-      'events-list': 'saldos',
+      'dashboard-agenda': isDisk ? 'diskRecebiveis' : 'diskTesouraria',
+      'dashboard-indicators': isDisk ? 'diskRelatorios' : 'relatorios',
+      'events-list': isDisk ? 'diskEventos' : 'saldos',
       'accounting-disk': 'diskLedger',
-      'reports-sales': 'relatorios',
-      'procure-to-pay': 'diskTesouraria',
+      'reports-sales': isDisk ? 'diskRelatorios' : 'relatorios',
+      'procure-to-pay': isDisk ? 'diskContasPagar' : 'diskTesouraria',
       'fin-my-requests': 'repasses'
     };
 
@@ -1369,20 +1399,71 @@ class LimitlessFinancialApp {
         case 'diskDashboard':
           viewHtml = renderDiskDashboard(state);
           break;
+        case 'diskProdutores':
+          viewHtml = renderDiskProdutores(state);
+          break;
+        case 'diskEventos':
+          viewHtml = renderDiskEventos(state, this.currentFilterArg);
+          break;
+        case 'diskSolicitacoes':
+          viewHtml = renderDiskSolicitacoes(state, this.currentFilterArg);
+          break;
         case 'diskAprovacoes':
           viewHtml = renderDiskAprovacoes(state, this.currentFilterArg);
           break;
-        case 'diskProdutores':
-          viewHtml = renderDiskProdutores(state);
+        case 'diskSaldos':
+          viewHtml = renderDiskSaldos(state, this.currentFilterArg);
+          break;
+        case 'diskRepasses':
+          viewHtml = renderDiskRepasses(state, this.currentFilterArg);
+          break;
+        case 'diskAntecipacoes':
+          viewHtml = renderDiskAntecipacoes(state, this.currentFilterArg);
+          break;
+        case 'diskRecebiveis':
+          viewHtml = renderDiskRecebiveis(state, this.currentFilterArg);
+          break;
+        case 'diskTaxas':
+          viewHtml = renderDiskTaxas(state, this.currentFilterArg);
           break;
         case 'diskGateways':
           viewHtml = renderDiskGateways(state);
           break;
-        case 'diskLedger':
-          viewHtml = renderDiskLedger(state);
+        case 'diskEstornos':
+          viewHtml = renderDiskEstornos(state, this.currentFilterArg);
+          break;
+        case 'diskConciliacao':
+          viewHtml = renderDiskConciliacao(state, this.currentFilterArg);
+          break;
+        case 'diskContasPagar':
+          viewHtml = renderDiskContasPagar(state, this.currentFilterArg);
+          break;
+        case 'diskContasReceber':
+          viewHtml = renderDiskContasReceber(state, this.currentFilterArg);
           break;
         case 'diskTesouraria':
           viewHtml = renderDiskTesouraria(state);
+          break;
+        case 'diskLedger':
+          viewHtml = renderDiskLedger(state);
+          break;
+        case 'diskBordero':
+          viewHtml = renderDiskBordero(state, this.currentFilterArg);
+          break;
+        case 'diskFluxoCaixa':
+          viewHtml = renderDiskFluxoCaixa(state, this.currentFilterArg);
+          break;
+        case 'diskAssinaturas':
+          viewHtml = renderDiskAssinaturas(state, this.currentFilterArg);
+          break;
+        case 'diskRelatorios':
+          viewHtml = renderDiskRelatorios(state, this.currentFilterArg);
+          break;
+        case 'diskAuditoria':
+          viewHtml = renderDiskAuditoria(state, this.currentFilterArg);
+          break;
+        case 'diskConfiguracoes':
+          viewHtml = renderDiskConfiguracoes(state, this.currentFilterArg);
           break;
         default:
           viewHtml = renderDiskDashboard(state);
@@ -1441,11 +1522,21 @@ class LimitlessFinancialApp {
         roleIndicator.innerText = 'ADMINISTRADOR MASTER';
         roleIndicator.className = 'badge bg-warning text-dark fw-bold fs-xxs px-2 py-1';
       } else if (isDisk) {
-        roleIndicator.innerText = 'FINANCEIRO DISK (BACKOFFICE)';
+        roleIndicator.innerText = 'FINANCEIRO DISK';
         roleIndicator.className = 'badge bg-success text-white fw-bold fs-xxs px-2 py-1';
       } else {
         roleIndicator.innerText = 'PORTAL DO PRODUTOR';
         roleIndicator.className = 'badge bg-primary text-white fw-bold fs-xxs px-2 py-1';
+      }
+    }
+
+    // Dynamic Search Placeholder by Role
+    const searchInput = document.getElementById('global-search');
+    if (searchInput) {
+      if (isDisk || isMaster) {
+        searchInput.placeholder = '🔎 Buscar Produtor, CNPJ, Evento, Pedido...';
+      } else {
+        searchInput.placeholder = 'Pesquisa global (eventos, produtores, pedidos, repasses...)';
       }
     }
 
@@ -1533,18 +1624,35 @@ class LimitlessFinancialApp {
     const viewSubtitle = document.getElementById('active-view-subtitle');
 
     const isDisk = state.viewMode === 'disk';
+    const isMaster = state.currentUser.role === 'admin';
 
     if (domainBadge) {
-      domainBadge.innerText = isDisk ? 'FINANCEIRO ENTERPRISE' : 'PORTAL DO PRODUTOR';
-      domainBadge.className = isDisk ? 'badge bg-warning-subtle text-warning fw-bold fs-xxs' : 'badge bg-primary-subtle text-primary fw-bold fs-xxs';
+      domainBadge.innerText = (isDisk || isMaster) ? 'FINANCEIRO DISK' : 'PORTAL DO PRODUTOR';
+      domainBadge.className = (isDisk || isMaster) ? 'badge bg-dark text-white fw-bold fs-xxs' : 'badge bg-primary-subtle text-primary fw-bold fs-xxs';
     }
 
-    const currentEvent = state.data.events.find(e => e.id === state.selectedEventId);
     if (eventBadge) {
-      eventBadge.innerText = currentEvent ? currentEvent.name : 'Todos os Eventos (Consolidado)';
+      if (isDisk || isMaster) {
+        if (state.selectedProducerId === 'all') {
+          eventBadge.innerHTML = '<strong>Todos os Produtores</strong> &bull; Visão Geral Consolidada';
+        } else {
+          const p = state.data.producers.find(pr => pr.id === state.selectedProducerId);
+          const pName = p ? p.name : 'Produtor';
+          if (state.selectedEventId === 'all') {
+            eventBadge.innerHTML = `<strong>${pName}</strong> &bull; Todos os Eventos`;
+          } else {
+            const ev = state.data.events.find(e => e.id === state.selectedEventId);
+            eventBadge.innerHTML = `<strong>${pName}</strong> &bull; ${ev ? ev.name : 'Evento Selecionado'}`;
+          }
+        }
+      } else {
+        const currentEvent = state.data.events.find(e => e.id === state.selectedEventId);
+        eventBadge.innerText = currentEvent ? currentEvent.name : 'Todos os Eventos (Consolidado)';
+      }
     }
 
     const titlesMap = {
+      // Produtor (11 Itens)
       'overview': { title: 'Visão Geral Financeira', subtitle: 'Resumo executivo consolidado das vendas, saldos disponíveis, repasses e retenções.' },
       'saldos': { title: 'Saldos Consolidados & por Evento', subtitle: 'Saldo disponível, valores a liberar e detalhamento por evento &bull; Fonte da verdade do Ledger.' },
       'extrato': { title: 'Extrato Financeiro Completo', subtitle: 'Livro-caixa unificado de vendas, liquidações, taxas, estornos e transferências.' },
@@ -1556,17 +1664,99 @@ class LimitlessFinancialApp {
       'bordero': { title: 'Borderô & Fechamento de Eventos', subtitle: 'Conferência final de bilheteria, custos, deduções e termo de encerramento assinado.' },
       'relatorios': { title: 'Relatórios Financeiros', subtitle: 'Demonstrativos gerenciais, curva de vendas e exportação oficial em PDF e Excel.' },
       'dadosBancarios': { title: 'Dados Bancários & Chaves PIX', subtitle: 'Contas bancárias PJ homologadas para recebimento dos repasses automáticos.' },
-      'diskDashboard': { title: 'Posição Financeira Geral Disk', subtitle: 'Painel executivo com volume transacionado, obrigações com produtores e liquidez.' },
-      'diskAprovacoes': { title: 'Central Unificada de Aprovações', subtitle: 'Workflow transversal &bull; Governança Maker/Checker &bull; Assinaturas sequenciais &bull; SLA.' },
-      'diskProdutores': { title: 'Gestão 360 de Produtores', subtitle: 'Contas financeiras, contratos, travas, limites e histórico de todos os produtores.' },
-      'diskGateways': { title: 'Gateways, Adquirentes & MDR', subtitle: 'Roteamento inteligente de transações, taxas de adquirência e spread comercial Disk (1,22%).' },
-      'diskLedger': { title: 'Ledger Contábil de Partidas Dobradas', subtitle: 'Livro-razão contábil imutável, conciliação e rastreabilidade total de cada centavo.' },
-      'diskTesouraria': { title: 'Tesouraria & Fechamento CNAB 240', subtitle: 'Mesa de operações, geração de lotes bancários CNAB 240 e conciliação bancária.' }
+
+      // Financeiro Disk — 23 Seções Canônicas
+      'diskDashboard': { title: '1. Dashboard Geral', subtitle: 'Painel executivo com volume transacionado, obrigações com produtores e liquidez.' },
+      'diskProdutores': { title: '2. Gestão 360 de Produtores', subtitle: 'Contas financeiras, contratos, travas, limites e histórico de todos os produtores.' },
+      'diskEventos': { title: '3. Gestão Transversal de Eventos', subtitle: 'Posição financeira individual e fechamentos de bilheteria de toda a grade Disk Ingressos.' },
+      'diskSolicitacoes': { title: '4. Central Unificada de Solicitações', subtitle: 'Acompanhamento transversal de repasses, antecipações e fechamentos de borderô.' },
+      'diskAprovacoes': { title: '5. Central de Aprovações', subtitle: 'Workflow transversal &bull; Governança Maker/Checker &bull; Assinaturas sequenciais &bull; SLA.' },
+      'diskSaldos': { title: '6. Gestão de Saldos & Custódia', subtitle: 'Consolidação de saldos disponíveis, a receber, bloqueios e reservas por produtor e evento.' },
+      'diskRepasses': { title: '7. Central de Repasses', subtitle: 'Gestão do ciclo de repasses: análise, aprovação, programação e liquidação bancária.' },
+      'diskAntecipacoes': { title: '8. Central de Antecipações', subtitle: 'Análise de elegibilidade de risco, simulações, taxas e contratação de antecipações.' },
+      'diskRecebiveis': { title: '9. Agenda de Recebíveis & Liquidações', subtitle: 'Previsão de caixa futuro por adquirente, bandeira e método de pagamento (PIX e Cartão).' },
+      'diskTaxas': { title: '10. Taxas e Regras Comerciais', subtitle: 'Configuração de MDR, spread comercial Disk (1,22%), parcelamento e vigências contratuais.' },
+      'diskGateways': { title: '11. Gateways e Adquirentes', subtitle: 'Roteamento inteligente de transações, taxas de adquirência e split de pagamentos.' },
+      'diskEstornos': { title: '12. Estornos e Chargebacks', subtitle: 'Monitoramento de cancelamentos voluntários, contestações de compras e reservas cautelares.' },
+      'diskConciliacao': { title: '13. Conciliação Contábil & Financeira', subtitle: 'Auditoria Multicamadas: Pedido × Gateway × Adquirente × Ledger × Extrato Bancário.' },
+      'diskContasPagar': { title: '14. Contas a Pagar', subtitle: 'Gestão de fornecedores, centros de custos, agendamentos de pagamentos e autorizações.' },
+      'diskContasReceber': { title: '15. Contas a Receber', subtitle: 'Previsões de recebimento, liquidação de borderôs, baixas automáticas e inadimplências.' },
+      'diskTesouraria': { title: '16. Tesouraria & CNAB 240', subtitle: 'Posição consolidada de caixa, conciliação de contas bancárias e remessa/retorno CNAB 240.' },
+      'diskLedger': { title: '17. Ledger Financeiro Contábil', subtitle: 'Livro-razão contábil de partidas dobradas imutável, conciliação e rastreabilidade total de cada centavo.' },
+      'diskBordero': { title: '18. Borderôs e Fechamentos', subtitle: 'Conferência final de bilheteria, custos, deduções, aprovação e termo de encerramento assinado.' },
+      'diskFluxoCaixa': { title: '19. Fluxo de Caixa', subtitle: 'Entradas e saídas operacionais consolidadas e projeção de liquidez futura.' },
+      'diskAssinaturas': { title: '20. Assinaturas Digitais', subtitle: 'Formalização de termos com certificados digitais ICP-Brasil (Financeiro é sempre o último signatário).' },
+      'diskRelatorios': { title: '21. Relatórios Gerenciais', subtitle: 'Demonstrativos gerenciais de vendas, conciliação, balancetes e exportações oficiais.' },
+      'diskAuditoria': { title: '22. Auditoria e Governança', subtitle: 'Log imutável de operações manuais, aprovações, alterações de taxas e acessos sensíveis.' },
+      'diskConfiguracoes': { title: '23. Configurações Financeiras', subtitle: 'Políticas de repasse, travas de antecipação, alçadas de aprovação e calendário operacional.' }
     };
 
     const currentInfo = titlesMap[state.currentView] || { title: 'Módulo Financeiro', subtitle: 'Sistema integrado de gestão financeira Disk Ingressos.' };
     if (viewTitle) viewTitle.innerText = currentInfo.title;
     if (viewSubtitle) viewSubtitle.innerHTML = currentInfo.subtitle;
+
+    // Header Action Toolbar Dinâmica conforme o Perfil
+    const toolbar = document.getElementById('header-action-toolbar');
+    if (toolbar) {
+      if (isDisk || isMaster) {
+        let producerOptions = `<option value="all" ${state.selectedProducerId === 'all' ? 'selected' : ''}>Produtor: Todos os Produtores ▼</option>`;
+        state.data.producers.forEach(p => {
+          producerOptions += `<option value="${p.id}" ${state.selectedProducerId === p.id ? 'selected' : ''}>${p.name}</option>`;
+        });
+
+        let availableEvents = state.data.events;
+        if (state.selectedProducerId && state.selectedProducerId !== 'all') {
+          availableEvents = availableEvents.filter(e => e.producerId === state.selectedProducerId);
+        }
+
+        let eventOptions = `<option value="all" ${state.selectedEventId === 'all' ? 'selected' : ''}>Evento: Todos os Eventos ▼</option>`;
+        availableEvents.forEach(e => {
+          eventOptions += `<option value="${e.id}" ${state.selectedEventId === e.id ? 'selected' : ''}>${e.name}</option>`;
+        });
+
+        const pendingCount = state.pendingApprovalsCount || 17;
+
+        toolbar.innerHTML = `
+          <div class="producer-selector-box d-flex align-items-center">
+            <select class="form-select form-select-sm fw-semibold shadow-sm" id="globalProducerSelect" style="min-width: 215px;" onchange="window.app && window.app.setSelectedProducer(this.value)">
+              ${producerOptions}
+            </select>
+          </div>
+          <div class="event-selector-box d-flex align-items-center">
+            <select class="form-select form-select-sm fw-semibold shadow-sm" id="globalEventSelect" style="min-width: 220px;" onchange="window.app && window.app.setSelectedEvent(this.value)">
+              ${eventOptions}
+            </select>
+          </div>
+          <button class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1 shadow-sm" onclick="window.app && window.app.refreshData()" title="Sincronizar">
+            <i class="ph-arrows-counter-clockwise"></i> <span class="d-none d-md-inline">Atualizar</span>
+          </button>
+          <button class="btn btn-sm btn-warning text-dark fw-bold d-flex align-items-center gap-1 shadow-sm" onclick="window.app && window.app.navigate('diskAprovacoes')">
+            <i class="ph-bell fs-5"></i> <span>Solicitações e Aprovações</span>
+            <span class="badge rounded-pill bg-danger text-white fs-xxs ms-1">${pendingCount}</span>
+          </button>
+        `;
+      } else {
+        const producerEvents = state.data.events.filter(e => e.producerId === state.activeProducer.id);
+        let eventOptions = `<option value="all" ${state.selectedEventId === 'all' ? 'selected' : ''}>Todos os Eventos (Consolidado)</option>`;
+        producerEvents.forEach(e => {
+          eventOptions += `<option value="${e.id}" ${state.selectedEventId === e.id ? 'selected' : ''}>${e.name}</option>`;
+        });
+
+        toolbar.innerHTML = `
+          <div class="event-selector-box d-flex align-items-center">
+            <select class="form-select form-select-sm fw-semibold shadow-sm" id="globalEventSelect" style="min-width: 260px;" onchange="window.app && window.app.setSelectedEvent(this.value)">
+              ${eventOptions}
+            </select>
+          </div>
+          <button class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1 shadow-sm" onclick="window.app && window.app.refreshData()">
+            <i class="ph-arrows-counter-clockwise"></i> <span>Atualizar</span>
+          </button>
+          <button class="btn btn-sm btn-primary d-flex align-items-center gap-1 shadow-sm" onclick="window.app && window.app.openPayoutModal()">
+            <i class="ph-hand-coins"></i> <span>Solicitar Repasse</span>
+          </button>
+        `;
+      }
+    }
   }
 
   populateNotifications(state) {
@@ -1613,218 +1803,75 @@ class LimitlessFinancialApp {
     const pendingCount = state.pendingApprovalsCount || 17;
     const currentView = state.currentView;
 
-    const active = (view) => currentView === view ? 'active' : '';
-
-    if (isDisk || isMaster) {
-      // MENU FINANCEIRO DISK (BACKOFFICE ENTERPRISE) / ADMIN MASTER
-      this.sidebarNav.innerHTML = `
-        <li class="nav-item">
-          <a class="nav-link ${active('diskDashboard')}" onclick="window.app.navigate('diskDashboard')">
-            <i class="ph-chart-pie-slice fs-5"></i>
-            <span>Dashboard Geral</span>
-          </a>
-        </li>
-
-        <li class="nav-item">
-          <a class="nav-link ${active('diskAprovacoes')} d-flex align-items-center justify-content-between" onclick="window.app.navigate('diskAprovacoes')">
-            <div class="d-flex align-items-center gap-2">
-              <i class="ph-scales fs-5 text-warning"></i>
-              <span>Central de Aprovações</span>
-            </div>
-            <span class="badge rounded-pill bg-danger fs-xxs">${pendingCount}</span>
-          </a>
-        </li>
-
-        <li class="nav-item">
-          <a class="nav-link ${active('diskProdutores')}" onclick="window.app.navigate('diskProdutores')">
-            <i class="ph-buildings fs-5 text-primary"></i>
-            <span>Produtores 360</span>
-          </a>
-        </li>
-
-        <li class="nav-item">
-          <a class="nav-link ${active('diskGateways')}" onclick="window.app.navigate('diskGateways')">
-            <i class="ph-cpu fs-5 text-info"></i>
-            <span>Gateways &amp; Adquirentes</span>
-          </a>
-        </li>
-
-        <li class="nav-item">
-          <a class="nav-link ${active('diskLedger')}" onclick="window.app.navigate('diskLedger')">
-            <i class="ph-book-bookmark fs-5 text-success"></i>
-            <span>Ledger Contábil</span>
-          </a>
-        </li>
-
-        <li class="nav-item">
-          <a class="nav-link ${active('diskTesouraria')}" onclick="window.app.navigate('diskTesouraria')">
-            <i class="ph-vault fs-5 text-warning"></i>
-            <span>Tesouraria &amp; CNAB 240</span>
-          </a>
-        </li>
-
-        <li class="nav-item-section-divider"><i class="ph-stack"></i> Operação &amp; Saldos</li>
-
-        <li class="nav-item">
-          <a class="nav-link ${active('saldos')}" onclick="window.app.navigate('saldos')">
-            <i class="ph-currency-circle-dollar fs-5"></i>
-            <span>Gestão de Saldos</span>
-          </a>
-        </li>
-
-        <li class="nav-item">
-          <a class="nav-link ${active('bordero')}" onclick="window.app.navigate('bordero')">
-            <i class="ph-signature fs-5"></i>
-            <span>Borderôs &amp; Fechamentos</span>
-          </a>
-        </li>
-
-        <li class="nav-item">
-          <a class="nav-link ${active('extrato')}" onclick="window.app.navigate('extrato')">
-            <i class="ph-receipt fs-5"></i>
-            <span>Extrato Financeiro</span>
-          </a>
-        </li>
-
-        <li class="nav-item">
-          <a class="nav-link ${active('relatorios')}" onclick="window.app.navigate('relatorios')">
-            <i class="ph-file-text fs-5"></i>
-            <span>Relatórios Gerenciais</span>
-          </a>
-        </li>
-
-        ${isMaster ? `
-          <li class="nav-item-section-divider"><i class="ph-crown"></i> Governança Master</li>
-          <li class="nav-item">
-            <a class="nav-link ${active('taxas')}" onclick="window.app.navigate('taxas')">
-              <i class="ph-percent fs-5 text-warning"></i>
-              <span>Taxas Contratuais &amp; Spread</span>
-            </a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link ${active('estornos')}" onclick="window.app.navigate('estornos')">
-              <i class="ph-warning-octagon fs-5 text-danger"></i>
-              <span>Monitoramento Chargebacks</span>
-            </a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link ${active('dadosBancarios')}" onclick="window.app.navigate('dadosBancarios')">
-              <i class="ph-gear fs-5 text-secondary"></i>
-              <span>Configurações Bancárias</span>
-            </a>
-          </li>
-        ` : ''}
-      `;
-      return;
+    let profileKey = 'PRODUTOR';
+    if (isMaster) {
+      profileKey = 'ADMINISTRADOR';
+    } else if (isDisk || state.currentUser.role === 'disk') {
+      profileKey = 'FINANCEIRO';
     }
 
-    // MENU OFICIAL DO PRODUTOR (CANÔNICO DE 11 ITENS, SEM MENUS FLUTUANTES)
-    this.sidebarNav.innerHTML = `
-      <li class="nav-item">
-        <a class="nav-link ${active('overview')}" onclick="window.app.navigate('overview')">
-          <i class="ph-chart-pie-slice fs-5"></i>
-          <span>Visão Geral</span>
-        </a>
-      </li>
+    const menuItems = menusPorPerfil[profileKey] || menusPorPerfil.PRODUTOR;
 
-      <li class="nav-item">
-        <a class="nav-link ${active('saldos')}" onclick="window.app.navigate('saldos')">
-          <i class="ph-currency-circle-dollar fs-5"></i>
-          <span>Saldos</span>
-        </a>
-      </li>
+    this.sidebarNav.innerHTML = menuItems.map(item => {
+      const hasSubs = Array.isArray(item.subItems) && item.subItems.length > 0;
+      const isParentActive = currentView === item.id;
+      const badgeHtml = item.badge === 'pendingCount' 
+        ? `<span class="badge rounded-pill bg-danger fs-xxs ms-auto">${pendingCount}</span>` 
+        : '';
 
-      <li class="nav-item">
-        <a class="nav-link ${active('extrato')}" onclick="window.app.navigate('extrato')">
-          <i class="ph-receipt fs-5"></i>
-          <span>Extrato Financeiro</span>
-        </a>
-      </li>
+      if (hasSubs) {
+        const isChildActive = item.subItems.some(sub => sub.id === currentView);
+        const isOpen = isParentActive || isChildActive;
 
-      <!-- REPASSES -->
-      <li class="nav-item nav-item-submenu ${['repasses'].includes(currentView) ? 'is-open' : ''}">
-        <a class="nav-link" onclick="this.parentElement.classList.toggle('is-open')">
-          <i class="ph-hand-coins fs-5"></i>
-          <span>Repasses</span>
-          <i class="ph-caret-right nav-arrow ms-auto"></i>
-        </a>
-        <ul class="nav-group-sub">
-          <li class="nav-item">
-            <a class="nav-link" onclick="window.app.openPayoutModal()">
-              <i class="ph-plus-circle me-1"></i> Solicitar Repasse
+        return `
+          <li class="nav-item nav-item-submenu ${isOpen ? 'is-open' : ''}">
+            <a class="nav-link d-flex align-items-center justify-content-between" onclick="this.parentElement.classList.toggle('is-open')">
+              <div class="d-flex align-items-center gap-2">
+                <i class="${item.icon} fs-5"></i>
+                <span>${item.label}</span>
+              </div>
+              <div class="d-flex align-items-center gap-1">
+                ${badgeHtml}
+                <i class="ph-caret-right nav-arrow"></i>
+              </div>
             </a>
+            <ul class="nav-group-sub">
+              ${item.subItems.map(sub => {
+                if (sub.action === 'openPayoutModal') {
+                  return `
+                    <li class="nav-item">
+                      <a class="nav-link" onclick="window.app.openPayoutModal()">
+                        <i class="ph-plus-circle me-1"></i> ${sub.label}
+                      </a>
+                    </li>
+                  `;
+                }
+                const isSubActive = currentView === sub.id && (!this.currentFilterArg || this.currentFilterArg === sub.filterArg);
+                return `
+                  <li class="nav-item">
+                    <a class="nav-link ${isSubActive ? 'active' : ''}" onclick="window.app.navigate('${sub.id}', '${sub.filterArg || 'all'}')">
+                      <i class="ph-caret-right me-1 fs-xxs opacity-50"></i> ${sub.label}
+                    </a>
+                  </li>
+                `;
+              }).join('')}
+            </ul>
           </li>
-          <li class="nav-item">
-            <a class="nav-link ${active('repasses')}" onclick="window.app.navigate('repasses')">
-              <i class="ph-clock-countdown me-1"></i> Minhas Solicitações
-            </a>
-          </li>
-        </ul>
-      </li>
+        `;
+      }
 
-      <!-- ANTECIPAÇÕES -->
-      <li class="nav-item nav-item-submenu ${['antecipacoes'].includes(currentView) ? 'is-open' : ''}">
-        <a class="nav-link" onclick="this.parentElement.classList.toggle('is-open')">
-          <i class="ph-trend-up fs-5"></i>
-          <span>Antecipações</span>
-          <i class="ph-caret-right nav-arrow ms-auto"></i>
-        </a>
-        <ul class="nav-group-sub">
-          <li class="nav-item">
-            <a class="nav-link ${active('antecipacoes')}" onclick="window.app.navigate('antecipacoes')">
-              <i class="ph-calculator me-1"></i> Simular Antecipação
-            </a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" onclick="window.app.navigate('antecipacoes')">
-              <i class="ph-files me-1"></i> Minhas Solicitações
-            </a>
-          </li>
-        </ul>
-      </li>
-
-      <li class="nav-item">
-        <a class="nav-link ${active('vendas')}" onclick="window.app.navigate('vendas')">
-          <i class="ph-shopping-cart fs-5"></i>
-          <span>Vendas &amp; Recebimentos</span>
-        </a>
-      </li>
-
-      <li class="nav-item">
-        <a class="nav-link ${active('taxas')}" onclick="window.app.navigate('taxas')">
-          <i class="ph-percent fs-5"></i>
-          <span>Taxas &amp; Descontos</span>
-        </a>
-      </li>
-
-      <li class="nav-item">
-        <a class="nav-link ${active('estornos')}" onclick="window.app.navigate('estornos')">
-          <i class="ph-warning-octagon fs-5"></i>
-          <span>Estornos &amp; Chargebacks</span>
-        </a>
-      </li>
-
-      <li class="nav-item">
-        <a class="nav-link ${active('bordero')}" onclick="window.app.navigate('bordero')">
-          <i class="ph-signature fs-5"></i>
-          <span>Borderôs</span>
-        </a>
-      </li>
-
-      <li class="nav-item">
-        <a class="nav-link ${active('relatorios')}" onclick="window.app.navigate('relatorios')">
-          <i class="ph-file-text fs-5"></i>
-          <span>Relatórios</span>
-        </a>
-      </li>
-
-      <li class="nav-item">
-        <a class="nav-link ${active('dadosBancarios')}" onclick="window.app.navigate('dadosBancarios')">
-          <i class="ph-credit-card fs-5"></i>
-          <span>Dados Bancários &amp; PIX</span>
-        </a>
-      </li>
-    `;
+      return `
+        <li class="nav-item">
+          <a class="nav-link ${isParentActive ? 'active' : ''} d-flex align-items-center justify-content-between" onclick="window.app.navigate('${item.id}')">
+            <div class="d-flex align-items-center gap-2">
+              <i class="${item.icon} fs-5"></i>
+              <span>${item.label}</span>
+            </div>
+            ${badgeHtml}
+          </a>
+        </li>
+      `;
+    }).join('');
   }
 
   // ==========================================================================

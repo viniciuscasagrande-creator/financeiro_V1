@@ -98,23 +98,60 @@ class CoreFinanceiroStore {
   }
 
   getState() {
-    const activeProd = this.data.producers.find(p => p.id === this.state.selectedProducerId) || this.data.producers[0];
+    const isAllProducers = this.state.selectedProducerId === 'all' || !this.state.selectedProducerId;
+    let activeProd = null;
+    let consolidatedTotals = null;
+
+    if (isAllProducers && this.state.viewMode === 'disk') {
+      const sumTotals = this.data.producers.reduce((acc, p) => ({
+        grossSales: acc.grossSales + (p.totals?.grossSales || 0),
+        netSales: acc.netSales + (p.totals?.netSales || 0),
+        totalBalance: acc.totalBalance + (p.totals?.totalBalance || 0),
+        availableBalance: acc.availableBalance + (p.totals?.availableBalance || 0),
+        futureReceivables: acc.futureReceivables + (p.totals?.futureReceivables || 0),
+        transferredAmount: acc.transferredAmount + (p.totals?.transferredAmount || 0),
+        blockedBalance: acc.blockedBalance + (p.totals?.blockedBalance || 0),
+        refundsAndChargebacks: acc.refundsAndChargebacks + (p.totals?.refundsAndChargebacks || 0),
+      }), { grossSales: 0, netSales: 0, totalBalance: 0, availableBalance: 0, futureReceivables: 0, transferredAmount: 0, blockedBalance: 0, refundsAndChargebacks: 0 });
+
+      activeProd = {
+        id: 'all',
+        name: 'Todos os Produtores (Consolidado)',
+        tradeName: 'Carteira Global Disk Ingressos',
+        cnpj: 'Consolidado Geral',
+        rating: 'Carteira Geral',
+        status: 'Ativo',
+        hasBlock: false,
+        contract: {
+          number: 'MASTER-GLOBAL',
+          diskFeePercent: 10.0,
+          anticipationRateMonthly: 2.5
+        },
+        totals: sumTotals,
+        bankAccounts: []
+      };
+      consolidatedTotals = sumTotals;
+    } else {
+      activeProd = this.data.producers.find(p => p.id === this.state.selectedProducerId) || this.data.producers[0];
+      consolidatedTotals = activeProd.totals || {
+        grossSales: 890000.00,
+        netSales: 801000.00,
+        totalBalance: 785000.00,
+        availableBalance: 310000.00,
+        futureReceivables: 245000.00,
+        transferredAmount: 920000.00,
+        blockedBalance: 25000.00,
+        refundsAndChargebacks: 15000.00
+      };
+    }
+
     return {
       ...this.state,
       data: {
         ...this.data,
         producer: activeProd,
         bankAccounts: activeProd.bankAccounts || [],
-        consolidatedTotals: activeProd.totals || {
-          grossSales: 890000.00,
-          netSales: 801000.00,
-          totalBalance: 785000.00,
-          availableBalance: 310000.00,
-          futureReceivables: 245000.00,
-          transferredAmount: 920000.00,
-          blockedBalance: 25000.00,
-          refundsAndChargebacks: 15000.00
-        }
+        consolidatedTotals: consolidatedTotals
       },
       activeProducer: activeProd,
       pendingApprovalsCount: this.data.approvalQueue.filter(a => a.status === 'Aguardando análise' || a.status === 'Em análise' || a.status === 'Aguardando assinatura do Financeiro').length
@@ -150,6 +187,7 @@ class CoreFinanceiroStore {
       this.state.viewMode = 'producer';
       this.state.currentView = 'overview';
       this.state.selectedProducerId = producerId;
+      this.state.selectedEventId = 'all';
     } else if (role === 'admin') {
       this.state.currentUser = {
         id: "usr-admin-01",
@@ -161,6 +199,8 @@ class CoreFinanceiroStore {
       };
       this.state.viewMode = 'disk';
       this.state.currentView = 'diskDashboard';
+      this.state.selectedProducerId = 'all';
+      this.state.selectedEventId = 'all';
     } else {
       this.state.currentUser = {
         id: "usr-disk-01",
@@ -172,6 +212,8 @@ class CoreFinanceiroStore {
       };
       this.state.viewMode = 'disk';
       this.state.currentView = 'diskDashboard';
+      this.state.selectedProducerId = 'all';
+      this.state.selectedEventId = 'all';
     }
     this.state.isLoggedIn = true;
     this.showToast(
