@@ -92,6 +92,11 @@ class CoreFinanceiroStore {
           { timestamp: "29/09/2026 09:27", actor: "João Silva (Produtor)", action: "Conferiu dados bancários e enviou para análise", details: "Status: Aguardando análise" },
           { timestamp: "29/09/2026 09:28", actor: "Sistema Disk", action: "Notificou a mesa de aprovação do Financeiro Disk", details: "Entrou na Central de Aprovações" }
         ],
+        reservation: item.reservation || {
+          type: item.type === 'Antecipação' ? 'RECEBIVEL_FUTURO' : 'SALDO_DISPONIVEL',
+          amount: item.requestedAmount || item.netAmount || 0,
+          status: isPaid ? 'Encerrada' : (item.status === 'Rejeitado' ? 'Liberada / Cancelada' : 'Reservado')
+        },
         rejection: null
       };
     });
@@ -108,11 +113,13 @@ class CoreFinanceiroStore {
         netSales: acc.netSales + (p.totals?.netSales || 0),
         totalBalance: acc.totalBalance + (p.totals?.totalBalance || 0),
         availableBalance: acc.availableBalance + (p.totals?.availableBalance || 0),
+        reservedBalance: acc.reservedBalance + (p.totals?.reservedBalance || 0),
+        reservedReceivables: acc.reservedReceivables + (p.totals?.reservedReceivables || 0),
         futureReceivables: acc.futureReceivables + (p.totals?.futureReceivables || 0),
         transferredAmount: acc.transferredAmount + (p.totals?.transferredAmount || 0),
         blockedBalance: acc.blockedBalance + (p.totals?.blockedBalance || 0),
         refundsAndChargebacks: acc.refundsAndChargebacks + (p.totals?.refundsAndChargebacks || 0),
-      }), { grossSales: 0, netSales: 0, totalBalance: 0, availableBalance: 0, futureReceivables: 0, transferredAmount: 0, blockedBalance: 0, refundsAndChargebacks: 0 });
+      }), { grossSales: 0, netSales: 0, totalBalance: 0, availableBalance: 0, reservedBalance: 0, reservedReceivables: 0, futureReceivables: 0, transferredAmount: 0, blockedBalance: 0, refundsAndChargebacks: 0 });
 
       activeProd = {
         id: 'all',
@@ -138,6 +145,8 @@ class CoreFinanceiroStore {
         netSales: 801000.00,
         totalBalance: 785000.00,
         availableBalance: 310000.00,
+        reservedBalance: 0.00,
+        reservedReceivables: 0.00,
         futureReceivables: 245000.00,
         transferredAmount: 920000.00,
         blockedBalance: 25000.00,
@@ -291,6 +300,15 @@ class CoreFinanceiroStore {
     const bank = producer.bankAccounts.find(b => b.id === bankAccountId) || producer.bankAccounts[0];
     const numericAmount = parseFloat(amount);
 
+    if (!numericAmount || numericAmount <= 0) {
+      alert("Informe um valor válido para o repasse.");
+      return null;
+    }
+    if (numericAmount > event.availableBalance) {
+      alert(`Saldo insuficiente: O valor solicitado (${numericAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}) excede o saldo disponível de ${event.name} (${event.availableBalance.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}).`);
+      return null;
+    }
+
     const payoutId = `REP-${Math.floor(10000 + Math.random() * 90000)}`;
     const nowTime = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
     const nowDate = new Date().toLocaleDateString('pt-BR');
@@ -342,13 +360,16 @@ class CoreFinanceiroStore {
     // Insere no topo da Fila
     this.data.approvalQueue.unshift(newApprovalItem);
 
-    // Reserva o saldo temporariamente
+    // Reserva operacional: o valor deixa de ficar livre para novas solicitações
+    event.reservedBalance = (event.reservedBalance || 0) + numericAmount;
+    newApprovalItem.reservation = { type: "SALDO_DISPONIVEL", amount: numericAmount, status: "Reservado" };
     event.availableBalance = Math.max(0, event.availableBalance - numericAmount);
     producer.totals.availableBalance = Math.max(0, producer.totals.availableBalance - numericAmount);
+    producer.totals.reservedBalance = (producer.totals.reservedBalance || 0) + numericAmount;
 
     this.showToast(
       "🔔 Nova Solicitação Enviada",
-      `${producer.name} · ${event.name} — R$ ${numericAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} enviado para análise da Disk.`,
+      `${producer.name} · ${event.name} — R$ ${numericAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} enviado para análise da Disk (Saldo Reservado).`,
       "warning"
     );
 
@@ -386,7 +407,7 @@ class CoreFinanceiroStore {
     this.notify();
   }
 
-  // 3. Financeiro Disk: Rejeita a Operação Formalmente (com motivo obrigatório e registro no histórico)
+  // 3. Financeiro Disk: Rejeita a Operação Formalmente (com motivo obrigatório e devolução automática da reserva)
   rejectOperationByDisk(requestId, { reasonCategory, observation }) {
     const item = this.data.approvalQueue.find(a => a.id === requestId);
     if (!item) return;
@@ -403,23 +424,45 @@ class CoreFinanceiroStore {
       observation: observation
     };
 
-    // Estorna saldo de volta ao disponível
-    const event = this.data.events.find(e => e.id === item.eventId);
-    if (event && item.type === "Repasse") {
-      event.availableBalance += item.requestedAmount;
+    if (item.reservation) {
+      item.reservation.status = "Liberada / Cancelada";
     }
+
+    // Estorna saldo ou recebíveis de volta ao disponível e cancela a reserva operacional
+    const event = this.data.events.find(e => e.id === item.eventId);
     const producer = this.data.producers.find(p => p.id === item.producerId);
-    if (producer && item.type === "Repasse") {
-      producer.totals.availableBalance += item.requestedAmount;
+
+    if (item.type === "Repasse") {
+      if (event) {
+        event.availableBalance += item.requestedAmount;
+        event.reservedBalance = Math.max(0, (event.reservedBalance || 0) - item.requestedAmount);
+      }
+      if (producer) {
+        producer.totals.availableBalance += item.requestedAmount;
+        producer.totals.reservedBalance = Math.max(0, (producer.totals.reservedBalance || 0) - item.requestedAmount);
+      }
+    } else if (item.type === "Antecipação") {
+      if (event) {
+        event.futureReceivables += item.requestedAmount;
+        event.reservedReceivables = Math.max(0, (event.reservedReceivables || 0) - item.requestedAmount);
+      }
+      if (producer) {
+        producer.totals.futureReceivables += item.requestedAmount;
+        producer.totals.reservedReceivables = Math.max(0, (producer.totals.reservedReceivables || 0) - item.requestedAmount);
+      }
+      if (this.data.anticipations?.history) {
+        const hist = this.data.anticipations.history.find(h => h.id === item.id);
+        if (hist) hist.status = "Rejeitado";
+      }
     }
 
     item.auditTrail.push(
-      { timestamp: `${nowTime}`, actor: `${operator} (Financeiro Disk)`, action: "Rejeitou a solicitação", details: `Motivo: ${reasonCategory} — Obs: ${observation}` }
+      { timestamp: `${nowTime}`, actor: `${operator} (Financeiro Disk)`, action: "Rejeitou a solicitação", details: `Motivo: ${reasonCategory} — Obs: ${observation} (Reserva estornada com sucesso)` }
     );
 
     this.showToast(
       "✕ Solicitação Rejeitada",
-      `A solicitação ${item.id} foi rejeitada (${reasonCategory}). O produtor foi notificado e o saldo foi restabelecido.`,
+      `A solicitação ${item.id} foi rejeitada (${reasonCategory}). O produtor foi notificado e o saldo reservado foi restabelecido.`,
       "danger"
     );
 
@@ -529,11 +572,25 @@ class CoreFinanceiroStore {
     const producer = this.data.producers.find(p => p.id === item.producerId);
     const finalAmount = item.requestedAmount || item.netAmount;
 
+    if (item.reservation) {
+      item.reservation.status = "Encerrada / Liquidada";
+    }
+
     if (event) {
       event.payoutsDone += finalAmount;
+      if (item.type === "Repasse") {
+        event.reservedBalance = Math.max(0, (event.reservedBalance || 0) - (item.requestedAmount || finalAmount));
+      } else if (item.type === "Antecipação") {
+        event.reservedReceivables = Math.max(0, (event.reservedReceivables || 0) - (item.requestedAmount || finalAmount));
+      }
     }
     if (producer) {
       producer.totals.transferredAmount += finalAmount;
+      if (item.type === "Repasse") {
+        producer.totals.reservedBalance = Math.max(0, (producer.totals.reservedBalance || 0) - (item.requestedAmount || finalAmount));
+      } else if (item.type === "Antecipação") {
+        producer.totals.reservedReceivables = Math.max(0, (producer.totals.reservedReceivables || 0) - (item.requestedAmount || finalAmount));
+      }
     }
 
     if (item.type === "Antecipação" && this.data.anticipations?.history) {
@@ -584,11 +641,11 @@ class CoreFinanceiroStore {
     this.notify();
   }
 
-  // Solicitação de Antecipação de Recebíveis com Deságio Contratual
-  requestAnticipation({ eventId, grossAmount, notes }) {
+  // Solicitação de Antecipação de Recebíveis com Deságio Contratual e Reserva de Recebíveis
+  requestAnticipation({ eventId, grossAmount, amount, notes }) {
     const producer = this.getState().activeProducer;
     const event = this.data.events.find(e => e.id === eventId) || this.data.events.find(e => e.producerId === producer.id) || this.data.events[0];
-    const numericAmount = parseFloat(grossAmount);
+    const numericAmount = parseFloat(grossAmount || amount || 0);
     const monthlyRate = producer.contract?.anticipationRateMonthly || this.data.anticipations?.monthlyRate || 2.0;
     const discountFee = numericAmount * (monthlyRate / 100);
     const netAmount = numericAmount - discountFee;
@@ -636,9 +693,10 @@ class CoreFinanceiroStore {
         producer: { signed: false, signedBy: null, signedAt: null, ip: null, certAuth: null },
         disk: { signed: false, signedBy: null, signedAt: null, ip: null, certAuth: null, lockedUntilProducerSigns: true }
       },
+      reservation: { type: "RECEBIVEL_FUTURO", amount: numericAmount, status: "Reservado" },
       auditTrail: [
         { timestamp: `${nowTime}`, actor: `${this.state.currentUser.name} (Produtor)`, action: "Simulou e solicitou antecipação de recebíveis", details: `Bruto: R$ ${numericAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} | Taxa (${monthlyRate}%): -R$ ${discountFee.toFixed(2)} | Líquido: R$ ${netAmount.toFixed(2)}` },
-        { timestamp: `${nowTime}`, actor: `${this.state.currentUser.name} (Produtor)`, action: "Enviou para a mesa de crédito do Financeiro Disk", details: "Status: Aguardando análise" },
+        { timestamp: `${nowTime}`, actor: `${this.state.currentUser.name} (Produtor)`, action: "Enviou para a mesa de crédito do Financeiro Disk", details: "Status: Aguardando análise (Recebíveis Reservados)" },
         { timestamp: `${nowTime}`, actor: "Mesa de Operações Disk", action: "Notificada para análise de risco e margem", details: "Entrou na Central de Aprovações" }
       ],
       rejection: null,
@@ -660,15 +718,18 @@ class CoreFinanceiroStore {
       });
     }
 
+    // Reserva operacional dos recebíveis futuros
     event.futureReceivables = Math.max(0, event.futureReceivables - numericAmount);
+    event.reservedReceivables = (event.reservedReceivables || 0) + numericAmount;
     producer.totals.futureReceivables = Math.max(0, producer.totals.futureReceivables - numericAmount);
+    producer.totals.reservedReceivables = (producer.totals.reservedReceivables || 0) + numericAmount;
     if (this.data.anticipations.eligibleAmount) {
       this.data.anticipations.eligibleAmount = Math.max(0, this.data.anticipations.eligibleAmount - numericAmount);
     }
 
     this.showToast(
       "⚡ Solicitação de Antecipação Enviada",
-      `${producer.name} · ${event.name} — R$ ${numericAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} (Líquido: R$ ${netAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}) encaminhado para aprovação da Disk.`,
+      `${producer.name} · ${event.name} — R$ ${numericAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} (Líquido: R$ ${netAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}) encaminhado para aprovação da Disk (Recebíveis Reservados).`,
       "warning"
     );
 

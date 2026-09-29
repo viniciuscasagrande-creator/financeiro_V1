@@ -65,6 +65,12 @@ export function renderAntecipacoes(state) {
           <div class="kpi-subtext"><span>Calculado sobre parcelas futuras de cartão</span></div>
         </div>
 
+        <div class="kpi-card warning-accent">
+          <div class="kpi-header"><span class="kpi-title">Recebíveis Reservados</span></div>
+          <div class="kpi-value" style="color: #d97706;">${formatCurrency(state.activeProducer?.totals?.reservedReceivables || 0)}</div>
+          <div class="kpi-subtext"><span>Retido em solicitações de antecipação</span></div>
+        </div>
+
         <div class="kpi-card">
           <div class="kpi-header"><span class="kpi-title">Taxa Contratual de Antecipação</span></div>
           <div class="kpi-value" style="color: #7c3aed;">${ant.monthlyRate}% <span style="font-size: 0.9rem; font-weight: 500;">a.m.</span></div>

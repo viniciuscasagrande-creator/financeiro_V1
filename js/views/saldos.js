@@ -53,22 +53,28 @@ export function renderSaldos(state) {
           </div>
 
           <!-- Mini Stats Grid in Hero -->
-          <div style="display: flex; gap: 20px; flex-wrap: wrap;">
-            <div style="background: rgba(255,255,255,0.06); padding: 14px 20px; border-radius: var(--radius-md); border: 1px solid rgba(255,255,255,0.1);">
-              <div style="font-size: 0.72rem; text-transform: uppercase; color: #34d399; font-weight: 600;">Disponível Imediato</div>
-              <div style="font-size: 1.45rem; font-weight: 700; color: #34d399; margin-top: 2px;">${formatCurrency(totals.availableBalance)}</div>
+          <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+            <div style="background: rgba(255,255,255,0.06); padding: 14px 18px; border-radius: var(--radius-md); border: 1px solid rgba(255,255,255,0.1);">
+              <div style="font-size: 0.72rem; text-transform: uppercase; color: #34d399; font-weight: 600;">Disponível para Uso</div>
+              <div style="font-size: 1.35rem; font-weight: 700; color: #34d399; margin-top: 2px;">${formatCurrency(totals.availableBalance)}</div>
               <div style="font-size: 0.7rem; color: #94a3b8;">Livre para transferência</div>
             </div>
 
-            <div style="background: rgba(255,255,255,0.06); padding: 14px 20px; border-radius: var(--radius-md); border: 1px solid rgba(255,255,255,0.1);">
+            <div style="background: rgba(255,255,255,0.06); padding: 14px 18px; border-radius: var(--radius-md); border: 1px solid rgba(255,255,255,0.1);">
+              <div style="font-size: 0.72rem; text-transform: uppercase; color: #f59e0b; font-weight: 600;">Reservado</div>
+              <div style="font-size: 1.35rem; font-weight: 700; color: #f59e0b; margin-top: 2px;">${formatCurrency(totals.reservedBalance || 0)}</div>
+              <div style="font-size: 0.7rem; color: #94a3b8;">Retido em solicitações</div>
+            </div>
+
+            <div style="background: rgba(255,255,255,0.06); padding: 14px 18px; border-radius: var(--radius-md); border: 1px solid rgba(255,255,255,0.1);">
               <div style="font-size: 0.72rem; text-transform: uppercase; color: #fbbf24; font-weight: 600;">A Receber Futuro</div>
-              <div style="font-size: 1.45rem; font-weight: 700; color: #fbbf24; margin-top: 2px;">${formatCurrency(totals.futureReceivables)}</div>
+              <div style="font-size: 1.35rem; font-weight: 700; color: #fbbf24; margin-top: 2px;">${formatCurrency(totals.futureReceivables)}</div>
               <div style="font-size: 0.7rem; color: #94a3b8;">Parcelados a liquidar</div>
             </div>
 
-            <div style="background: rgba(255,255,255,0.06); padding: 14px 20px; border-radius: var(--radius-md); border: 1px solid rgba(255,255,255,0.1);">
+            <div style="background: rgba(255,255,255,0.06); padding: 14px 18px; border-radius: var(--radius-md); border: 1px solid rgba(255,255,255,0.1);">
               <div style="font-size: 0.72rem; text-transform: uppercase; color: #93c5fd; font-weight: 600;">Repasses Pagos</div>
-              <div style="font-size: 1.45rem; font-weight: 700; color: #93c5fd; margin-top: 2px;">${formatCurrency(totals.transferredAmount)}</div>
+              <div style="font-size: 1.35rem; font-weight: 700; color: #93c5fd; margin-top: 2px;">${formatCurrency(totals.transferredAmount)}</div>
               <div style="font-size: 0.7rem; color: #94a3b8;">Já em conta bancária</div>
             </div>
           </div>
@@ -80,10 +86,10 @@ export function renderSaldos(state) {
         <div class="card-header-bar">
           <div class="card-title-group">
             <h2>Detalhamento de Saldos por Evento</h2>
-            <p class="card-subtitle">Visão individualizada do fluxo financeiro de cada produção ativa</p>
+            <p class="card-subtitle">Visão individualizada do fluxo financeiro com reservas segregadas por produção</p>
           </div>
           <div class="filter-controls-group">
-            <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: 500;">3 eventos cadastrados</span>
+            <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: 500;">${events.length} produções ativas</span>
           </div>
         </div>
 
@@ -94,11 +100,11 @@ export function renderSaldos(state) {
                 <tr>
                   <th>Evento / Produção</th>
                   <th>Data & Local</th>
-                  <th>Capacidade</th>
                   <th style="text-align: right;">Saldo Total</th>
                   <th style="text-align: right;">Disponível</th>
+                  <th style="text-align: right;">Reservado</th>
                   <th style="text-align: right;">A Receber</th>
-                  <th style="text-align: right;">Repasses Feitos</th>
+                  <th style="text-align: right;">Repasses Pagos</th>
                   <th style="text-align: center;">Ações</th>
                 </tr>
               </thead>
@@ -113,17 +119,14 @@ export function renderSaldos(state) {
                       <div style="font-size: 0.82rem; font-weight: 600;">${evt.date}</div>
                       <div style="font-size: 0.73rem; color: var(--text-muted);">${evt.venue}</div>
                     </td>
-                    <td>
-                      <div style="font-size: 0.82rem; font-weight: 600;">${formatNumber(evt.soldTickets)} <span style="font-weight: 400; color: var(--text-muted);">/ ${formatNumber(evt.capacity)}</span></div>
-                      <div style="width: 80px; height: 5px; background: #e2e8f0; border-radius: 3px; margin-top: 4px; overflow: hidden;">
-                        <div style="width: ${(evt.soldTickets / evt.capacity) * 100}%; height: 100%; background: var(--primary);"></div>
-                      </div>
-                    </td>
                     <td style="text-align: right; font-weight: 700; font-size: 0.95rem;">
                       ${formatCurrency(evt.totalBalance)}
                     </td>
                     <td style="text-align: right; font-weight: 800; font-size: 0.95rem; color: #059669;">
                       ${formatCurrency(evt.availableBalance)}
+                    </td>
+                    <td style="text-align: right; font-weight: 700; font-size: 0.9rem; color: ${(evt.reservedBalance || 0) > 0 ? '#d97706' : '#94a3b8'};">
+                      ${formatCurrency(evt.reservedBalance || 0)}
                     </td>
                     <td style="text-align: right; font-weight: 600; color: #d97706;">
                       ${formatCurrency(evt.futureReceivables)}
@@ -146,9 +149,10 @@ export function renderSaldos(state) {
               </tbody>
               <tfoot>
                 <tr style="background: #f8fafc; font-weight: 700; border-top: 2px solid var(--border-color);">
-                  <td colspan="3" style="text-transform: uppercase; font-size: 0.78rem; letter-spacing: 0.05em;">Total Geral Consolidado</td>
+                  <td colspan="2" style="text-transform: uppercase; font-size: 0.78rem; letter-spacing: 0.05em;">Total Geral Consolidado</td>
                   <td style="text-align: right; font-size: 1.05rem; font-weight: 800;">${formatCurrency(totals.totalBalance)}</td>
                   <td style="text-align: right; font-size: 1.05rem; font-weight: 800; color: #059669;">${formatCurrency(totals.availableBalance)}</td>
+                  <td style="text-align: right; font-size: 1.05rem; font-weight: 800; color: #d97706;">${formatCurrency(totals.reservedBalance || 0)}</td>
                   <td style="text-align: right; font-size: 1.05rem; font-weight: 700; color: #d97706;">${formatCurrency(totals.futureReceivables)}</td>
                   <td style="text-align: right; font-size: 1.05rem; font-weight: 700; color: var(--text-muted);">${formatCurrency(totals.transferredAmount)}</td>
                   <td></td>

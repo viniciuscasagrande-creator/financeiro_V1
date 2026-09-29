@@ -70,6 +70,11 @@ export function renderRepasses(state) {
           <div class="kpi-value" style="color: #059669;">${formatCurrency(availableBalance)}</div>
           <div class="kpi-subtext"><span>Disponível para nova solicitação</span></div>
         </div>
+        <div class="kpi-card warning-accent">
+          <div class="kpi-header"><span class="kpi-title">Saldo Reservado</span></div>
+          <div class="kpi-value" style="color: #d97706;">${formatCurrency(producer.totals.reservedBalance || 0)}</div>
+          <div class="kpi-subtext"><span>Retido em solicitações ativas</span></div>
+        </div>
         <div class="kpi-card highlight">
           <div class="kpi-header"><span class="kpi-title">Repasses Programados</span></div>
           <div class="kpi-value" style="color: #2563eb;">${formatCurrency(scheduledAmount)}</div>
@@ -178,12 +183,16 @@ export function renderRepasses(state) {
                   <th>Previsão / Pago em</th>
                   <th>Conta Bancária de Destino</th>
                   <th style="text-align: right;">Valor Solicitado</th>
+                  <th style="text-align: center;">Reserva de Saldo</th>
                   <th style="text-align: center;">Status</th>
                   <th style="text-align: right;">Ações</th>
                 </tr>
               </thead>
               <tbody>
-                ${payouts.map(p => `
+                ${payouts.map(p => {
+                  const resStatus = p.reservation?.status || (p.status === 'Pago' ? 'Encerrada' : (p.status === 'Rejeitado' ? 'Liberada' : 'Reservado'));
+                  const resBadge = resStatus === 'Reservado' ? 'badge bg-warning text-dark' : (resStatus === 'Encerrada' ? 'badge bg-success' : 'badge bg-secondary');
+                  return `
                   <tr>
                     <td style="font-family: monospace; font-weight: 700; color: var(--text-main);">${p.id}</td>
                     <td style="font-weight: 600;">${p.eventName}</td>
@@ -195,6 +204,11 @@ export function renderRepasses(state) {
                     </td>
                     <td style="text-align: right; font-weight: 800; font-size: 0.95rem; color: var(--text-main);">
                       ${formatCurrency(p.requestedAmount || p.amount)}
+                    </td>
+                    <td style="text-align: center;">
+                      <span class="${resBadge}" style="font-size: 0.72rem;">
+                        <i class="ph-lock-key me-1"></i> ${resStatus}
+                      </span>
                     </td>
                     <td style="text-align: center;">
                       ${createStatusBadge(p.status)}
@@ -225,7 +239,8 @@ export function renderRepasses(state) {
                       </div>
                     </td>
                   </tr>
-                `).join('')}
+                `;
+                }).join('')}
               </tbody>
             </table>
           </div>

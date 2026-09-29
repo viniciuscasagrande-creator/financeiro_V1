@@ -110,8 +110,13 @@ export function renderOverview(state) {
           </div>
           <div class="kpi-value" style="color: #059669;">${formatCurrency(totals.availableBalance)}</div>
           <div class="kpi-subtext">
-            <span class="trend-pill trend-up">Liberado</span>
-            <span>Apto para repasse imediato</span>
+            ${(totals.reservedBalance || 0) > 0 ? `
+              <span class="trend-pill" style="background: #fef3c7; color: #92400e;">Reservado: ${formatCurrency(totals.reservedBalance)}</span>
+              <span>Em análise</span>
+            ` : `
+              <span class="trend-pill trend-up">Liberado</span>
+              <span>Apto para repasse imediato</span>
+            `}
           </div>
         </div>
 

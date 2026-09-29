@@ -33,13 +33,13 @@ import { menusPorPerfil } from './menuConfig.js';
 // Import Views do Financeiro Disk (Backoffice Enterprise)
 import { renderDiskDashboard } from './views/disk/dashboard.js';
 import { renderDiskAprovacoes } from './views/disk/aprovacoes.js';
+import { renderDiskSolicitacoes } from './views/disk/solicitacoes.js';
 import { renderDiskProdutores } from './views/disk/produtores.js';
 import { renderDiskGateways } from './views/disk/gatewaysMdr.js';
 import { renderDiskLedger } from './views/disk/ledger.js';
 import { renderDiskTesouraria } from './views/disk/tesouraria.js';
 import {
   renderDiskEventos,
-  renderDiskSolicitacoes,
   renderDiskSaldos,
   renderDiskRepasses,
   renderDiskAntecipacoes,
@@ -873,10 +873,11 @@ class LimitlessFinancialApp {
     financialStore.requestAnticipation({
       eventId: eventId,
       grossAmount: val,
+      amount: val,
       notes: "Solicitação gerada via Simulador Limitless de Antecipação de Cartão."
     });
 
-    this.navigate('repasses');
+    this.navigate('antecipacoes');
   }
 
   // ==========================================================================
@@ -1165,12 +1166,12 @@ class LimitlessFinancialApp {
     const eventId = document.getElementById('modalPayoutEvent').value;
     const amount = document.getElementById('modalPayoutAmount').value;
     const bankAccountId = document.getElementById('modalPayoutBank').value;
-    const notes = document.getElementById('modalPayoutNotes').value;
+    const notes = document.getElementById('modalPayoutNotes')?.value || '';
 
     const payout = financialStore.requestPayout({ eventId, amount, bankAccountId, notes });
-    this.closeModal();
+    if (!payout) return;
 
-    financialStore.showToast("Repasse Solicitado", `Protocolo ${payout.id} no valor de ${formatCurrency(amount)} enviado para análise`, "success");
+    this.closeModal();
     this.navigate('repasses');
   }
 
