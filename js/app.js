@@ -32,6 +32,11 @@ import { menusPorPerfil } from './menuConfig.js';
 
 // Import Views do Financeiro Disk (Backoffice Enterprise)
 import { renderDiskDashboard } from './views/disk/dashboard.js';
+import {
+  renderDiskPosicaoGeral,
+  renderDiskIndicadores,
+  renderDiskInteligencia
+} from './views/disk/diskVisaoGeral.js';
 import { renderDiskAprovacoes } from './views/disk/aprovacoes.js';
 import { renderDiskSolicitacoes } from './views/disk/solicitacoes.js';
 import { renderDiskProdutores } from './views/disk/produtores.js';
@@ -150,7 +155,7 @@ class LimitlessFinancialApp {
     let targetView = viewName;
     const aliasMap = {
       'financial-dashboard': isDisk ? 'diskDashboard' : 'overview',
-      'financial-posicao-geral': 'diskDashboard',
+      'financial-posicao-geral': isDisk ? 'diskPosicaoGeral' : 'saldos',
       'financial-saldos': isDisk ? 'diskSaldos' : 'saldos',
       'financial-approvals': 'diskAprovacoes',
       'financial-repass': isDisk ? 'diskRepasses' : 'repasses',
@@ -167,7 +172,7 @@ class LimitlessFinancialApp {
       'financial-analytics': isDisk ? 'diskRelatorios' : 'relatorios',
       'dashboard-main': isDisk ? 'diskDashboard' : 'overview',
       'dashboard-agenda': isDisk ? 'diskRecebiveis' : 'diskTesouraria',
-      'dashboard-indicators': isDisk ? 'diskRelatorios' : 'relatorios',
+      'dashboard-indicators': isDisk ? 'diskIndicadores' : 'relatorios',
       'events-list': isDisk ? 'diskEventos' : 'saldos',
       'accounting-disk': 'diskLedger',
       'reports-sales': isDisk ? 'diskRelatorios' : 'relatorios',
@@ -177,6 +182,16 @@ class LimitlessFinancialApp {
 
     if (aliasMap[viewName]) {
       targetView = aliasMap[viewName];
+    }
+
+    if (targetView === 'diskDashboard') {
+      if (filterArg === 'posicao') {
+        targetView = 'diskPosicaoGeral';
+      } else if (filterArg === 'indicadores') {
+        targetView = 'diskIndicadores';
+      } else if (filterArg === 'inteligencia') {
+        targetView = 'diskInteligencia';
+      }
     }
 
     if (targetView === 'diskSaldos') {
@@ -1515,7 +1530,22 @@ class LimitlessFinancialApp {
     if (isDisk) {
       switch (state.currentView) {
         case 'diskDashboard':
-          viewHtml = renderDiskDashboard(state);
+          viewHtml = (this.currentFilterArg === 'posicao'
+            ? renderDiskPosicaoGeral(state)
+            : (this.currentFilterArg === 'indicadores'
+              ? renderDiskIndicadores(state)
+              : (this.currentFilterArg === 'inteligencia'
+                ? renderDiskInteligencia(state)
+                : renderDiskDashboard(state))));
+          break;
+        case 'diskPosicaoGeral':
+          viewHtml = renderDiskPosicaoGeral(state);
+          break;
+        case 'diskIndicadores':
+          viewHtml = renderDiskIndicadores(state);
+          break;
+        case 'diskInteligencia':
+          viewHtml = renderDiskInteligencia(state);
           break;
         case 'diskProdutores':
           viewHtml = renderDiskProdutores(state);
@@ -1925,6 +1955,9 @@ class LimitlessFinancialApp {
 
       // Financeiro Disk — 15 Domínios Administrativos
       'diskDashboard': { title: 'Dashboard Financeiro', subtitle: 'Painel executivo com volume transacionado, obrigações com produtores e liquidez.' },
+      'diskPosicaoGeral': { title: 'Posição Geral', subtitle: 'Fotografia financeira consolidada: disponibilidades, recebíveis, obrigações, reservas e posição líquida.' },
+      'diskIndicadores': { title: 'Indicadores Financeiros', subtitle: 'KPIs de desempenho calculados a partir do mesmo contexto e das operações do Financeiro Disk.' },
+      'diskInteligencia': { title: 'Inteligência Financeira', subtitle: 'Leitura orientada por regras sobre os dados existentes; cada alerta leva ao módulo responsável.' },
       'diskProdutores': { title: 'Produtores & Contas Financeiras', subtitle: 'Gestão cadastral, contas financeiras, contratos, travas e limites de todos os produtores.' },
       'diskEventos': { title: 'Eventos & Posição Financeira', subtitle: 'Posição financeira individual e fechamentos de bilheteria de toda a grade Disk Ingressos.' },
       'diskSolicitacoes': { title: 'Central de Solicitações', subtitle: 'Acompanhamento transversal de repasses, antecipações e fechamentos de borderô de todos os produtores.' },

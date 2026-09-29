@@ -89,9 +89,9 @@ export const menuFinanceiroCompleto = [
     icon: 'ph-chart-pie-slice',
     subItems: [
       { id: 'diskDashboard', label: 'Dashboard Financeiro', filterArg: 'dashboard' },
-      { id: 'diskDashboard', label: 'Posição Geral', filterArg: 'posicao' },
-      { id: 'diskDashboard', label: 'Indicadores', filterArg: 'indicadores' },
-      { id: 'diskDashboard', label: 'Inteligência Financeira', filterArg: 'inteligencia' }
+      { id: 'diskPosicaoGeral', label: 'Posição Geral', filterArg: 'posicao' },
+      { id: 'diskIndicadores', label: 'Indicadores', filterArg: 'indicadores' },
+      { id: 'diskInteligencia', label: 'Inteligência Financeira', filterArg: 'inteligencia' }
     ]
   },
   {

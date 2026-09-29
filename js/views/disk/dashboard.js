@@ -5,20 +5,49 @@
 import { formatCurrency, formatNumber, createStatusBadge } from '../../formatters.js';
 
 export function renderDiskDashboard(state) {
-  const producers = state.data.producers;
-  const events = state.data.events;
-  const approvals = state.data.approvalQueue;
+  const producerId = state.selectedProducerId;
+  const eventId = state.selectedEventId;
+  const events = state.data.events.filter(e =>
+    (producerId === 'all' || !producerId || e.producerId === producerId) &&
+    (eventId === 'all' || !eventId || e.id === eventId)
+  );
+  const producerIds = new Set(events.map(e => e.producerId));
+  const producers = state.data.producers.filter(p =>
+    producerId === 'all' || !producerId ? producerIds.has(p.id) : p.id === producerId
+  );
+  const approvals = state.data.approvalQueue.filter(a =>
+    (producerId === 'all' || !producerId || a.producerId === producerId) &&
+    (eventId === 'all' || !eventId || a.eventId === eventId)
+  );
 
-  const totalGross = producers.reduce((acc, p) => acc + p.totals.grossSales, 0);
-  const totalProducerObligations = producers.reduce((acc, p) => acc + p.totals.totalBalance, 0);
-  const totalAvailable = producers.reduce((acc, p) => acc + p.totals.availableBalance, 0);
-  const totalReceivables = producers.reduce((acc, p) => acc + p.totals.futureReceivables, 0);
+  const totalGross = events.reduce((acc, e) => acc + (Number(e.grossSales) || 0), 0);
+  const totalProducerObligations = events.reduce((acc, e) => acc + (Number(e.totalBalance) || 0), 0);
+  const totalAvailable = events.reduce((acc, e) => acc + (Number(e.availableBalance) || 0), 0);
+  const totalReceivables = events.reduce((acc, e) => acc + (Number(e.futureReceivables) || 0), 0);
 
-  const pendingCount = approvals.filter(a => a.status === 'Pendente' || a.status === 'Em Análise').length;
-  const pendingPayouts = approvals.filter(a => a.type === 'Repasse' && a.status !== 'Pago' && a.status !== 'Recusado').length;
-  const pendingAnts = approvals.filter(a => a.type === 'Antecipação' && a.status !== 'Pago' && a.status !== 'Recusado').length;
+  const pendingCount = approvals.filter(a => !['Pago', 'Recusado', 'Rejeitado', 'Concluído'].includes(a.status)).length;
+  const pendingPayouts = approvals.filter(a => a.type === 'Repasse' && !['Pago', 'Recusado', 'Rejeitado', 'Concluído'].includes(a.status)).length;
+  const pendingAnts = approvals.filter(a => a.type === 'Antecipação' && !['Pago', 'Recusado', 'Rejeitado', 'Concluído'].includes(a.status)).length;
   const pendingBanks = approvals.filter(a => a.type === 'Alteração Bancária').length;
   const pendingChargebacks = approvals.filter(a => a.type === 'Chargeback').length;
+
+  const contextLabel = eventId !== 'all' && eventId
+    ? (state.data.events.find(e => e.id === eventId)?.name || 'Evento')
+    : (producerId && producerId !== 'all'
+      ? (state.data.producers.find(p => p.id === producerId)?.name || 'Produtor')
+      : 'Disk Ingressos — Consolidado');
+
+  const getProducerTotals = (p) => {
+    if (eventId && eventId !== 'all') {
+      const pEvents = events.filter(e => e.producerId === p.id);
+      return {
+        totalBalance: pEvents.reduce((a, e) => a + (Number(e.totalBalance) || 0), 0),
+        availableBalance: pEvents.reduce((a, e) => a + (Number(e.availableBalance) || 0), 0),
+        futureReceivables: pEvents.reduce((a, e) => a + (Number(e.futureReceivables) || 0), 0)
+      };
+    }
+    return p.totals;
+  };
 
   return `
     <!-- Limitless Page Header -->
@@ -38,7 +67,8 @@ export function renderDiskDashboard(state) {
             Consolidação da tesouraria, passivos com organizadores, fila operacional de aprovações e liquidação multiadquirente.
           </p>
         </div>
-        <div class="header-action-group">
+        <div class="header-action-group" style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+          <span class="badge bg-primary-subtle text-primary" style="font-size: 0.85rem; padding: 6px 12px; border: 1px solid rgba(59,130,246,0.3); border-radius: 6px; background: rgba(59,130,246,0.15); color: #93c5fd !important;">Contexto: ${contextLabel}</span>
           <button class="btn btn-primary" onclick="window.app.navigate('diskAprovacoes')">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
             Central de Aprovações (${pendingCount})
@@ -52,28 +82,28 @@ export function renderDiskDashboard(state) {
 
       <!-- Macro Financial KPIs Disk -->
       <div class="kpi-grid">
-        <div class="kpi-card highlight">
+        <div class="kpi-card highlight" style="cursor:pointer" onclick="window.app.navigate('diskIndicadores')" title="Clique para ver os Indicadores Financeiros detalhados">
           <div class="kpi-header"><span class="kpi-title">Volume Bruto Transacionado</span></div>
           <div class="kpi-value">${formatCurrency(totalGross)}</div>
-          <div class="kpi-subtext"><span>Todas as produções ativas</span></div>
+          <div class="kpi-subtext"><span>Todas as produções ativas ↗</span></div>
         </div>
 
-        <div class="kpi-card warning-accent">
+        <div class="kpi-card warning-accent" style="cursor:pointer" onclick="window.app.navigate('diskPosicaoGeral')" title="Clique para ver a Posição Geral">
           <div class="kpi-header"><span class="kpi-title">Obrigações com Produtores</span></div>
           <div class="kpi-value" style="color: #b45309;">${formatCurrency(totalProducerObligations)}</div>
-          <div class="kpi-subtext"><span>Passivo circulante segregado</span></div>
+          <div class="kpi-subtext"><span>Passivo circulante segregado ↗</span></div>
         </div>
 
-        <div class="kpi-card success-accent">
+        <div class="kpi-card success-accent" style="cursor:pointer" onclick="window.app.setDiskBalanceTab('disponivel')" title="Clique para ver os saldos disponíveis">
           <div class="kpi-header"><span class="kpi-title">Disponível para Repasse Imediato</span></div>
           <div class="kpi-value" style="color: #059669;">${formatCurrency(totalAvailable)}</div>
-          <div class="kpi-subtext"><span>Fundos já compensados pelos bancos</span></div>
+          <div class="kpi-subtext"><span>Fundos já compensados pelos bancos ↗</span></div>
         </div>
 
-        <div class="kpi-card">
+        <div class="kpi-card" style="cursor:pointer" onclick="window.app.navigate('diskRecebiveis')" title="Clique para ver os recebíveis">
           <div class="kpi-header"><span class="kpi-title">Recebíveis Futuros (Adquirentes)</span></div>
           <div class="kpi-value" style="color: #2563eb;">${formatCurrency(totalReceivables)}</div>
-          <div class="kpi-subtext"><span>Cielo, Rede, Stone a liquidar</span></div>
+          <div class="kpi-subtext"><span>Cielo, Rede, Stone a liquidar ↗</span></div>
         </div>
       </div>
 
@@ -154,7 +184,9 @@ export function renderDiskDashboard(state) {
                 </tr>
               </thead>
               <tbody>
-                ${producers.map(p => `
+                ${producers.map(p => {
+                  const pTotals = getProducerTotals(p);
+                  return `
                   <tr>
                     <td>
                       <div style="font-weight: 700; color: var(--text-main); font-size: 0.9rem;">${p.name}</div>
@@ -162,21 +194,22 @@ export function renderDiskDashboard(state) {
                     </td>
                     <td style="font-family: monospace; font-size: 0.8rem;">${p.cnpj}</td>
                     <td>
-                      <span class="badge ${p.riskScore.includes('Baixo') ? 'badge-success' : 'badge-warning'}">
-                        ${p.rating}
+                      <span class="badge ${p.riskScore && p.riskScore.includes('Baixo') ? 'badge-success' : 'badge-warning'}">
+                        ${p.rating || 'A+'}
                       </span>
                     </td>
-                    <td style="text-align: right; font-weight: 700;">${formatCurrency(p.totals.totalBalance)}</td>
-                    <td style="text-align: right; font-weight: 800; color: #059669;">${formatCurrency(p.totals.availableBalance)}</td>
-                    <td style="text-align: right; font-weight: 600; color: #d97706;">${formatCurrency(p.totals.futureReceivables)}</td>
-                    <td style="text-align: center;"><span class="badge badge-success">${p.status}</span></td>
+                    <td style="text-align: right; font-weight: 700;">${formatCurrency(pTotals.totalBalance)}</td>
+                    <td style="text-align: right; font-weight: 800; color: #059669;">${formatCurrency(pTotals.availableBalance)}</td>
+                    <td style="text-align: right; font-weight: 600; color: #d97706;">${formatCurrency(pTotals.futureReceivables)}</td>
+                    <td style="text-align: center;"><span class="badge badge-success">${p.status || 'Ativo'}</span></td>
                     <td style="text-align: right;">
                       <button class="btn btn-outline-primary btn-sm" onclick="window.app.openProducerAccount('${p.id}')">
                         Conta Financeira →
                       </button>
                     </td>
                   </tr>
-                `).join('')}
+                `;
+                }).join('') || '<tr><td colspan="8" style="text-align: center; padding: 24px;">Nenhum produtor no contexto selecionado.</td></tr>'}
               </tbody>
             </table>
           </div>

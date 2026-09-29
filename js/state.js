@@ -47,6 +47,8 @@ class CoreFinanceiroStore {
         };
         this.state.viewMode = 'disk';
         this.state.currentView = 'diskDashboard';
+        this.state.selectedProducerId = 'all';
+        this.state.selectedEventId = 'all';
       } else if (r === 'admin') {
         this.state.currentUser = {
           id: "usr-admin-01",
@@ -58,6 +60,8 @@ class CoreFinanceiroStore {
         };
         this.state.viewMode = 'disk';
         this.state.currentView = 'diskDashboard';
+        this.state.selectedProducerId = 'all';
+        this.state.selectedEventId = 'all';
       }
     }
 
