@@ -1515,34 +1515,47 @@ class LimitlessFinancialApp {
           viewHtml = renderDiskRelatorios(state, this.currentFilterArg);
           break;
         case 'diskGovernanca':
+        case 'diskGovernanca_visao':
+        case 'diskGovernanca_visaoGeral':
         case 'diskGov_visaoGeral':
           viewHtml = renderDiskGovernanca(state, 'visaoGeral');
           break;
+        case 'diskGovernanca_usuarios':
         case 'diskGov_usuarios':
           viewHtml = renderDiskGovernanca(state, 'usuarios');
           break;
+        case 'diskGovernanca_perfis':
         case 'diskGov_perfis':
           viewHtml = renderDiskGovernanca(state, 'perfis');
           break;
+        case 'diskGovernanca_alcadas':
         case 'diskGov_alcadas':
           viewHtml = renderDiskGovernanca(state, 'alcadas');
           break;
+        case 'diskGovernanca_fluxos':
         case 'diskGov_fluxos':
           viewHtml = renderDiskGovernanca(state, 'fluxos');
           break;
+        case 'diskGovernanca_segregacao':
         case 'diskGov_segregacao':
           viewHtml = renderDiskGovernanca(state, 'segregacao');
           break;
+        case 'diskGovernanca_sensiveis':
+        case 'diskGovernanca_operacoes':
         case 'diskGov_operacoes':
           viewHtml = renderDiskGovernanca(state, 'operacoes');
           break;
+        case 'diskGovernanca_bloqueios':
         case 'diskGov_bloqueios':
           viewHtml = renderDiskGovernanca(state, 'bloqueios');
           break;
+        case 'diskGovernanca_acessos':
+        case 'diskGovernanca_auditoria':
         case 'diskGov_auditoria':
         case 'diskAuditoria':
           viewHtml = renderDiskGovernanca(state, 'auditoria');
           break;
+        case 'diskGovernanca_configuracoes':
         case 'diskGov_configuracoes':
         case 'diskConfiguracoes':
           viewHtml = renderDiskGovernanca(state, 'configuracoes');
@@ -1815,15 +1828,25 @@ class LimitlessFinancialApp {
       'diskIntegracao_logs': { title: 'Logs de Integração', subtitle: 'Rastreabilidade técnica de webhooks e sincronizações sem exposição de credenciais.' },
       'diskRelatorios': { title: 'Relatórios Financeiros Consolidados', subtitle: 'Demonstrativos gerenciais de vendas, conciliação, balancetes e exportações oficiais.' },
       'diskGovernanca': { title: 'Governança Financeira', subtitle: 'Visão geral, alçadas, perfis RBAC, segregação de funções e proteção de operações sensíveis.' },
+      'diskGovernanca_visao': { title: 'Governança Financeira • Visão Geral', subtitle: 'Painel central de conformidade institucional, matriz de autorização e salvaguardas de processos.' },
       'diskGov_visaoGeral': { title: 'Governança Financeira • Visão Geral', subtitle: 'Painel central de conformidade institucional, matriz de autorização e salvaguardas de processos.' },
+      'diskGovernanca_usuarios': { title: 'Usuários Financeiros', subtitle: 'Gestão individual de operadores, perfis atribuídos e limites de autorização financeira.' },
       'diskGov_usuarios': { title: 'Usuários Financeiros', subtitle: 'Gestão individual de operadores, perfis atribuídos e limites de autorização financeira.' },
+      'diskGovernanca_perfis': { title: 'Perfis e Permissões (RBAC)', subtitle: 'Definição de privilégios granulares por módulo e nível de atuação operacional.' },
       'diskGov_perfis': { title: 'Perfis e Permissões (RBAC)', subtitle: 'Definição de privilégios granulares por módulo e nível de atuação operacional.' },
+      'diskGovernanca_alcadas': { title: 'Alçadas de Aprovação', subtitle: 'Limites monetários parametrizáveis por tipo de operação (Repasses, Antecipações, Lotes e MDR).' },
       'diskGov_alcadas': { title: 'Alçadas de Aprovação', subtitle: 'Limites monetários parametrizáveis por tipo de operação (Repasses, Antecipações, Lotes e MDR).' },
+      'diskGovernanca_fluxos': { title: 'Fluxos de Aprovação', subtitle: 'Sequenciamento formal das esteiras de decisão financeira, status e transições.' },
       'diskGov_fluxos': { title: 'Fluxos de Aprovação', subtitle: 'Sequenciamento formal das esteiras de decisão financeira, status e transições.' },
+      'diskGovernanca_segregacao': { title: 'Segregação de Funções (SoD)', subtitle: 'Políticas rígidas para impedir acúmulo de etapas conflitantes (Criador, Aprovador, Pagador, Conciliador).' },
       'diskGov_segregacao': { title: 'Segregação de Funções (SoD)', subtitle: 'Políticas rígidas para impedir acúmulo de etapas conflitantes (Criador, Aprovador, Pagador, Conciliador).' },
+      'diskGovernanca_sensiveis': { title: 'Operações Sensíveis & Críticas', subtitle: 'Relação de ações sujeitas a salvaguardas adicionais, dupla custódia e log imutável.' },
       'diskGov_operacoes': { title: 'Operações Sensíveis & Críticas', subtitle: 'Relação de ações sujeitas a salvaguardas adicionais, dupla custódia e log imutável.' },
+      'diskGovernanca_bloqueios': { title: 'Bloqueios Preventivos & Exceções', subtitle: 'Quarentenas de segurança patrimonial, travas temporárias e delegação de alçadas.' },
       'diskGov_bloqueios': { title: 'Bloqueios Preventivos & Exceções', subtitle: 'Quarentenas de segurança patrimonial, travas temporárias e delegação de alçadas.' },
+      'diskGovernanca_acessos': { title: 'Auditoria de Acessos & Log Imutável', subtitle: 'Registro contínuo e à prova de adulteração de todas as operações administrativas e financeiras.' },
       'diskGov_auditoria': { title: 'Auditoria de Acessos & Log Imutável', subtitle: 'Registro contínuo e à prova de adulteração de todas as operações administrativas e financeiras.' },
+      'diskGovernanca_configuracoes': { title: 'Configurações de Governança', subtitle: 'Parâmetros operacionais globais de segurança, travas SoD e políticas da Disk Ingressos.' },
       'diskGov_configuracoes': { title: 'Configurações de Governança', subtitle: 'Parâmetros operacionais globais de segurança, travas SoD e políticas da Disk Ingressos.' },
       'diskAuditoria': { title: 'Auditoria & Governança', subtitle: 'Log imutável de operações manuais, aprovações, alterações de taxas e acessos sensíveis.' },
       'diskConfiguracoes': { title: 'Configurações Administrativas', subtitle: 'Políticas de repasse, travas de antecipação, alçadas de aprovação e calendário operacional.' },
@@ -2109,6 +2132,107 @@ class LimitlessFinancialApp {
 
   closeToast() {
     financialStore.closeToast();
+  }
+
+  financeAction(action, id = '', data = null) {
+    const routes = {
+      'nova-regra': 'diskGovernanca_alcadas',
+      'editar-alcadas': 'diskGovernanca_alcadas',
+      'detalhar-regra': 'diskGovernanca_fluxos',
+      'configurar-segregacao': 'diskGovernanca_segregacao',
+      'regras-protecao': 'diskGovernanca_sensiveis',
+      'tratar-excecoes': 'diskGovernanca_bloqueios',
+      'gerenciar-usuarios': 'diskGovernanca_usuarios',
+      'ver-alcadas': 'diskGovernanca_alcadas',
+      'abrir-aprovacoes': 'diskAprovacoes',
+      'ver-auditoria': 'diskGovernanca_acessos',
+      'logs-integracao': 'diskIntegracao_logs',
+      'central-assinaturas': 'diskIntegracao_assinaturas',
+      'novo-repasse': 'repasses',
+      'nova-antecipacao': 'antecipacoes',
+      'abrir-conciliacao': 'diskConciliacao',
+      'ver-recebiveis': 'diskRecebiveis',
+      'ver-ledger': 'diskLedger',
+      'ver-fechamentos': 'diskFechamentos',
+      'ver-dossie': 'diskFechamentos',
+      'ver-fluxo-caixa': 'diskFluxoCaixa',
+      'ver-pix': 'diskPix',
+      'ver-cnab': 'diskCnab',
+      'ver-pagamentos-lote': 'diskPagamentosLote'
+    };
+
+    const labels = {
+      'nova-regra': 'Nova regra de alçada preparada para configuração.',
+      'editar-alcadas': 'Matriz de alçadas aberta para edição administrativa.',
+      'detalhar-regra': `Regra ${id !== '' ? Number(id) + 1 : ''} aberta com seu fluxo relacionado.`,
+      'configurar-segregacao': 'Políticas de Segregação de Funções (SoD) abertas.',
+      'regras-protecao': 'Catálogo de Operações Sensíveis aberto para auditoria.',
+      'tratar-excecoes': 'Módulo de Quarentena e Exceções carregado.',
+      'gerenciar-usuarios': 'Gestão de Usuários Financeiros e Perfis carregada.',
+      'ver-alcadas': 'Navegando para Matriz de Alçadas.',
+      'abrir-aprovacoes': 'Central de Aprovações aberta.',
+      'ver-auditoria': 'Trilha de auditoria carregada.',
+      'logs-integracao': 'Logs técnicos de integração carregados.',
+      'central-assinaturas': 'Central de Assinaturas digitais carregada.',
+      'aprovar-operacao': `Operação ${id || ''} aprovada com sucesso e encaminhada para assinatura/pagamento.`,
+      'rejeitar-operacao': `Operação ${id || ''} rejeitada e reserva de saldo liberada.`,
+      'assinar-termo': `Documento vinculado à operação ${id || ''} assinado digitalmente via ICP-Brasil.`,
+      'executar-pagamento': `Ordem de pagamento ${id || ''} autorizada e enviada para liquidação PIX/CNAB.`,
+      'conciliar-movimento': `Lançamento ${id || ''} conciliado com sucesso no Ledger e extrato bancário.`,
+      'ajustar-ledger': 'Solicitação de ajuste contábil enviada para validação da Controladoria.',
+      'exportar-dados': 'Relatório analítico exportado com sucesso em formato CSV.'
+    };
+
+    // Ações operacionais que alteram o estado do sistema e refletem em tempo real
+    if (action === 'aprovar-operacao' && id) {
+      if (typeof financialStore.approveRequest === 'function') {
+        financialStore.approveRequest(id, 'Aprovado via Governança/Ações Financeiras');
+      }
+      financialStore.showToast('Operação Aprovada', labels[action] || `Operação ${id} aprovada.`, 'success');
+      this.navigate('diskAprovacoes');
+      return;
+    }
+
+    if (action === 'rejeitar-operacao' && id) {
+      if (typeof financialStore.rejectRequest === 'function') {
+        financialStore.rejectRequest(id, 'Rejeitado por política de risco');
+      }
+      financialStore.showToast('Operação Rejeitada', labels[action] || `Operação ${id} rejeitada.`, 'warning');
+      this.navigate('diskAprovacoes');
+      return;
+    }
+
+    if (action === 'assinar-termo') {
+      financialStore.showToast('Assinatura Digital', labels[action] || 'Termo assinado.', 'success');
+      this.navigate('diskIntegracao_assinaturas');
+      return;
+    }
+
+    if (action === 'executar-pagamento') {
+      financialStore.showToast('Tesouraria', labels[action] || 'Pagamento processado.', 'success');
+      this.navigate('diskPix');
+      return;
+    }
+
+    if (action === 'conciliar-movimento') {
+      financialStore.showToast('Conciliação', labels[action] || 'Movimento conciliado.', 'success');
+      this.navigate('diskConciliacao');
+      return;
+    }
+
+    if (action === 'novo-repasse') {
+      if (typeof this.openPayoutModal === 'function') {
+        this.openPayoutModal();
+      } else {
+        this.navigate('repasses');
+      }
+      return;
+    }
+
+    financialStore.showToast('Ação Financeira', labels[action] || 'Ação executada e comunicada ao módulo relacionado.', 'info');
+    if (routes[action]) {
+      this.navigate(routes[action]);
+    }
   }
 }
 

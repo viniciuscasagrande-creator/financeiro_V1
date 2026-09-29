@@ -1,24 +1,41 @@
 const money = (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 
 export function renderDiskGovernanca(state, section = 'visaoGeral') {
+  const norm = {
+    'visao': 'visaoGeral',
+    'visaoGeral': 'visaoGeral',
+    'usuarios': 'usuarios',
+    'perfis': 'perfis',
+    'alcadas': 'alcadas',
+    'fluxos': 'fluxos',
+    'segregacao': 'segregacao',
+    'sensiveis': 'operacoes',
+    'operacoes': 'operacoes',
+    'bloqueios': 'bloqueios',
+    'acessos': 'auditoria',
+    'auditoria': 'auditoria',
+    'configuracoes': 'configuracoes'
+  };
+  const activeSection = norm[section] || 'visaoGeral';
+
   const tabs = [
-    ['visaoGeral', 'Visão Geral', 'ph-gauge'],
-    ['usuarios', 'Usuários Financeiros', 'ph-users'],
-    ['perfis', 'Perfis e Permissões', 'ph-shield-check'],
-    ['alcadas', 'Alçadas de Aprovação', 'ph-scales'],
-    ['fluxos', 'Fluxos de Aprovação', 'ph-git-fork'],
-    ['segregacao', 'Segregação de Funções', 'ph-hand-palm'],
-    ['operacoes', 'Operações Sensíveis', 'ph-warning-octagon'],
-    ['bloqueios', 'Bloqueios e Exceções', 'ph-lock-key'],
-    ['auditoria', 'Auditoria de Acessos', 'ph-clock-counter-clockwise'],
-    ['configuracoes', 'Configurações', 'ph-sliders-horizontal']
+    ['visaoGeral', 'Visão Geral', 'ph-gauge', 'visao'],
+    ['usuarios', 'Usuários Financeiros', 'ph-users', 'usuarios'],
+    ['perfis', 'Perfis e Permissões', 'ph-shield-check', 'perfis'],
+    ['alcadas', 'Alçadas de Aprovação', 'ph-scales', 'alcadas'],
+    ['fluxos', 'Fluxos de Aprovação', 'ph-git-fork', 'fluxos'],
+    ['segregacao', 'Segregação de Funções', 'ph-hand-palm', 'segregacao'],
+    ['operacoes', 'Operações Sensíveis', 'ph-warning-octagon', 'sensiveis'],
+    ['bloqueios', 'Bloqueios e Exceções', 'ph-lock-key', 'bloqueios'],
+    ['auditoria', 'Auditoria de Acessos', 'ph-clock-counter-clockwise', 'acessos'],
+    ['configuracoes', 'Configurações', 'ph-sliders-horizontal', 'configuracoes']
   ];
 
   const tabbar = `
     <div class="d-flex flex-wrap gap-2 mb-4">
-      ${tabs.map(([id, label, icon]) => `
-        <button class="btn ${section === id ? 'btn-primary' : 'btn-light'}" 
-                onclick="window.app.navigate('diskGov_${id}')">
+      ${tabs.map(([id, label, icon, shortId]) => `
+        <button class="btn ${activeSection === id ? 'btn-primary' : 'btn-light'}" 
+                onclick="window.app.navigate('diskGovernanca_${shortId}')">
           <i class="${icon} me-1"></i>${label}
         </button>
       `).join('')}
@@ -30,7 +47,7 @@ export function renderDiskGovernanca(state, section = 'visaoGeral') {
       <div class="content-inner">
         <div class="content px-0">
           ${tabbar}
-          ${body(section, state)}
+          ${body(activeSection, state)}
         </div>
       </div>
     </div>
@@ -39,18 +56,18 @@ export function renderDiskGovernanca(state, section = 'visaoGeral') {
 
 function body(section, state) {
   switch (section) {
-    case 'usuarios': return usuarios();
-    case 'perfis': return perfis();
-    case 'alcadas': return alcadas();
-    case 'fluxos': return fluxos();
-    case 'segregacao': return segregacao();
-    case 'operacoes': return operacoes();
-    case 'bloqueios': return bloqueios();
-    case 'auditoria': return auditoria();
-    case 'configuracoes': return configuracoes();
+    case 'usuarios': return usuarios(state);
+    case 'perfis': return perfis(state);
+    case 'alcadas': return alcadas(state);
+    case 'fluxos': return fluxos(state);
+    case 'segregacao': return segregacao(state);
+    case 'operacoes': return operacoes(state);
+    case 'bloqueios': return bloqueios(state);
+    case 'auditoria': return auditoria(state);
+    case 'configuracoes': return configuracoes(state);
     case 'visaoGeral':
     default:
-      return visaoGeral();
+      return visaoGeral(state);
   }
 }
 
@@ -78,133 +95,177 @@ function kpi(title, value, sub, icon, bgClass = 'bg-primary') {
 /* ==========================================================================
    1. VISÃO GERAL
    ========================================================================== */
-function visaoGeral() {
+function visaoGeral(state) {
+  const pendingCount = state.data?.approvalQueue?.filter(i => !['Pago', 'Rejeitado'].includes(i.status))?.length || 5;
+
+  const rows = [
+    ['Repasse Operacional', 'Até R$ 50 mil', 'Analista Sênior + Coordenador', 'Ativa'],
+    ['Repasse Operacional', 'R$ 50 mil a R$ 250 mil', 'Gerente Financeiro', 'Ativa'],
+    ['Repasse Operacional', 'Acima de R$ 250 mil', 'Diretoria Financeira / CFO', 'Ativa'],
+    ['Antecipação de Recebíveis', 'Até R$ 100 mil', 'Coordenador de Crédito', 'Ativa'],
+    ['Antecipação de Recebíveis', 'Acima de R$ 100 mil', 'Gerência + Diretoria', 'Ativa'],
+    ['Alteração de MDR', 'Qualquer valor', 'Administrador autorizado / CFO', 'Restrita'],
+    ['Ajuste de Ledger', 'Qualquer valor', 'Controladoria + Gerência (Dupla)', 'Restrita']
+  ];
+
   return `
-    <div class="mb-3">
-      <h4 class="mb-1 fw-bold text-dark">Governança, Alçadas & Segurança Operacional</h4>
-      <div class="text-muted">Painel central de conformidade institucional, matriz de autorização e salvaguardas de processos.</div>
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+      <div>
+        <div class="text-uppercase text-muted fs-xxs fw-bold">FINANCEIRO DISK • GOVERNANÇA</div>
+        <h4 class="mb-1 fw-bold text-dark">Governança, Alçadas & Segurança Operacional</h4>
+        <div class="text-muted">Painel central de conformidade institucional, matriz de autorização e salvaguardas de processos.</div>
+      </div>
+      <div class="d-flex gap-2">
+        <button class="btn btn-outline-primary" onclick="window.app.navigate('diskGovernanca_acessos')">
+          <i class="ph-scroll me-1"></i>Auditoria
+        </button>
+        <button class="btn btn-primary" onclick="window.app.financeAction('nova-regra')">
+          <i class="ph-plus me-1"></i>Nova Regra
+        </button>
+      </div>
     </div>
 
-    <div class="row">
-      ${kpi('Usuários Ativos', '14', 'em 6 perfis funcionais', 'ph-users')}
-      ${kpi('Faixas de Alçada', '3 Faixas', 'A: R$ 50k | B: R$ 250k | C: CFO', 'ph-scales')}
-      ${kpi('SoD Bloqueios', '18 Preventivos', 'tentativas de autoaprovação contidas', 'ph-shield-warning')}
-      ${kpi('Operações Críticas', '42 Realizadas', 'com dupla autorização ou 2FA', 'ph-key')}
-    </div>
-
-    <div class="row mt-2">
-      <div class="col-lg-8">
-        <div class="card shadow-sm border-0 mb-4">
-          <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
-            <h6 class="mb-0 fw-bold"><i class="ph-shield-check text-primary me-2"></i>Status da Cadeia de Custódia Financeira</h6>
-            <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-2 py-1">Em Conformidade SoD</span>
-          </div>
+    <!-- Cards de Ação Rápida e KPIs -->
+    <div class="row g-3 mb-3">
+      <div class="col-md-3">
+        <div class="card h-100 shadow-sm border-0">
           <div class="card-body">
-            <p class="text-muted fs-sm">A arquitetura de governança garante que nenhuma operação relevante (repasse, antecipação, alteração de taxas ou pagamento) transite sem segregação estrita entre criador, aprovador, signatário e executor bancário.</p>
-            <div class="row g-3">
-              <div class="col-md-4">
-                <div class="p-3 rounded border bg-light">
-                  <div class="fw-semibold text-dark mb-1">Repasses & Antecipações</div>
-                  <div class="fs-xs text-muted">Aprovação escalonada por alçada (A, B e C). Nenhum analista aprova a própria solicitação.</div>
-                  <span class="badge bg-primary mt-2">100% Protegido</span>
-                </div>
-              </div>
-              <div class="col-md-4">
-                <div class="p-3 rounded border bg-light">
-                  <div class="fw-semibold text-dark mb-1">Assinaturas Disk</div>
-                  <div class="fs-xs text-muted">Autentique ICP-Brasil acionado somente após formalização preliminar do Produtor.</div>
-                  <span class="badge bg-info mt-2">Ordem Garantida</span>
-                </div>
-              </div>
-              <div class="col-md-4">
-                <div class="p-3 rounded border bg-light">
-                  <div class="fw-semibold text-dark mb-1">Tesouraria & Conciliação</div>
-                  <div class="fs-xs text-muted">Executores de remessas CNAB e PIX impedidos de conciliar as contas correlatas.</div>
-                  <span class="badge bg-success mt-2">SoD Estrito</span>
-                </div>
-              </div>
-            </div>
+            <div class="text-muted small fw-semibold">Usuários Financeiros</div>
+            <div class="fs-3 fw-bold text-dark">14</div>
+            <button class="btn btn-link p-0 text-primary text-decoration-none fs-xs mt-1" 
+                    onclick="window.app.navigate('diskGovernanca_usuarios')">
+              Gerenciar usuários →
+            </button>
           </div>
         </div>
-
-        <div class="card shadow-sm border-0">
-          <div class="card-header bg-white py-3 border-bottom">
-            <h6 class="mb-0 fw-bold"><i class="ph-clock-counter-clockwise text-primary me-2"></i>Últimos Eventos de Governança</h6>
+      </div>
+      <div class="col-md-3">
+        <div class="card h-100 shadow-sm border-0">
+          <div class="card-body">
+            <div class="text-muted small fw-semibold">Regras de Alçada</div>
+            <div class="fs-3 fw-bold text-dark">7 Ativas</div>
+            <button class="btn btn-link p-0 text-primary text-decoration-none fs-xs mt-1" 
+                    onclick="window.app.navigate('diskGovernanca_alcadas')">
+              Ver alçadas →
+            </button>
           </div>
-          <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0 fs-sm">
-              <thead class="table-light">
-                <tr>
-                  <th>Data/Hora</th>
-                  <th>Operador</th>
-                  <th>Operação</th>
-                  <th>Alçada Aplicada</th>
-                  <th>Resultado</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td>29/09 15:42</td>
-                  <td><strong>Mariana Fontes</strong> (Gerência)</td>
-                  <td>Aprovação Repasse REP-00281 (${money(180000)})</td>
-                  <td><span class="badge bg-warning text-dark">Alçada B (Até R$ 250k)</span></td>
-                  <td><span class="badge bg-success">Aprovado</span></td>
-                </tr>
-                <tr>
-                  <td>29/09 15:15</td>
-                  <td><strong>Carlos Silva</strong> (Analista)</td>
-                  <td>Tentativa de autoaprovação de Repasse REP-00282</td>
-                  <td><span class="badge bg-danger">Bloqueio SoD</span></td>
-                  <td><span class="badge bg-danger">Impedido pelo Sistema</span></td>
-                </tr>
-                <tr>
-                  <td>29/09 14:30</td>
-                  <td><strong>Beatriz Mendes</strong> (Diretoria)</td>
-                  <td>Aprovação Antecipação ANT-00042 (${money(95000)})</td>
-                  <td><span class="badge bg-primary">Alçada B (Gerência/Dir.)</span></td>
-                  <td><span class="badge bg-success">Aprovado</span></td>
-                </tr>
-                <tr>
-                  <td>29/09 13:05</td>
-                  <td><strong>Fernando Diniz</strong> (Tesouraria)</td>
-                  <td>Tentativa de alteração de Chave PIX Produtor ABC</td>
-                  <td><span class="badge bg-dark">Restrito Cadastral</span></td>
-                  <td><span class="badge bg-danger">Acesso Negado</span></td>
-                </tr>
-              </tbody>
-            </table>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card h-100 shadow-sm border-0">
+          <div class="card-body">
+            <div class="text-muted small fw-semibold">Aprovações Pendentes</div>
+            <div class="fs-3 fw-bold text-warning">${pendingCount}</div>
+            <button class="btn btn-link p-0 text-primary text-decoration-none fs-xs mt-1" 
+                    onclick="window.app.navigate('diskAprovacoes')">
+              Abrir aprovações →
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card h-100 shadow-sm border-0">
+          <div class="card-body">
+            <div class="text-muted small fw-semibold">Exceções & Quarentenas</div>
+            <div class="fs-3 fw-bold text-danger">2 Ativas</div>
+            <button class="btn btn-link p-0 text-primary text-decoration-none fs-xs mt-1" 
+                    onclick="window.app.navigate('diskGovernanca_bloqueios')">
+              Tratar exceções →
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Matriz de Alçadas Rápida -->
+    <div class="card shadow-sm border-0 mb-4">
+      <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+        <h6 class="mb-0 fw-bold"><i class="ph-scales text-primary me-2"></i>Matriz de Alçadas Operacionais</h6>
+        <button class="btn btn-sm btn-outline-primary" onclick="window.app.financeAction('editar-alcadas')">
+          <i class="ph-pencil-simple me-1"></i>Editar Matriz
+        </button>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0 fs-sm">
+          <thead class="table-light">
+            <tr>
+              <th>Operação</th>
+              <th>Faixa de Valor</th>
+              <th>Aprovação Exigida</th>
+              <th>Status</th>
+              <th class="text-end">Ação</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows.map((r, i) => `
+              <tr>
+                <td><strong>${r[0]}</strong></td>
+                <td>${r[1]}</td>
+                <td>${r[2]}</td>
+                <td>
+                  <span class="badge ${r[3] === 'Ativa' ? 'bg-success' : 'bg-warning text-dark'}">
+                    ${r[3]}
+                  </span>
+                </td>
+                <td class="text-end">
+                  <button class="btn btn-sm btn-light" onclick="window.app.financeAction('detalhar-regra', '${i}')">
+                    Detalhes
+                  </button>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Segregação e Operações Sensíveis em Destaque -->
+    <div class="row g-3 mb-4">
+      <div class="col-lg-6">
+        <div class="card shadow-sm border-0 h-100">
+          <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+            <h6 class="mb-0 fw-bold"><i class="ph-hand-palm text-primary me-2"></i>Segregação de Funções (SoD)</h6>
+            <span class="badge bg-success">Ativa</span>
+          </div>
+          <div class="card-body">
+            <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+              <span class="badge bg-light text-dark border p-2">Criador</span>
+              <i class="ph-arrow-right text-muted"></i>
+              <span class="badge bg-light text-dark border p-2">Analisador</span>
+              <i class="ph-arrow-right text-muted"></i>
+              <span class="badge bg-light text-dark border p-2">Aprovador</span>
+              <i class="ph-arrow-right text-muted"></i>
+              <span class="badge bg-light text-dark border p-2">Assinante</span>
+              <i class="ph-arrow-right text-muted"></i>
+              <span class="badge bg-light text-dark border p-2">Executor</span>
+              <i class="ph-arrow-right text-muted"></i>
+              <span class="badge bg-light text-dark border p-2">Conciliador</span>
+            </div>
+            <p class="text-muted fs-xs mb-3">O mesmo operador é bloqueado preventivamente de executar etapas conflitantes no mesmo ciclo financeiro.</p>
+            <button class="btn btn-sm btn-outline-primary" onclick="window.app.navigate('diskGovernanca_segregacao')">
+              Configurar Segregação
+            </button>
           </div>
         </div>
       </div>
 
-      <div class="col-lg-4">
-        <div class="card shadow-sm border-0 mb-4">
-          <div class="card-header bg-white py-3 border-bottom">
-            <h6 class="mb-0 fw-bold"><i class="ph-lightning text-primary me-2"></i>Ações Rápidas de Segurança</h6>
-          </div>
-          <div class="card-body d-flex flex-column gap-2">
-            <button class="btn btn-outline-primary text-start" onclick="window.app.navigate('diskGov_alcadas')">
-              <i class="ph-scales me-2"></i>Ajustar Matriz de Alçadas
-            </button>
-            <button class="btn btn-outline-secondary text-start" onclick="window.app.navigate('diskGov_usuarios')">
-              <i class="ph-user-plus me-2"></i>Revisar Permissões de Usuários
-            </button>
-            <button class="btn btn-outline-warning text-start" onclick="window.app.navigate('diskGov_bloqueios')">
-              <i class="ph-lock-key me-2"></i>Gerenciar Quarentenas & Bloqueios
-            </button>
-            <button class="btn btn-outline-danger text-start" onclick="window.app.navigate('diskGov_operacoes')">
-              <i class="ph-warning-octagon me-2"></i>Ver Log de Operações Críticas
-            </button>
-          </div>
-        </div>
-
-        <div class="card shadow-sm border-0">
-          <div class="card-header bg-white py-3 border-bottom">
-            <h6 class="mb-0 fw-bold"><i class="ph-info text-primary me-2"></i>Princípio Inflexível</h6>
+      <div class="col-lg-6">
+        <div class="card shadow-sm border-0 h-100">
+          <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+            <h6 class="mb-0 fw-bold"><i class="ph-warning-octagon text-danger me-2"></i>Operações Sensíveis</h6>
+            <span class="badge bg-danger">12 Monitoradas</span>
           </div>
           <div class="card-body">
-            <div class="alert alert-primary mb-0 fs-xs">
-              <strong>Delegação Segura:</strong> Nenhuma alteração cadastral bancária, tabela de MDR ou reabertura de borderô é permitida de forma unilateral. Toda exceção exige registro formal de justificativa e log assinado.
+            <div class="fs-xs text-muted mb-3">
+              Chaves PIX e dados bancários · MDR e taxas comerciais · Aprovação de antecipações · Assinatura digital Disk · Ordens de pagamento · Ajustes no Ledger · Reabertura de fechamento.
+            </div>
+            <div class="d-flex gap-2">
+              <button class="btn btn-sm btn-outline-danger" onclick="window.app.navigate('diskGovernanca_sensiveis')">
+                Regras de Proteção
+              </button>
+              <button class="btn btn-sm btn-outline-secondary" onclick="window.app.navigate('diskIntegracao_logs')">
+                Logs de Integração
+              </button>
             </div>
           </div>
         </div>
@@ -216,14 +277,14 @@ function visaoGeral() {
 /* ==========================================================================
    2. USUÁRIOS FINANCEIROS
    ========================================================================== */
-function usuarios() {
+function usuarios(state) {
   return `
     <div class="mb-3 d-flex align-items-center justify-content-between">
       <div>
         <h4 class="mb-1 fw-bold text-dark">Usuários do Financeiro Disk</h4>
         <div class="text-muted">Gestão individual de operadores, perfis atribuídos e limites de autorização financeira.</div>
       </div>
-      <button class="btn btn-primary" onclick="window.app.showToast('Fluxo de cadastro de novo operador financeiro preparado.', 'info')">
+      <button class="btn btn-primary" onclick="window.app.showToast('Cadastro de Usuário', 'Fluxo de cadastro de novo operador financeiro preparado.', 'info')">
         <i class="ph-user-plus me-1"></i>Adicionar Usuário
       </button>
     </div>
@@ -259,7 +320,7 @@ function usuarios() {
               <td><span class="badge bg-success"><i class="ph-check me-1"></i>Ativo</span></td>
               <td><span class="badge bg-success">Ativo</span></td>
               <td class="text-end">
-                <button class="btn btn-sm btn-light" onclick="window.app.showToast('Visualização de credenciais de Beatriz Mendes.','info')"><i class="ph-pencil"></i></button>
+                <button class="btn btn-sm btn-light" onclick="window.app.financeAction('gerenciar-usuarios', 'BM')"><i class="ph-pencil"></i></button>
               </td>
             </tr>
             <tr>
@@ -278,7 +339,7 @@ function usuarios() {
               <td><span class="badge bg-success"><i class="ph-check me-1"></i>Ativo</span></td>
               <td><span class="badge bg-success">Ativo</span></td>
               <td class="text-end">
-                <button class="btn btn-sm btn-light" onclick="window.app.showToast('Visualização de credenciais de Roberto Albuquerque.','info')"><i class="ph-pencil"></i></button>
+                <button class="btn btn-sm btn-light" onclick="window.app.financeAction('gerenciar-usuarios', 'RA')"><i class="ph-pencil"></i></button>
               </td>
             </tr>
             <tr>
@@ -297,7 +358,7 @@ function usuarios() {
               <td><span class="badge bg-success"><i class="ph-check me-1"></i>Ativo</span></td>
               <td><span class="badge bg-success">Ativo</span></td>
               <td class="text-end">
-                <button class="btn btn-sm btn-light" onclick="window.app.showToast('Visualização de credenciais de Mariana Fontes.','info')"><i class="ph-pencil"></i></button>
+                <button class="btn btn-sm btn-light" onclick="window.app.financeAction('gerenciar-usuarios', 'MF')"><i class="ph-pencil"></i></button>
               </td>
             </tr>
             <tr>
@@ -316,7 +377,7 @@ function usuarios() {
               <td><span class="badge bg-success"><i class="ph-check me-1"></i>Ativo</span></td>
               <td><span class="badge bg-success">Ativo</span></td>
               <td class="text-end">
-                <button class="btn btn-sm btn-light" onclick="window.app.showToast('Visualização de credenciais de Carlos Silva.','info')"><i class="ph-pencil"></i></button>
+                <button class="btn btn-sm btn-light" onclick="window.app.financeAction('gerenciar-usuarios', 'CS')"><i class="ph-pencil"></i></button>
               </td>
             </tr>
             <tr>
@@ -335,26 +396,7 @@ function usuarios() {
               <td><span class="badge bg-success"><i class="ph-check me-1"></i>Ativo</span></td>
               <td><span class="badge bg-success">Ativo</span></td>
               <td class="text-end">
-                <button class="btn btn-sm btn-light" onclick="window.app.showToast('Visualização de credenciais de Fernando Diniz.','info')"><i class="ph-pencil"></i></button>
-              </td>
-            </tr>
-            <tr>
-              <td>
-                <div class="d-flex align-items-center">
-                  <div class="rounded-circle bg-purple text-white d-flex align-items-center justify-content-center fw-bold me-2" style="width:36px;height:36px;background:#8b5cf6;">AT</div>
-                  <div>
-                    <div class="fw-bold">Amanda Toledo</div>
-                    <div class="text-muted fs-xs">Auditora & Controladora Interna</div>
-                  </div>
-                </div>
-              </td>
-              <td>amanda.toledo@diskingressos.com.br</td>
-              <td><span class="badge" style="background:#8b5cf6;">CONTROLADORIA_AUDITORIA</span></td>
-              <td><span class="badge bg-light text-dark border">Ajuste Ledger sob Alçada</span></td>
-              <td><span class="badge bg-success"><i class="ph-check me-1"></i>Ativo</span></td>
-              <td><span class="badge bg-success">Ativo</span></td>
-              <td class="text-end">
-                <button class="btn btn-sm btn-light" onclick="window.app.showToast('Visualização de credenciais de Amanda Toledo.','info')"><i class="ph-pencil"></i></button>
+                <button class="btn btn-sm btn-light" onclick="window.app.financeAction('gerenciar-usuarios', 'FD')"><i class="ph-pencil"></i></button>
               </td>
             </tr>
           </tbody>
@@ -367,11 +409,16 @@ function usuarios() {
 /* ==========================================================================
    3. PERFIS E PERMISSÕES (RBAC)
    ========================================================================== */
-function perfis() {
+function perfis(state) {
   return `
-    <div class="mb-3">
-      <h4 class="mb-1 fw-bold text-dark">Perfis de Acesso & Matriz RBAC</h4>
-      <div class="text-muted">Definição de privilégios granulares por módulo e nível de atuação.</div>
+    <div class="mb-3 d-flex align-items-center justify-content-between">
+      <div>
+        <h4 class="mb-1 fw-bold text-dark">Perfis de Acesso & Matriz RBAC</h4>
+        <div class="text-muted">Definição de privilégios granulares por módulo e nível de atuação operacional.</div>
+      </div>
+      <button class="btn btn-outline-primary" onclick="window.app.navigate('diskGovernanca_alcadas')">
+        <i class="ph-scales me-1"></i>Ver Alçadas Vinculadas
+      </button>
     </div>
 
     <div class="card shadow-sm border-0 mb-4">
@@ -446,24 +493,6 @@ function perfis() {
               <td><i class="ph-x-circle-fill text-danger fs-5" title="Bloqueio SoD"></i></td>
               <td><i class="ph-check-circle-fill text-success fs-5"></i></td>
             </tr>
-            <tr>
-              <td class="text-start fw-semibold">Editar Taxas MDR & Regras Comerciais</td>
-              <td><i class="ph-x-circle-fill text-danger fs-5"></i></td>
-              <td><i class="ph-x-circle-fill text-danger fs-5"></i></td>
-              <td><span class="badge bg-warning text-dark">Até ±0.5%</span></td>
-              <td><i class="ph-check-circle-fill text-success fs-5"></i></td>
-              <td><i class="ph-x-circle-fill text-danger fs-5"></i></td>
-              <td><i class="ph-x-circle-fill text-danger fs-5"></i></td>
-            </tr>
-            <tr>
-              <td class="text-start fw-semibold">Ajustes Manuais no Ledger</td>
-              <td><i class="ph-x-circle-fill text-danger fs-5"></i></td>
-              <td><i class="ph-x-circle-fill text-danger fs-5"></i></td>
-              <td><span class="badge bg-secondary">Aprovador</span></td>
-              <td><i class="ph-check-circle-fill text-success fs-5"></i></td>
-              <td><i class="ph-x-circle-fill text-danger fs-5"></i></td>
-              <td><span class="badge bg-primary">Propositor</span></td>
-            </tr>
           </tbody>
         </table>
       </div>
@@ -474,14 +503,14 @@ function perfis() {
 /* ==========================================================================
    4. ALÇADAS DE APROVAÇÃO
    ========================================================================== */
-function alcadas() {
+function alcadas(state) {
   return `
     <div class="mb-3 d-flex align-items-center justify-content-between">
       <div>
         <h4 class="mb-1 fw-bold text-dark">Matriz Dinâmica de Alçadas</h4>
         <div class="text-muted">Limites parametrizáveis por tipo de operação financeira e autoridade aprovadora.</div>
       </div>
-      <button class="btn btn-primary" onclick="window.app.showToast('Parâmetros de alçadas abertos para edição administrativa.', 'info')">
+      <button class="btn btn-primary" onclick="window.app.financeAction('editar-alcadas')">
         <i class="ph-sliders-horizontal me-1"></i>Editar Limites
       </button>
     </div>
@@ -500,21 +529,21 @@ function alcadas() {
                 <div class="fw-bold text-dark">Alçada A: Até ${money(50000)}</div>
                 <div class="text-muted fs-xs">Aprovação por: Coordenador Financeiro ou Analista Sênior</div>
               </div>
-              <span class="badge bg-info">1 Aprovador</span>
+              <button class="btn btn-sm btn-outline-primary" onclick="window.app.financeAction('detalhar-regra', '0')">Fluxo</button>
             </div>
             <div class="p-3 mb-2 rounded border bg-light d-flex align-items-center justify-content-between">
               <div>
                 <div class="fw-bold text-dark">Alçada B: De ${money(50000.01)} a ${money(250000)}</div>
                 <div class="text-muted fs-xs">Aprovação por: Gerente Financeiro</div>
               </div>
-              <span class="badge bg-warning text-dark">Gerência</span>
+              <button class="btn btn-sm btn-outline-primary" onclick="window.app.financeAction('detalhar-regra', '1')">Fluxo</button>
             </div>
             <div class="p-3 rounded border bg-light d-flex align-items-center justify-content-between">
               <div>
                 <div class="fw-bold text-dark">Alçada C: Acima de ${money(250000)}</div>
                 <div class="text-muted fs-xs">Aprovação por: Diretoria Financeira / CFO</div>
               </div>
-              <span class="badge bg-danger">Diretoria / CFO</span>
+              <button class="btn btn-sm btn-outline-primary" onclick="window.app.financeAction('detalhar-regra', '2')">Fluxo</button>
             </div>
           </div>
         </div>
@@ -533,84 +562,22 @@ function alcadas() {
                 <div class="fw-bold text-dark">Alçada A: Até ${money(30000)}</div>
                 <div class="text-muted fs-xs">Margem de retenção mínima de 30% e histórico sem contestação.</div>
               </div>
-              <span class="badge bg-info">Coord. Crédito</span>
+              <button class="btn btn-sm btn-outline-primary" onclick="window.app.navigate('antecipacoes')">Simulador</button>
             </div>
             <div class="p-3 mb-2 rounded border bg-light d-flex align-items-center justify-content-between">
               <div>
                 <div class="fw-bold text-dark">Alçada B: De ${money(30000.01)} a ${money(150000)}</div>
                 <div class="text-muted fs-xs">Exige parecer financeiro e validação de recebíveis futuros.</div>
               </div>
-              <span class="badge bg-warning text-dark">Gerência</span>
+              <button class="btn btn-sm btn-outline-primary" onclick="window.app.navigate('antecipacoes')">Simulador</button>
             </div>
             <div class="p-3 rounded border bg-light d-flex align-items-center justify-content-between">
               <div>
                 <div class="fw-bold text-dark">Alçada C: Acima de ${money(150000)}</div>
                 <div class="text-muted fs-xs">Requer deliberação de Comitê de Risco & Diretoria.</div>
               </div>
-              <span class="badge bg-danger">Comitê + Diretoria</span>
+              <button class="btn btn-sm btn-outline-primary" onclick="window.app.navigate('antecipacoes')">Simulador</button>
             </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Pagamentos em Lote -->
-      <div class="col-lg-6 mb-4">
-        <div class="card shadow-sm border-0 h-100">
-          <div class="card-header bg-white py-3 border-bottom">
-            <h6 class="mb-0 fw-bold"><i class="ph-bank text-primary me-2"></i>Pagamentos & Lotes (PIX / CNAB)</h6>
-          </div>
-          <div class="card-body">
-            <ul class="list-group list-group-flush fs-sm">
-              <li class="list-group-item d-flex justify-content-between align-items-center px-0">
-                <div>
-                  <strong>Até ${money(100000)}:</strong> Liberação direta por Operador de Tesouraria
-                </div>
-                <span class="badge bg-success">1 Assinatura</span>
-              </li>
-              <li class="list-group-item d-flex justify-content-between align-items-center px-0">
-                <div>
-                  <strong>De ${money(100000.01)} a ${money(500000)}:</strong> Tesouraria + Coordenação
-                </div>
-                <span class="badge bg-warning text-dark">Dupla Validação</span>
-              </li>
-              <li class="list-group-item d-flex justify-content-between align-items-center px-0">
-                <div>
-                  <strong>Acima de ${money(500000)}:</strong> Gerente Financeiro + Diretoria Executiva
-                </div>
-                <span class="badge bg-danger">Dupla Chave Externa</span>
-              </li>
-            </ul>
-          </div>
-        </div>
-      </div>
-
-      <!-- Outras Alçadas Especiais -->
-      <div class="col-lg-6 mb-4">
-        <div class="card shadow-sm border-0 h-100">
-          <div class="card-header bg-white py-3 border-bottom">
-            <h6 class="mb-0 fw-bold"><i class="ph-sliders text-primary me-2"></i>Alçadas de Exceções & Negociações</h6>
-          </div>
-          <div class="card-body">
-            <ul class="list-group list-group-flush fs-sm">
-              <li class="list-group-item d-flex justify-content-between align-items-center px-0">
-                <div>
-                  <strong>Desconto / Ajuste em MDR (até 0.50%):</strong> Gerente Comercial/Financeiro
-                </div>
-                <span class="badge bg-secondary">Justificativa</span>
-              </li>
-              <li class="list-group-item d-flex justify-content-between align-items-center px-0">
-                <div>
-                  <strong>Desconto MDR &gt; 0.50% ou Isenção:</strong> Exclusivo Diretoria Financeira
-                </div>
-                <span class="badge bg-danger">Diretoria</span>
-              </li>
-              <li class="list-group-item d-flex justify-content-between align-items-center px-0">
-                <div>
-                  <strong>Ajuste Manual de Ledger (qualquer valor):</strong> Parecer Controladoria + Gerência
-                </div>
-                <span class="badge bg-dark">Controladoria</span>
-              </li>
-            </ul>
           </div>
         </div>
       </div>
@@ -621,11 +588,16 @@ function alcadas() {
 /* ==========================================================================
    5. FLUXOS DE APROVAÇÃO
    ========================================================================== */
-function fluxos() {
+function fluxos(state) {
   return `
-    <div class="mb-3">
-      <h4 class="mb-1 fw-bold text-dark">Fluxos de Aprovação Operacionais</h4>
-      <div class="text-muted">Sequenciamento formal das esteiras de decisão financeira da Disk Ingressos.</div>
+    <div class="mb-3 d-flex align-items-center justify-content-between">
+      <div>
+        <h4 class="mb-1 fw-bold text-dark">Fluxos de Aprovação Operacionais</h4>
+        <div class="text-muted">Sequenciamento formal das esteiras de decisão financeira da Disk Ingressos.</div>
+      </div>
+      <button class="btn btn-primary" onclick="window.app.navigate('diskAprovacoes')">
+        <i class="ph-check-circle me-1"></i>Abrir Central de Aprovações
+      </button>
     </div>
 
     <div class="card shadow-sm border-0 mb-4">
@@ -684,73 +656,22 @@ function fluxos() {
         </div>
       </div>
     </div>
-
-    <div class="card shadow-sm border-0">
-      <div class="card-header bg-white py-3 border-bottom">
-        <h6 class="mb-0 fw-bold"><i class="ph-clock-countdown text-primary me-2"></i>Prazos e Transições Automáticas de Status</h6>
-      </div>
-      <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0 fs-sm">
-          <thead class="table-light">
-            <tr>
-              <th>Status Atual</th>
-              <th>Condição de Disparo</th>
-              <th>Próximo Status</th>
-              <th>SLA Máximo</th>
-              <th>Ação se Expirar</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td><span class="badge bg-secondary">SOLICITADO</span></td>
-              <td>Checagem de saldo e retenções aprovada</td>
-              <td><span class="badge bg-info">EM_ANALISE</span></td>
-              <td>4 horas úteis</td>
-              <td>Alerta de atraso para coordenação</td>
-            </tr>
-            <tr>
-              <td><span class="badge bg-info">EM_ANALISE</span></td>
-              <td>Aprovação pela alçada correspondente</td>
-              <td><span class="badge bg-warning text-dark">AGUARDANDO_ASSINATURA</span></td>
-              <td>8 horas úteis</td>
-              <td>Escalonamento para alçada superior</td>
-            </tr>
-            <tr>
-              <td><span class="badge bg-warning text-dark">AGUARDANDO_ASSINATURA</span></td>
-              <td>Produtor assinou no Autentique</td>
-              <td><span class="badge bg-primary">LIBERADO_ASSINATURA_DISK</span></td>
-              <td>48 horas</td>
-              <td>Notificação de cobrança ao produtor</td>
-            </tr>
-            <tr>
-              <td><span class="badge bg-primary">LIBERADO_ASSINATURA_DISK</span></td>
-              <td>Financeiro Disk assinou no Autentique</td>
-              <td><span class="badge bg-success">PRONTO_PAGAMENTO</span></td>
-              <td>2 horas úteis</td>
-              <td>Alerta crítico na fila de assinaturas</td>
-            </tr>
-            <tr>
-              <td><span class="badge bg-success">PRONTO_PAGAMENTO</span></td>
-              <td>Disparo de lote PIX ou remessa gerada</td>
-              <td><span class="badge bg-dark">LIQUIDADO</span></td>
-              <td>Até as 17:00</td>
-              <td>Inclusão no lote da manhã seguinte</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
   `;
 }
 
 /* ==========================================================================
    6. SEGREGAÇÃO DE FUNÇÕES (SoD)
    ========================================================================== */
-function segregacao() {
+function segregacao(state) {
   return `
-    <div class="mb-3">
-      <h4 class="mb-1 fw-bold text-dark">Segregação de Funções (SoD - Segregation of Duties)</h4>
-      <div class="text-muted">Políticas rígidas para impedir acúmulo de etapas conflitantes pelo mesmo operador.</div>
+    <div class="mb-3 d-flex align-items-center justify-content-between">
+      <div>
+        <h4 class="mb-1 fw-bold text-dark">Segregação de Funções (SoD - Segregation of Duties)</h4>
+        <div class="text-muted">Políticas rígidas para impedir acúmulo de etapas conflitantes pelo mesmo operador.</div>
+      </div>
+      <button class="btn btn-outline-primary" onclick="window.app.financeAction('configurar-segregacao')">
+        <i class="ph-sliders me-1"></i>Salvar Regras SoD
+      </button>
     </div>
 
     <div class="alert alert-warning border-warning d-flex align-items-center">
@@ -804,13 +725,6 @@ function segregacao() {
               <td><span class="badge bg-danger">Bloqueio Rígido (Hard Stop)</span></td>
               <td><span class="badge bg-success">Ativo</span></td>
             </tr>
-            <tr>
-              <td><strong>ANALISTA COMERCIAL</strong></td>
-              <td><strong>APROVADOR DE ANTECIPAÇÃO</strong></td>
-              <td>Conflito de interesse sobre metas comerciais</td>
-              <td><span class="badge bg-warning text-dark">Exceção sob Alçada C</span></td>
-              <td><span class="badge bg-success">Ativo</span></td>
-            </tr>
           </tbody>
         </table>
       </div>
@@ -821,26 +735,31 @@ function segregacao() {
 /* ==========================================================================
    7. OPERAÇÕES SENSÍVEIS
    ========================================================================== */
-function operacoes() {
+function operacoes(state) {
   const lista = [
-    { id: 1, nome: 'Alteração de Dados Bancários de Produtor (PIX/Conta)', risco: 'Crítico', auth: 'Dupla Validação + Quarentena 48h', alcada: 'Gerência Financeira' },
-    { id: 2, nome: 'Alteração de Taxas MDR das Adquirentes', risco: 'Alto', auth: 'Justificativa Contratual', alcada: 'Diretoria Executiva' },
-    { id: 3, nome: 'Alteração de Taxa Comercial de Produtor/Cliente', risco: 'Alto', auth: 'Termo Aditivo Vinculado', alcada: 'Gerência Comercial / Dir.' },
-    { id: 4, nome: 'Aprovação de Solicitação de Antecipação', risco: 'Crítico', auth: 'Score de Risco + Parecer Crédito', alcada: 'Alçada A/B/C' },
-    { id: 5, nome: 'Assinatura Digital pela Disk (Autentique)', risco: 'Alto', auth: 'Token ICP-Brasil / Certificado', alcada: 'Gerência / Diretoria' },
-    { id: 6, nome: 'Execução de Lote PIX / Remessa CNAB', risco: 'Crítico', auth: '2FA + Verificação Hash Lote', alcada: 'Tesouraria + Coordenação' },
-    { id: 7, nome: 'Cancelamento de Pagamento já Autorizado', risco: 'Alto', auth: 'Justificativa Obrigatória', alcada: 'Gerência Financeira' },
-    { id: 8, nome: 'Ajuste Manual no Ledger Financeiro', risco: 'Crítico', auth: 'Parecer Controladoria + Estorno Duplo', alcada: 'Controladoria + Gerência' },
-    { id: 9, nome: 'Reabertura de Fechamento ou Borderô Concluído', risco: 'Crítico', auth: 'Ata de Reabertura Assinada', alcada: 'Diretoria Financeira' },
-    { id: 10, nome: 'Resolução de Divergência de Conciliação com Saldo', risco: 'Alto', auth: 'Comprovante Bancário Anexo', alcada: 'Coord. Conciliação' },
-    { id: 11, nome: 'Alteração de Credenciais / Webhook Autentique', risco: 'Crítico', auth: 'Mestre / Acesso Backend', alcada: 'Administrador / CTO' },
-    { id: 12, nome: 'Alteração de Mapeamento / Token Conta Azul', risco: 'Crítico', auth: 'Mestre / Acesso Backend', alcada: 'Administrador / CTO' }
+    { id: 1, nome: 'Alteração de Dados Bancários de Produtor (PIX/Conta)', risco: 'Crítico', auth: 'Dupla Validação + Quarentena 48h', alcada: 'Gerência Financeira', btn: 'Ver Quarentenas', act: 'diskGovernanca_bloqueios' },
+    { id: 2, nome: 'Alteração de Taxas MDR das Adquirentes', risco: 'Alto', auth: 'Justificativa Contratual', alcada: 'Diretoria Executiva', btn: 'Ver Gateways', act: 'diskGateways' },
+    { id: 3, nome: 'Alteração de Taxa Comercial de Produtor/Cliente', risco: 'Alto', auth: 'Termo Aditivo Vinculado', alcada: 'Gerência Comercial / Dir.', btn: 'Ver Taxas', act: 'diskTaxas' },
+    { id: 4, nome: 'Aprovação de Solicitação de Antecipação', risco: 'Crítico', auth: 'Score de Risco + Parecer Crédito', alcada: 'Alçada A/B/C', btn: 'Ver Simulador', act: 'antecipacoes' },
+    { id: 5, nome: 'Assinatura Digital pela Disk (Autentique)', risco: 'Alto', auth: 'Token ICP-Brasil / Certificado', alcada: 'Gerência / Diretoria', btn: 'Central Assinaturas', act: 'diskIntegracao_assinaturas' },
+    { id: 6, nome: 'Execução de Lote PIX / Remessa CNAB', risco: 'Crítico', auth: '2FA + Verificação Hash Lote', alcada: 'Tesouraria + Coordenação', btn: 'Tesouraria', act: 'diskPix' },
+    { id: 7, nome: 'Cancelamento de Pagamento já Autorizado', risco: 'Alto', auth: 'Justificativa Obrigatória', alcada: 'Gerência Financeira', btn: 'Pagamentos', act: 'diskPagamentosLote' },
+    { id: 8, nome: 'Ajuste Manual no Ledger Financeiro', risco: 'Crítico', auth: 'Parecer Controladoria + Estorno Duplo', alcada: 'Controladoria + Gerência', btn: 'Abrir Ledger', act: 'diskLedger' },
+    { id: 9, nome: 'Reabertura de Fechamento ou Borderô Concluído', risco: 'Crítico', auth: 'Ata de Reabertura Assinada', alcada: 'Diretoria Financeira', btn: 'Fechamentos', act: 'diskFechamentos' },
+    { id: 10, nome: 'Resolução de Divergência de Conciliação com Saldo', risco: 'Alto', auth: 'Comprovante Bancário Anexo', alcada: 'Coord. Conciliação', btn: 'Conciliação', act: 'diskConciliacao' },
+    { id: 11, nome: 'Alteração de Credenciais / Webhook Autentique', risco: 'Crítico', auth: 'Mestre / Acesso Backend', alcada: 'Administrador / CTO', btn: 'Ver Autentique', act: 'diskIntegracao_autentique' },
+    { id: 12, nome: 'Alteração de Mapeamento / Token Conta Azul', risco: 'Crítico', auth: 'Mestre / Acesso Backend', alcada: 'Administrador / CTO', btn: 'Ver Conta Azul', act: 'diskIntegracao_contaazul' }
   ];
 
   return `
-    <div class="mb-3">
-      <h4 class="mb-1 fw-bold text-dark">Catálogo de Operações Sensíveis & Críticas</h4>
-      <div class="text-muted">Relação de ações sujeitas a salvaguardas adicionais, dupla custódia e trilha auditável permanente.</div>
+    <div class="mb-3 d-flex align-items-center justify-content-between">
+      <div>
+        <h4 class="mb-1 fw-bold text-dark">Catálogo de Operações Sensíveis & Críticas</h4>
+        <div class="text-muted">Relação de ações sujeitas a salvaguardas adicionais, dupla custódia e trilha auditável permanente.</div>
+      </div>
+      <button class="btn btn-outline-danger" onclick="window.app.financeAction('regras-protecao')">
+        <i class="ph-shield-warning me-1"></i>Auditar Políticas
+      </button>
     </div>
 
     <div class="card shadow-sm border-0">
@@ -853,7 +772,7 @@ function operacoes() {
               <th>Nível de Risco</th>
               <th>Requisitos de Segurança</th>
               <th>Alçada Mínima</th>
-              <th class="text-center">Log Imutável</th>
+              <th class="text-end">Acesso Rápido</th>
             </tr>
           </thead>
           <tbody>
@@ -868,7 +787,11 @@ function operacoes() {
                 </td>
                 <td>${item.auth}</td>
                 <td><span class="badge bg-light text-dark border">${item.alcada}</span></td>
-                <td class="text-center"><i class="ph-shield-check text-success fs-5"></i></td>
+                <td class="text-end">
+                  <button class="btn btn-sm btn-outline-primary" onclick="window.app.navigate('${item.act}')">
+                    ${item.btn} →
+                  </button>
+                </td>
               </tr>
             `).join('')}
           </tbody>
@@ -881,14 +804,14 @@ function operacoes() {
 /* ==========================================================================
    8. BLOQUEIOS E EXCEÇÕES
    ========================================================================== */
-function bloqueios() {
+function bloqueios(state) {
   return `
     <div class="mb-3 d-flex align-items-center justify-content-between">
       <div>
         <h4 class="mb-1 fw-bold text-dark">Bloqueios Preventivos, Quarentenas & Exceções</h4>
         <div class="text-muted">Salvaguardas automáticas e delegações temporárias de autoridade.</div>
       </div>
-      <button class="btn btn-primary" onclick="window.app.showToast('Módulo de concessão de alçada temporária preparado.', 'info')">
+      <button class="btn btn-primary" onclick="window.app.financeAction('tratar-excecoes')">
         <i class="ph-lock-key-open me-1"></i>Conceder Alçada Temporária
       </button>
     </div>
@@ -907,7 +830,7 @@ function bloqueios() {
                   <th>Motivo do Bloqueio</th>
                   <th>Início</th>
                   <th>Desbloqueio Previsto</th>
-                  <th>Ação</th>
+                  <th class="text-end">Ação</th>
                 </tr>
               </thead>
               <tbody>
@@ -916,14 +839,22 @@ function bloqueios() {
                   <td>Alteração de Chave PIX (Regra 48h)</td>
                   <td>28/09 11:30</td>
                   <td>30/09 11:30</td>
-                  <td><button class="btn btn-sm btn-outline-primary" onclick="window.app.showToast('Quarentena mantida por segurança patrimonial.', 'warning')">Liberar Manual</button></td>
+                  <td class="text-end">
+                    <button class="btn btn-sm btn-outline-primary" onclick="window.app.showToast('Segurança', 'Quarentena preventiva mantida conforme norma de proteção patrimonial.', 'warning')">
+                      Liberar Manual
+                    </button>
+                  </td>
                 </tr>
                 <tr>
                   <td><strong>Festival Eletrônico 2026</strong></td>
                   <td>Pico anômalo de chargeback (&gt; 1.5%)</td>
                   <td>29/09 09:10</td>
                   <td>Sob Análise</td>
-                  <td><button class="btn btn-sm btn-outline-danger" onclick="window.app.showToast('Encaminhado ao Comitê de Risco.', 'info')">Ver Dossiê</button></td>
+                  <td class="text-end">
+                    <button class="btn btn-sm btn-outline-danger" onclick="window.app.navigate('diskFechamentos')">
+                      Ver Dossiê
+                    </button>
+                  </td>
                 </tr>
               </tbody>
             </table>
@@ -958,7 +889,7 @@ function bloqueios() {
 /* ==========================================================================
    9. AUDITORIA DE ACESSOS & LOGS
    ========================================================================== */
-function auditoria() {
+function auditoria(state) {
   const logsData = [
     { hora: '29/09 15:42:10', usuario: 'mariana.fontes', acao: 'APROVACAO_ALCADA_B', alvo: 'REP-00281', ip: '192.168.1.104', res: 'SUCESSO' },
     { hora: '29/09 15:15:22', usuario: 'carlos.silva', acao: 'TENTATIVA_AUTOAPROVACAO', alvo: 'REP-00282', ip: '192.168.1.118', res: 'BLOQUEADO_SOD' },
@@ -974,7 +905,7 @@ function auditoria() {
         <h4 class="mb-1 fw-bold text-dark">Auditoria de Acessos & Log Imutável</h4>
         <div class="text-muted">Registro contínuo e à prova de adulteração de todas as operações administrativas e financeiras.</div>
       </div>
-      <button class="btn btn-outline-secondary" onclick="window.app.showToast('Exportação de trilha de auditoria em CSV gerada.', 'info')">
+      <button class="btn btn-outline-secondary" onclick="window.app.financeAction('exportar-dados')">
         <i class="ph-file-arrow-down me-1"></i>Exportar Trilha (CSV)
       </button>
     </div>
@@ -1017,7 +948,7 @@ function auditoria() {
 /* ==========================================================================
    10. CONFIGURAÇÕES DE GOVERNANÇA
    ========================================================================== */
-function configuracoes() {
+function configuracoes(state) {
   return `
     <div class="mb-3">
       <h4 class="mb-1 fw-bold text-dark">Configurações Gerais de Governança</h4>
@@ -1067,7 +998,7 @@ function configuracoes() {
               <div class="text-muted fs-xs">Dispara evento de alta severidade quando uma regra de segregação for forçada.</div>
             </div>
             <div class="mt-4">
-              <button class="btn btn-primary" onclick="window.app.showToast('Configurações de governança salvas com sucesso.', 'success')">
+              <button class="btn btn-primary" onclick="window.app.showToast('Configurações Salvas', 'Configurações de governança salvas com sucesso.', 'success')">
                 <i class="ph-floppy-disk me-1"></i>Salvar Parâmetros
               </button>
             </div>

@@ -286,16 +286,16 @@ export const menuFinanceiroCompleto = [
     label: 'GOVERNANÇA FINANCEIRA',
     icon: 'ph-shield-check',
     subItems: [
-      { id: 'diskGov_visaoGeral', label: 'Visão Geral', filterArg: 'visaoGeral' },
-      { id: 'diskGov_usuarios', label: 'Usuários Financeiros', filterArg: 'usuarios' },
-      { id: 'diskGov_perfis', label: 'Perfis e Permissões', filterArg: 'perfis' },
-      { id: 'diskGov_alcadas', label: 'Alçadas de Aprovação', filterArg: 'alcadas' },
-      { id: 'diskGov_fluxos', label: 'Fluxos de Aprovação', filterArg: 'fluxos' },
-      { id: 'diskGov_segregacao', label: 'Segregação de Funções', filterArg: 'segregacao' },
-      { id: 'diskGov_operacoes', label: 'Operações Sensíveis', filterArg: 'operacoes' },
-      { id: 'diskGov_bloqueios', label: 'Bloqueios e Exceções', filterArg: 'bloqueios' },
-      { id: 'diskGov_auditoria', label: 'Auditoria de Acessos', filterArg: 'auditoria' },
-      { id: 'diskGov_configuracoes', label: 'Configurações', filterArg: 'configuracoes' }
+      { id: 'diskGovernanca_visao', label: 'Visão Geral', filterArg: 'visao' },
+      { id: 'diskGovernanca_usuarios', label: 'Usuários Financeiros', filterArg: 'usuarios' },
+      { id: 'diskGovernanca_perfis', label: 'Perfis e Permissões', filterArg: 'perfis' },
+      { id: 'diskGovernanca_alcadas', label: 'Alçadas de Aprovação', filterArg: 'alcadas' },
+      { id: 'diskGovernanca_fluxos', label: 'Fluxos de Aprovação', filterArg: 'fluxos' },
+      { id: 'diskGovernanca_segregacao', label: 'Segregação de Funções', filterArg: 'segregacao' },
+      { id: 'diskGovernanca_sensiveis', label: 'Operações Sensíveis', filterArg: 'sensiveis' },
+      { id: 'diskGovernanca_bloqueios', label: 'Bloqueios e Exceções', filterArg: 'bloqueios' },
+      { id: 'diskGovernanca_acessos', label: 'Auditoria de Acessos', filterArg: 'acessos' },
+      { id: 'diskGovernanca_configuracoes', label: 'Configurações', filterArg: 'configuracoes' }
     ]
   }
 ];
