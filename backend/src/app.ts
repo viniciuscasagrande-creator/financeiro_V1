@@ -36,8 +36,8 @@ app.post('/api/auth/login', (req: Request, res: Response) => {
   }
   return res.json({
     id: 'usr-fin-01',
-    email: 'financeiro@demo.disk',
-    nome: 'Maria Valente',
+    email: 'karine@diskingressos.com.br',
+    nome: 'Karine',
     perfil: 'FINANCEIRO',
     token: 'jwt_mock_financeiro'
   });
@@ -143,7 +143,7 @@ app.post('/api/assinaturas/:id/produtor', authMiddleware, (req: Request, res: Re
 app.post('/api/assinaturas/:id/financeiro', authMiddleware, (req: Request, res: Response) => {
   const user = (req as any).user;
   try {
-    const doc = workflowEngine.assinarComoDisk(req.params.id, user?.nome || 'Maria Valente', '127.0.0.1');
+    const doc = workflowEngine.assinarComoDisk(req.params.id, user?.nome || 'Karine', '127.0.0.1');
     res.json(doc);
   } catch (err: any) {
     // Retorna erro se a ordem sequencial for violada

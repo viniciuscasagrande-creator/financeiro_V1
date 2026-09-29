@@ -21,8 +21,8 @@ Este projeto implementa de uma única vez o ambiente demonstrativo completo do *
 | Perfil | E-mail de Demonstração | Senha | Direcionamento | Visão e Regras de Segurança |
 | :--- | :--- | :--- | :--- | :--- |
 | **PRODUTOR** | `produtor@demo.disk` | `demo123` | `/produtor` | Produtora ABC Ltda. Visualiza apenas seus próprios eventos e saldos. Proibido ver outros produtores. |
-| **FINANCEIRO** | `financeiro@demo.disk` | `demo123` | `/financeiro` | Maria Valente (Tesouraria). Visão transversal de todos os produtores, adquirentes e Central de Aprovações. |
-| **ADMINISTRADOR** | `admin@demo.disk` | `demo123` | `/financeiro` | Vinicius Master. Acesso total irrestrito a configurações fiscais, conciliação e reversões no Ledger. |
+| **FINANCEIRO** | `karine@diskingressos.com.br` | `demo123` | `/financeiro` | Karine (Adm do Financeiro). Visão transversal de todos os produtores, adquirentes e Central de Aprovações. |
+| **ADMINISTRADOR** | `karine@diskingressos.com.br` | `demo123` | `/financeiro` | Karine (Adm do Financeiro). Acesso total irrestrito a governança, conciliação e reversões no Ledger. |
 
 ---
 
@@ -151,7 +151,7 @@ O fluxo principal está 100% calibrado e interconectado de ponta a ponta:
    - O saldo disponível é imediatamente reservado (passa para **R$ 120.000,00**) e a solicitação `#REP-000129` é criada com status `Aguardando análise`.
 
 2. **Login no Financeiro Disk & Notificação:**
-   - Alterne o perfil para **Financeiro Disk (Maria Valente)**.
+   - Alterne o perfil para **Financeiro Disk (Karine)**.
    - O sino de notificações no topo exibe alerta de nova solicitação de repasse da Produtora ABC.
    - Abra a **Central de Aprovações (17)** e localize a solicitação `#REP-000129`.
    - Clique em **Analisar Ficha →**:

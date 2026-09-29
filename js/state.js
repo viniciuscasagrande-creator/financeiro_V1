@@ -39,10 +39,10 @@ class CoreFinanceiroStore {
       if (r === 'financeiro' || r === 'disk') {
         this.state.currentUser = {
           id: "usr-disk-01",
-          name: "Maria Valente",
+          name: "Karine",
           role: "disk",
-          email: "maria.valente@diskingressos.com.br",
-          title: "Mesa de Operações & Tesouraria",
+          email: "karine@diskingressos.com.br",
+          title: "Administradora do Financeiro",
           producerId: null
         };
         this.state.viewMode = 'disk';
@@ -50,10 +50,10 @@ class CoreFinanceiroStore {
       } else if (r === 'admin') {
         this.state.currentUser = {
           id: "usr-admin-01",
-          name: "Vinicius Casagrande",
+          name: "Karine",
           role: "admin",
-          email: "vinicius.casagrande@diskingressos.com.br",
-          title: "Administrador Master",
+          email: "karine@diskingressos.com.br",
+          title: "Administradora do Financeiro",
           producerId: null
         };
         this.state.viewMode = 'disk';
@@ -85,7 +85,7 @@ class CoreFinanceiroStore {
           },
           disk: {
             signed: isPaid,
-            signedBy: isPaid ? "Maria Valente (Tesouraria Disk)" : null,
+            signedBy: isPaid ? "Karine (Adm do Financeiro)" : null,
             signedAt: isPaid ? "28/09/2026 14:35" : null,
             ip: isPaid ? "189.40.12.8" : null,
             certAuth: isPaid ? "DISK-AUTH-E-CNPJ-4410" : null,
@@ -111,7 +111,16 @@ class CoreFinanceiroStore {
     try {
       if (typeof localStorage === 'undefined') return null;
       const raw = localStorage.getItem(this.storageKey);
-      return raw ? JSON.parse(raw) : null;
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (parsed && Array.isArray(parsed.approvalQueue)) {
+        parsed.approvalQueue.forEach(a => {
+          if (a.signatures?.disk?.signedBy && a.signatures.disk.signedBy.includes('Maria Valente')) {
+            a.signatures.disk.signedBy = a.signatures.disk.signedBy.replace('Maria Valente', 'Karine');
+          }
+        });
+      }
+      return parsed;
     } catch (_) { return null; }
   }
 
@@ -282,10 +291,10 @@ class CoreFinanceiroStore {
     } else if (role === 'admin') {
       this.state.currentUser = {
         id: "usr-admin-01",
-        name: "Vinicius Casagrande",
+        name: "Karine",
         role: "admin",
-        email: "vinicius.casagrande@diskingressos.com.br",
-        title: "Administrador Master",
+        email: "karine@diskingressos.com.br",
+        title: "Administradora do Financeiro",
         producerId: null
       };
       this.state.viewMode = 'disk';
@@ -295,10 +304,10 @@ class CoreFinanceiroStore {
     } else {
       this.state.currentUser = {
         id: "usr-disk-01",
-        name: "Maria Valente",
+        name: "Karine",
         role: "disk",
-        email: "maria.valente@diskingressos.com.br",
-        title: "Gerente de Tesouraria e Risco",
+        email: "karine@diskingressos.com.br",
+        title: "Administradora do Financeiro",
         producerId: null
       };
       this.state.viewMode = 'disk';

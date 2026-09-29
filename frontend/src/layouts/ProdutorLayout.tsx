@@ -61,10 +61,10 @@ export const ProdutorLayout: React.FC<ProdutorLayoutProps> = ({
                   <i className="ph-user text-primary me-2"></i> Produtora ABC (João Silva)
                 </a>
                 <a href="#" className="dropdown-item py-2 fs-xs" onClick={() => loginAs("FINANCEIRO")}>
-                  <i className="ph-shield-check text-success me-2"></i> Financeiro Disk (Maria Valente)
+                  <i className="ph-shield-check text-success me-2"></i> Financeiro Disk (Karine)
                 </a>
                 <a href="#" className="dropdown-item py-2 fs-xs" onClick={() => loginAs("ADMINISTRADOR")}>
-                  <i className="ph-crown text-warning me-2"></i> Admin Master (Vinicius)
+                  <i className="ph-crown text-warning me-2"></i> Adm Financeiro (Karine)
                 </a>
               </div>
             </div>

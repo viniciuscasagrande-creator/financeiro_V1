@@ -307,20 +307,20 @@ function usuarios(state) {
             <tr>
               <td>
                 <div class="d-flex align-items-center">
-                  <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center fw-bold me-2" style="width:36px;height:36px;">BM</div>
+                  <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center fw-bold me-2" style="width:36px;height:36px;">KA</div>
                   <div>
-                    <div class="fw-bold">Beatriz Mendes</div>
-                    <div class="text-muted fs-xs">Diretoria Financeira / CFO</div>
+                    <div class="fw-bold">Karine</div>
+                    <div class="text-muted fs-xs">Administradora do Financeiro / Governança</div>
                   </div>
                 </div>
               </td>
-              <td>beatriz.mendes@diskingressos.com.br</td>
-              <td><span class="badge bg-dark">DIRETOR_CFO</span></td>
+              <td>karine@diskingressos.com.br</td>
+              <td><span class="badge bg-dark">ADMIN_FINANCEIRO</span></td>
               <td><span class="badge bg-danger">Alçada C (Ilimitada)</span></td>
               <td><span class="badge bg-success"><i class="ph-check me-1"></i>Ativo</span></td>
               <td><span class="badge bg-success">Ativo</span></td>
               <td class="text-end">
-                <button class="btn btn-sm btn-light" onclick="window.app.financeAction('gerenciar-usuarios', 'BM')"><i class="ph-pencil"></i></button>
+                <button class="btn btn-sm btn-light" onclick="window.app.financeAction('gerenciar-usuarios', 'KA')"><i class="ph-pencil"></i></button>
               </td>
             </tr>
             <tr>
@@ -893,7 +893,7 @@ function auditoria(state) {
   const logsData = [
     { hora: '29/09 15:42:10', usuario: 'mariana.fontes', acao: 'APROVACAO_ALCADA_B', alvo: 'REP-00281', ip: '192.168.1.104', res: 'SUCESSO' },
     { hora: '29/09 15:15:22', usuario: 'carlos.silva', acao: 'TENTATIVA_AUTOAPROVACAO', alvo: 'REP-00282', ip: '192.168.1.118', res: 'BLOQUEADO_SOD' },
-    { hora: '29/09 14:30:05', usuario: 'beatriz.mendes', acao: 'APROVACAO_ANTECIPACAO', alvo: 'ANT-00042', ip: '192.168.1.201', res: 'SUCESSO' },
+    { hora: '29/09 14:30:05', usuario: 'karine', acao: 'APROVACAO_ANTECIPACAO', alvo: 'ANT-00042', ip: '192.168.1.201', res: 'SUCESSO' },
     { hora: '29/09 13:05:44', usuario: 'fernando.diniz', acao: 'TENTATIVA_EDICAO_PIX', alvo: 'PROD-00012', ip: '192.168.1.155', res: 'ACESSO_NEGADO' },
     { hora: '29/09 11:20:19', usuario: 'roberto.a', acao: 'REAJUSTE_TAXA_COMERCIAL', alvo: 'TAX-00491', ip: '192.168.1.102', res: 'SUCESSO' },
     { hora: '29/09 10:04:12', usuario: 'amanda.toledo', acao: 'AJUSTE_LEDGER_CONTABIL', alvo: 'LED-00912', ip: '192.168.1.140', res: 'SUCESSO' }

@@ -1434,15 +1434,15 @@ class LimitlessFinancialApp {
               <i class="ph-shield-check fs-2 text-warning"></i>
               <div>
                 <div class="fw-bold text-dark fs-sm">Entrar como Financeiro Disk (Backoffice)</div>
-                <div class="fs-xxs text-muted">Mesa de Aprovações &bull; Tesouraria &bull; Ledger</div>
+                <div class="fs-xxs text-muted">Karine (Adm do Financeiro) &bull; Mesa de Aprovações &bull; Tesouraria &bull; Ledger</div>
               </div>
             </button>
 
             <button class="btn btn-outline-dark p-3 d-flex align-items-center text-start gap-3" onclick="window.switchGlobalRole('ADMINISTRADOR'); window.app.closeModal();">
               <i class="ph-crown fs-2 text-danger"></i>
               <div>
-                <div class="fw-bold text-dark fs-sm">Entrar como Administrador Master</div>
-                <div class="fs-xxs text-muted">Vinicius Casagrande &bull; Acesso Transversal Irrestrito</div>
+                <div class="fw-bold text-dark fs-sm">Entrar como Administradora do Financeiro</div>
+                <div class="fs-xxs text-muted">Karine &bull; karine@diskingressos.com.br &bull; Acesso Transversal</div>
               </div>
             </button>
           </div>
@@ -1795,17 +1795,17 @@ class LimitlessFinancialApp {
 
     if (avatarCircle && displayEmail) {
       if (isMaster) {
-        avatarCircle.innerText = 'VI';
+        avatarCircle.innerText = 'KA';
         avatarCircle.style.background = '#e11d48';
         displayEmail.innerText = state.currentUser.email;
         if (dropdownName) dropdownName.innerText = state.currentUser.name;
-        if (dropdownRole) dropdownRole.innerText = 'Administrador Master (Geral)';
+        if (dropdownRole) dropdownRole.innerText = 'Administradora do Financeiro';
       } else if (isDisk) {
-        avatarCircle.innerText = 'MV';
+        avatarCircle.innerText = 'KA';
         avatarCircle.style.background = '#10b981';
         displayEmail.innerText = state.currentUser.email;
         if (dropdownName) dropdownName.innerText = state.currentUser.name;
-        if (dropdownRole) dropdownRole.innerText = 'Mesa de Aprovações & Tesouraria';
+        if (dropdownRole) dropdownRole.innerText = 'Administradora do Financeiro';
       } else {
         avatarCircle.innerText = state.activeProducer.id === 'prod-xyz' ? 'XYZ' : 'ABC';
         avatarCircle.style.background = '#2563eb';
@@ -2220,11 +2220,11 @@ class LimitlessFinancialApp {
         <button class="demo-role-btn ${isProducer ? 'active-produtor' : ''}" onclick="window.switchGlobalRole('PRODUTOR')" title="Alternar para perfil Produtor">
           <i class="ph-user"></i> <span>Produtor</span>
         </button>
-        <button class="demo-role-btn ${isDisk && !isMaster ? 'active-disk' : ''}" onclick="window.switchGlobalRole('FINANCEIRO')" title="Alternar para Mesa Financeira Disk (Backoffice)">
+        <button class="demo-role-btn ${isDisk && !isMaster ? 'active-disk' : ''}" onclick="window.switchGlobalRole('FINANCEIRO')" title="Alternar para Financeiro Disk (Karine)">
           <i class="ph-shield-check"></i> <span>Financeiro Disk</span>
         </button>
-        <button class="demo-role-btn ${isMaster ? 'active-admin' : ''}" onclick="window.switchGlobalRole('ADMINISTRADOR')" title="Alternar para Administrador Master (Acesso Total)">
-          <i class="ph-crown"></i> <span>Admin Master</span>
+        <button class="demo-role-btn ${isMaster ? 'active-admin' : ''}" onclick="window.switchGlobalRole('ADMINISTRADOR')" title="Alternar para Administradora do Financeiro (Karine)">
+          <i class="ph-crown"></i> <span>Adm Financeiro</span>
         </button>
       </div>
 
