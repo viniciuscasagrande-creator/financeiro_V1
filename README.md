@@ -130,8 +130,19 @@ disk-financeiro/
 │   ├── schema.prisma                # Modelos relacionais completos
 │   └── seed.ts                      # 3 produtores, 8 eventos, adquirentes e usuários
 │
+├── docs/                            # Documentação técnica e histórico de pacotes
+│   ├── README.md                    # Índice central da documentação
+│   ├── pacotes/                     # Especificações detalhadas dos pacotes (2 a 21.2)
+│   └── screenshots/                 # Capturas e mockups de referência
+│
+├── tests/                           # Bateria de testes de integridade e renderização
+│   ├── integridade-financeira.test.mjs
+│   └── views-render.test.mjs
+│
+├── archives/                        # Arquivos compactados históricos (gitignored)
 ├── index.html                       # Aplicação Web ao vivo estilo Limitless
 ├── server.js                        # Servidor HTTP estático nativo Node.js
+├── build.js                         # Script de empacotamento estático para Vercel
 ├── tsconfig.json                    # Configuração TypeScript ES2022 + JSX
 ├── package.json
 └── README.md
