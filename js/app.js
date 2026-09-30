@@ -2260,6 +2260,17 @@ class LimitlessFinancialApp {
       document.body.appendChild(bar);
     }
 
+    if (this.demoBarCollapsed) {
+      bar.style.padding = '4px 10px';
+      bar.innerHTML = `
+        <button class="btn btn-sm btn-dark d-flex align-items-center gap-1 shadow" onclick="window.app.toggleDemoBarCollapse()" style="font-size: 0.78rem; font-weight: 700; background: #0f172a; border: 1px solid #3b82f6; border-radius: 20px; padding: 4px 12px; color: #60a5fa;">
+          <i class="ph-flask"></i> <span>Ferramentas de Teste (Expandir)</span>
+        </button>
+      `;
+      return;
+    }
+
+    bar.style.padding = '';
     const isDisk = state.viewMode === 'disk';
     const isMaster = state.currentUser.role === 'admin';
     const isProducer = !isDisk && !isMaster;
@@ -2292,6 +2303,10 @@ class LimitlessFinancialApp {
       </button>
       <button class="demo-action-btn reset" onclick="window.app.resetDemo()" title="Restaura os dados originais">
         ↻ Reset Demo
+      </button>
+
+      <button class="btn btn-sm btn-icon text-white-50 border-0 ms-2" onclick="window.app.toggleDemoBarCollapse()" title="Recolher barra para liberar a tela" style="font-size: 0.9rem;">
+        <i class="ph-caret-down"></i>
       </button>
     `;
   }
@@ -4474,6 +4489,914 @@ class LimitlessFinancialApp {
     );
     this.refreshP18View();
   }
+
+  toggleDemoBarCollapse() {
+    this.demoBarCollapsed = !this.demoBarCollapsed;
+    this.renderDemoFloatingBar(financialStore.getState());
+  }
+
+  p19FilterFees() {
+    const scope = document.getElementById('p19Scope')?.value || '';
+    const acq = document.getElementById('p19Acq')?.value || '';
+    const method = document.getElementById('p19Method')?.value || '';
+    const status = document.getElementById('p19Status')?.value || '';
+
+    const rows = document.querySelectorAll('#p19FeeTable tbody tr');
+    let visible = 0;
+    rows.forEach(tr => {
+      const d = tr.dataset;
+      const match = (!scope || d.scope === scope) &&
+                    (!acq || d.acq === acq) &&
+                    (!method || d.method === method) &&
+                    (!status || d.status === status);
+      tr.style.display = match ? '' : 'none';
+      if (match) visible++;
+    });
+    const countEl = document.getElementById('p19FeeCount');
+    if (countEl) countEl.innerText = `${visible} regras encontradas`;
+  }
+
+  p19SimulateRule(id = '') {
+    const st = financialStore.getState();
+    const r = (st.data.spreadRules && st.data.spreadRules.find(x => x.id === id)) ||
+              (st.data.spreadRules && st.data.spreadRules.find(x => x.status === 'Ativa')) ||
+              (st.data.taxRules && st.data.taxRules.find(x => x.id === id)) || {
+                id: id || 'REG-TAXA-DEF',
+                name: 'Regra Padrão Cartão Crédito à Vista',
+                scopeType: 'Geral Disk',
+                acquirer: 'Cielo',
+                method: 'Cartão de Crédito',
+                payer: 'Produtor',
+                chargedRate: 8.90,
+                mdr: 2.19,
+                fixedFee: 0.40,
+                version: 2
+              };
+
+    const br = v => (Number(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    const amount = 1000;
+    const rate = Number(r.chargedRate || r.rate || 0);
+    const mdr = Number(r.mdr || 0);
+    const fixed = Number(r.fixedFee || 0);
+    const revenue = amount * rate / 100;
+    const cost = (amount * mdr / 100) + fixed;
+    const spread = revenue - cost;
+
+    this.showModal(`
+      <div class="modal-card" style="max-width: 650px;">
+        <div class="modal-header d-flex justify-content-between align-items-center">
+          <div>
+            <h4 class="mb-0">Simulador de Taxa & Conferência de Spread</h4>
+            <div class="text-muted fs-sm">${r.id} · Escopo: <strong>${r.scopeType || 'Geral Disk'}</strong> · Versão: <strong>v${r.version || 1}</strong></div>
+          </div>
+          <button class="modal-close-btn" onclick="window.app.closeModal()">&times;</button>
+        </div>
+        <div class="modal-body p-4">
+          <div class="mb-3">
+            <label class="form-label fw-bold">Valor da Venda Simulada (R$)</label>
+            <div class="input-group">
+              <span class="input-group-text">R$</span>
+              <input type="number" id="p19SimAmount" class="form-control form-control-lg fw-bold text-primary" value="${amount}" step="50" oninput="window.app.p19RecalcSim('${r.id}')">
+            </div>
+          </div>
+
+          <div class="card p-3 mb-3 bg-light border-0">
+            <div class="row g-3">
+              <div class="col-6">
+                <span class="text-muted fs-xs text-uppercase d-block">Regra Identificada</span>
+                <strong>${r.name || 'Regra Comercial'}</strong>
+              </div>
+              <div class="col-6">
+                <span class="text-muted fs-xs text-uppercase d-block">Adquirente / Meio</span>
+                <strong>${r.acquirer || 'Gateway'} · ${r.method || 'Cartão'}</strong>
+              </div>
+              <div class="col-4">
+                <span class="text-muted fs-xs text-uppercase d-block">Taxa Cobrada</span>
+                <span class="fw-bold fs-md" id="p19SimRateLabel">${rate.toFixed(2)}%</span>
+                <div class="text-success fs-xs fw-bold" id="p19SimRevVal">${br(revenue)}</div>
+              </div>
+              <div class="col-4">
+                <span class="text-muted fs-xs text-uppercase d-block">Custo MDR + Tarifa</span>
+                <span class="fw-bold fs-md text-danger" id="p19SimMdrLabel">${mdr.toFixed(2)}% + ${br(fixed)}</span>
+                <div class="text-danger fs-xs fw-bold" id="p19SimCostVal">${br(cost)}</div>
+              </div>
+              <div class="col-4">
+                <span class="text-muted fs-xs text-uppercase d-block">Spread Estimado</span>
+                <span class="fw-bold fs-md text-primary" id="p19SimSpreadVal">${br(spread)}</span>
+                <div class="text-muted fs-xs" id="p19SimSpreadPct">${((spread / amount) * 100).toFixed(2)}% margem</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <div class="p-2 border rounded">
+                <span class="text-muted fs-xs d-block">Responsável pelo Custo (MDR)</span>
+                <strong>${r.payer || 'Produtor (Descontado no Repasse)'}</strong>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="p-2 border rounded">
+                <span class="text-muted fs-xs d-block">Status da Regra / Vigência</span>
+                <span class="badge badge-success">Vigente (v${r.version || 1})</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="info-banner info-banner-blue mb-0">
+            <i class="ph-shield-check"></i>
+            <div>
+              <strong>Snapshot Imutável:</strong> Ao autorizar cada venda ou repasse, a regra e sua versão ativa são gravadas na transação para assegurar a rastreabilidade em estornos, no Ledger e na conciliação.
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer d-flex justify-content-end gap-2 p-3 bg-light">
+          <button type="button" class="btn btn-outline-secondary" onclick="window.app.closeModal()">Fechar</button>
+        </div>
+      </div>
+    `);
+  }
+
+  p19RecalcSim(ruleId) {
+    const st = financialStore.getState();
+    const r = (st.data.spreadRules && st.data.spreadRules.find(x => x.id === ruleId)) ||
+              (st.data.taxRules && st.data.taxRules.find(x => x.id === ruleId)) || {
+                chargedRate: 8.90,
+                mdr: 2.19,
+                fixedFee: 0.40
+              };
+    const valInput = document.getElementById('p19SimAmount');
+    if (!valInput) return;
+    const amount = Number(valInput.value) || 0;
+    const rate = Number(r.chargedRate || r.rate || 0);
+    const mdr = Number(r.mdr || 0);
+    const fixed = Number(r.fixedFee || 0);
+
+    const revenue = amount * rate / 100;
+    const cost = amount > 0 ? (amount * mdr / 100) + fixed : 0;
+    const spread = revenue - cost;
+    const br = v => (Number(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+    const revEl = document.getElementById('p19SimRevVal');
+    const costEl = document.getElementById('p19SimCostVal');
+    const spreadEl = document.getElementById('p19SimSpreadVal');
+    const pctEl = document.getElementById('p19SimSpreadPct');
+
+    if (revEl) revEl.innerText = br(revenue);
+    if (costEl) costEl.innerText = br(cost);
+    if (spreadEl) spreadEl.innerText = br(spread);
+    if (pctEl) pctEl.innerText = amount > 0 ? `${((spread / amount) * 100).toFixed(2)}% margem` : '0.00% margem';
+  }
+
+  p19PrepareCnab(batchId = 'CNAB-240-20260929-01') {
+    const st = financialStore.getState();
+    const b = (st.data.cnabBatches && st.data.cnabBatches.find(x => x.batchId === batchId)) || {
+      batchId: batchId,
+      bank: 'Banco do Brasil (001)',
+      agencyAccount: 'Ag 3412-1 / CC 55400-2',
+      count: 8,
+      totalAmount: 642890.00,
+      status: 'Arquivo Gerado / Homologação'
+    };
+    const br = v => (Number(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+    this.showModal(`
+      <div class="modal-card" style="max-width: 680px;">
+        <div class="modal-header d-flex justify-content-between align-items-center">
+          <div>
+            <h4 class="mb-0">Preparação de Arquivo CNAB 240 (Homologação)</h4>
+            <div class="text-muted fs-sm">Lote: <strong>${b.batchId}</strong> · Banco: <strong>${b.bank}</strong></div>
+          </div>
+          <button class="modal-close-btn" onclick="window.app.closeModal()">&times;</button>
+        </div>
+        <div class="modal-body p-4">
+          <div class="alert alert-warning mb-3">
+            <i class="ph-warning-circle"></i>
+            <div>
+              <strong>Atenção Operacional (Regra de Homologação):</strong>
+              O arquivo remessa foi compilado conforme o layout FEBRABAN CNAB 240. O sistema <strong>NÃO</strong> declara liquidação bancária sem recepção real do arquivo de retorno (.RET) ou confirmação de VAN bancária homologada.
+            </div>
+          </div>
+
+          <div class="card p-3 mb-3 bg-light border-0">
+            <div class="row g-3">
+              <div class="col-6">
+                <span class="text-muted fs-xs text-uppercase d-block">Banco e Convênio</span>
+                <strong>${b.bank}</strong>
+              </div>
+              <div class="col-6">
+                <span class="text-muted fs-xs text-uppercase d-block">Conta Origem (Disk Ingressos)</span>
+                <strong>${b.agencyAccount}</strong>
+              </div>
+              <div class="col-6">
+                <span class="text-muted fs-xs text-uppercase d-block">Quantidade de Pagamentos</span>
+                <strong>${b.count} obrigações (Repasses a Produtores)</strong>
+              </div>
+              <div class="col-6">
+                <span class="text-muted fs-xs text-uppercase d-block">Valor Total do Lote</span>
+                <strong class="text-primary fs-md">${br(b.totalAmount)}</strong>
+              </div>
+            </div>
+          </div>
+
+          <div class="border rounded p-3 mb-3">
+            <h6 class="fw-bold mb-2">Estrutura da Remessa (Segmentos A e B):</h6>
+            <ul class="fs-sm mb-0 text-muted" style="padding-left: 20px;">
+              <li>Header de Arquivo: Código 001, Inscrição Disk Ingressos PJ, Remessa 240.</li>
+              <li>Header de Lote: Serviço de Pagamento a Fornecedores / Repasses (Tipo 20).</li>
+              <li>Segmento A: Dados de pagamento, banco favorecido, agência, conta, valor nominal e data.</li>
+              <li>Segmento B: CNPJ/CPF favorecido, finalidade DOC/TED/PIX e autenticação digital.</li>
+              <li>Trailer de Lote e Trailer de Arquivo: Somatórios e controle de integridade.</li>
+            </ul>
+          </div>
+        </div>
+        <div class="modal-footer d-flex justify-content-between p-3 bg-light">
+          <button type="button" class="btn btn-outline-secondary" onclick="window.app.closeModal()">Fechar</button>
+          <button type="button" class="btn btn-primary" onclick="window.app.p19DownloadCnabSample('${b.batchId}')">
+            <i class="ph-download-simple"></i> Baixar Amostra Remessa (.REM)
+          </button>
+        </div>
+      </div>
+    `);
+  }
+
+  p19DownloadCnabSample(batchId) {
+    const text = "00100000         20260929DISK INGRESSOS SERVICOS DE EVENTOS LTDA  001BANCO DO BRASIL S.A. 290920261025000001084016000000000000000000\\n" +
+      "00100011C2001030 01DISK INGRESSOS SERVICOS DE EVENTOS LTDA                                      000000012909202600000000\\n" +
+      "0010001300001A00000013410341200000000554002PRODUTORA ABC LTDA                   REP-2026-012829092026BRL0000000064289000\\n" +
+      "0010001300002B00000010212345678000199PRODUTORA ABC LTDA                   FESTIVAL CTBA 2026              0000000000000000\\n" +
+      "00100015         000002000000000006428900000000000000000000000000000000000000000000000000000000000000000000000000000000000000\\n" +
+      "00199999         000001000006000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+
+    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${batchId.replace(/[^a-zA-Z0-9_-]/g, '_')}_HOMOLOGACAO.REM`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    financialStore.showToast('Arquivo Remessa Gerado', `Arquivo ${batchId}.REM compilado com sucesso para teste no ambiente bancário.`, 'success');
+  }
+
+  p19BatchDetail(id) {
+    const st = financialStore.getState();
+    const b = (st.data.cnabBatches && st.data.cnabBatches.find(x => x.batchId === id)) || {
+      batchId: id,
+      bank: 'Banco do Brasil (001)',
+      agencyAccount: 'Ag 3412-1 / CC 55400-2',
+      count: 8,
+      totalAmount: 642890.00,
+      status: 'Aguardando Retorno'
+    };
+    const br = v => (Number(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+    this.showModal(`
+      <div class="modal-card" style="max-width: 700px;">
+        <div class="modal-header d-flex justify-content-between align-items-center">
+          <div>
+            <h4 class="mb-0">Dossiê do Lote CNAB: ${b.batchId}</h4>
+            <div class="text-muted fs-sm">Status Atual: <span class="badge badge-info">${b.status}</span></div>
+          </div>
+          <button class="modal-close-btn" onclick="window.app.closeModal()">&times;</button>
+        </div>
+        <div class="modal-body p-4">
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              <div class="p-2 border rounded">
+                <span class="text-muted fs-xs d-block">Banco e Conta Débito</span>
+                <strong>${b.bank} · ${b.agencyAccount}</strong>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="p-2 border rounded">
+                <span class="text-muted fs-xs d-block">Total Consolidado</span>
+                <strong class="text-primary">${br(b.totalAmount)} (${b.count} pagamentos)</strong>
+              </div>
+            </div>
+          </div>
+
+          <h6 class="fw-bold mb-2">Favorecidos Incluídos no Lote:</h6>
+          <div class="table-responsive" style="max-height: 220px; overflow-y: auto;">
+            <table class="limitless-table fs-sm">
+              <thead>
+                <tr>
+                  <th>Protocolo</th>
+                  <th>Favorecido</th>
+                  <th>Banco / Conta</th>
+                  <th>Valor</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>REP-2026-0128</strong></td>
+                  <td>Produtora ABC Ltda.</td>
+                  <td>Itaú Ag 1234 CC 56789-0</td>
+                  <td class="fw-bold">${br(642890.00)}</td>
+                  <td><span class="badge badge-warning">Remessa Enviada</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="alert alert-info mt-3 mb-0">
+            <i class="ph-info"></i>
+            <div>A confirmação definitiva deste lote depende do processamento do respectivo arquivo de retorno bancário (.RET) ou notificação via API bancária.</div>
+          </div>
+        </div>
+        <div class="modal-footer d-flex justify-content-between p-3 bg-light">
+          <button type="button" class="btn btn-outline-secondary" onclick="window.app.closeModal()">Fechar</button>
+          <button type="button" class="btn btn-primary" onclick="window.app.p19DownloadCnabSample('${b.batchId}')">Baixar Remessa</button>
+        </div>
+      </div>
+    `);
+  }
+
+  p19CnabOccurrencesModal() {
+    const st = financialStore.getState();
+    const occurrences = st.data.cnabOccurrences || [];
+    const br = v => (Number(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+    this.showModal(`
+      <div class="modal-card" style="max-width: 780px;">
+        <div class="modal-header d-flex justify-content-between align-items-center">
+          <div>
+            <h4 class="mb-0">Central de Ocorrências e Rejeições CNAB</h4>
+            <div class="text-muted fs-sm">Tratamento pelo Financeiro Disk (Karine) · ${occurrences.length} ocorrências registradas</div>
+          </div>
+          <button class="modal-close-btn" onclick="window.app.closeModal()">&times;</button>
+        </div>
+        <div class="modal-body p-4">
+          <div class="table-responsive">
+            <table class="limitless-table">
+              <thead>
+                <tr>
+                  <th>Código</th>
+                  <th>Lote</th>
+                  <th>Favorecido</th>
+                  <th>Valor</th>
+                  <th>Motivo da Ocorrência</th>
+                  <th>Status</th>
+                  <th>Ação</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${occurrences.map(o => `
+                  <tr>
+                    <td><strong>${o.id || o.occurrenceId}</strong></td>
+                    <td>${o.batchId}</td>
+                    <td>${o.beneficiary}</td>
+                    <td class="fw-bold">${br(o.amount)}</td>
+                    <td><span class="text-danger fw-bold fs-xs">${o.reason}</span></td>
+                    <td>
+                      <span class="badge ${o.status === 'Resolvida' || o.status === 'Tratada' ? 'badge-success' : 'badge-danger'}">
+                        ${o.status}
+                      </span>
+                    </td>
+                    <td>
+                      ${o.status === 'Resolvida' || o.status === 'Tratada' ? 
+                        `<span class="text-muted fs-xs">Tratada por ${o.treatedBy || 'Karine'}</span>` :
+                        `<button class="btn btn-danger btn-xs" onclick="window.app.p19TreatCnabOccurrence('${o.id || o.occurrenceId}')">Tratar</button>`
+                      }
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="modal-footer d-flex justify-content-end p-3 bg-light">
+          <button type="button" class="btn btn-outline-secondary" onclick="window.app.closeModal()">Fechar</button>
+        </div>
+      </div>
+    `);
+  }
+
+  p19TreatCnabOccurrence(occurrenceId) {
+    const st = financialStore.getState();
+    const o = (st.data.cnabOccurrences && st.data.cnabOccurrences.find(x => (x.id === occurrenceId || x.occurrenceId === occurrenceId))) || {
+      id: occurrenceId,
+      batchId: 'CNAB-240-20260929-01',
+      beneficiary: 'Favorecido',
+      amount: 1850,
+      reason: '03 - Dígito Verificador de Conta Inválido'
+    };
+    const br = v => (Number(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+    this.showModal(`
+      <div class="modal-card" style="max-width: 650px;">
+        <div class="modal-header d-flex justify-content-between align-items-center">
+          <div>
+            <h4 class="mb-0">Tratar Ocorrência: ${o.id || o.occurrenceId}</h4>
+            <div class="text-muted fs-sm">Lote: ${o.batchId} · Favorecido: ${o.beneficiary}</div>
+          </div>
+          <button class="modal-close-btn" onclick="window.app.closeModal()">&times;</button>
+        </div>
+        <form class="modal-body p-4" onsubmit="window.app.p19SubmitOccurrence(event, '${o.id || o.occurrenceId}')">
+          <div class="alert alert-danger mb-3">
+            <strong>Motivo apontado pelo banco:</strong><br>
+            ${o.reason} — Valor envolvido: <strong>${br(o.amount)}</strong>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-bold">Ação Corretiva *</label>
+            <select name="actionType" class="form-select" required>
+              <option value="CORRECAO_CADASTRO" selected>Atualizar dados bancários do produtor e reincluir no próximo lote</option>
+              <option value="REABRIR_PAGAMENTO">Reabrir pagamento para cancelamento ou solicitação de novos dados</option>
+              <option value="ESTORNO_JUSTIFICADO">Estornar obrigação com parecer de auditoria financeira</option>
+            </select>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-bold">Responsável</label>
+            <input type="text" class="form-control" name="responsible" readonly value="karine@diskingressos.com.br (Adm Financeiro)">
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-bold">Parecer Técnico / Dados Corrigidos *</label>
+            <textarea name="note" class="form-control" rows="3" required placeholder="Descreva os dados corrigidos (ex: Agência 3412-1 / CC 55400 com dígito 2) e o parecer financeiro..."></textarea>
+          </div>
+
+          <div class="modal-footer px-0 pb-0 d-flex justify-content-end gap-2">
+            <button type="button" class="btn btn-outline-secondary" onclick="window.app.closeModal()">Cancelar</button>
+            <button type="submit" class="btn btn-primary">Registrar e Resolver Ocorrência</button>
+          </div>
+        </form>
+      </div>
+    `);
+  }
+
+  p19SubmitOccurrence(ev, occurrenceId) {
+    ev.preventDefault();
+    try {
+      const f = Object.fromEntries(new FormData(ev.target).entries());
+      financialStore.resolveCnabOccurrence(occurrenceId, f.actionType, f.note);
+      this.closeModal();
+      financialStore.showToast('Ocorrência Regularizada', `Ocorrência ${occurrenceId} tratada com sucesso e auditada.`, 'success');
+      this.render();
+    } catch (e) {
+      financialStore.showToast('Erro ao regularizar', e.message, 'danger');
+    }
+  }
+
+  p19CnabReturnsModal() {
+    const st = financialStore.getState();
+    const returns = st.data.cnabReturns || [
+      { id: 'RET-20260929-01.ret', date: '29/09/2026 14:15', bank: 'Banco do Brasil', items: 8, total: 642890.00, occurrences: 1, status: 'Processado' },
+      { id: 'RET-20260928-03.ret', date: '28/09/2026 16:40', bank: 'Itaú Unibanco', items: 12, total: 884200.00, occurrences: 1, status: 'Processado' },
+      { id: 'RET-20260928-02.ret', date: '28/09/2026 11:10', bank: 'Banco do Brasil', items: 5, total: 195450.00, occurrences: 0, status: 'Processado' }
+    ];
+    const br = v => (Number(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+    this.showModal(`
+      <div class="modal-card" style="max-width: 750px;">
+        <div class="modal-header d-flex justify-content-between align-items-center">
+          <div>
+            <h4 class="mb-0">Arquivos de Retorno Bancário Processados (.RET)</h4>
+            <div class="text-muted fs-sm">Liquidação contábil e conciliação por arquivo retorno FEBRABAN</div>
+          </div>
+          <button class="modal-close-btn" onclick="window.app.closeModal()">&times;</button>
+        </div>
+        <div class="modal-body p-4">
+          <div class="table-responsive">
+            <table class="limitless-table">
+              <thead>
+                <tr>
+                  <th>Arquivo .RET</th>
+                  <th>Data Processamento</th>
+                  <th>Banco</th>
+                  <th>Itens</th>
+                  <th>Total Liquidado</th>
+                  <th>Ocorrências</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${returns.map(r => `
+                  <tr>
+                    <td><strong>${r.id || r.file}</strong></td>
+                    <td>${r.date}</td>
+                    <td>${r.bank}</td>
+                    <td>${r.items}</td>
+                    <td class="fw-bold text-success">${br(r.total)}</td>
+                    <td>${r.occurrences > 0 ? `<span class="badge badge-warning">${r.occurrences} rejeição</span>` : `<span class="badge badge-light">0</span>`}</td>
+                    <td><span class="badge badge-success">${r.status}</span></td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="modal-footer d-flex justify-content-end p-3 bg-light">
+          <button type="button" class="btn btn-outline-secondary" onclick="window.app.closeModal()">Fechar</button>
+        </div>
+      </div>
+    `);
+  }
+
+  p19AgendaDrillDown(category = 'repasses') {
+    const br = v => (Number(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    let title = 'Detalhamento da Agenda de Pagamentos';
+    let filterDesc = 'Todas as obrigações programadas';
+    let items = [
+      { date: '29/09/2026', type: 'Repasse', beneficiary: 'Produtora ABC Ltda.', event: 'Festival Curitiba 2026', amount: 514490.00, method: 'CNAB 240 / BB', status: 'Programado' },
+      { date: '29/09/2026', type: 'Repasse', beneficiary: 'Prime Eventos Culturais', event: 'Stand-up Curitiba Especial', amount: 128400.00, method: 'PIX / Itaú', status: 'Programado' },
+      { date: '29/09/2026', type: 'Fornecedor', beneficiary: 'Segurança & Portaria CTBA', event: 'Festival Curitiba 2026', amount: 35000.00, method: 'PIX / Itaú', status: 'Agendado' },
+      { date: '30/09/2026', type: 'Fornecedor', beneficiary: 'Som & Iluminação Curitiba', event: 'Festival Curitiba 2026', amount: 84200.00, method: 'CNAB 240 / BB', status: 'Em Lote' },
+      { date: '01/10/2026', type: 'Fornecedor', beneficiary: 'Arena Locações de Palco', event: 'Festival Curitiba 2026', amount: 150510.00, method: 'CNAB 240 / BB', status: 'Agendado' }
+    ];
+
+    if (category === 'repasses') {
+      title = 'Obrigações: Repasses a Produtores';
+      filterDesc = '8 repasses totalizando R$ 642.890,00 nos próximos 7 dias';
+      items = items.filter(x => x.type === 'Repasse');
+    } else if (category === 'fornecedores') {
+      title = 'Obrigações: Fornecedores de Infraestrutura';
+      filterDesc = 'Fornecedores e custos operacionais totalizando R$ 269.710,00 nos próximos 7 dias';
+      items = items.filter(x => x.type === 'Fornecedor');
+    } else if (category === 'today' || category === '2026-09-29') {
+      title = 'Pagamentos Programados para Hoje (29/09/2026)';
+      filterDesc = 'Total de R$ 182.900,00 com liberação programada para a data corrente';
+      items = items.filter(x => x.date === '29/09/2026');
+    } else if (category === '7days') {
+      title = 'Pagamentos dos Próximos 7 Dias';
+      filterDesc = 'Total consolidado de R$ 912.600,00 (Repasses: R$ 642.890 + Fornecedores: R$ 269.710)';
+    }
+
+    const totalVal = items.reduce((sum, it) => sum + it.amount, 0);
+
+    this.showModal(`
+      <div class="modal-card" style="max-width: 800px;">
+        <div class="modal-header d-flex justify-content-between align-items-center">
+          <div>
+            <h4 class="mb-0">${title}</h4>
+            <div class="text-muted fs-sm">${filterDesc}</div>
+          </div>
+          <button class="modal-close-btn" onclick="window.app.closeModal()">&times;</button>
+        </div>
+        <div class="modal-body p-4">
+          <div class="table-responsive">
+            <table class="limitless-table">
+              <thead>
+                <tr>
+                  <th>Vencimento</th>
+                  <th>Tipo</th>
+                  <th>Favorecido</th>
+                  <th>Evento</th>
+                  <th>Meio / Banco</th>
+                  <th>Valor</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${items.map(it => `
+                  <tr>
+                    <td><strong>${it.date}</strong></td>
+                    <td><span class="badge ${it.type === 'Repasse' ? 'badge-primary' : 'badge-secondary'}">${it.type}</span></td>
+                    <td><strong>${it.beneficiary}</strong></td>
+                    <td>${it.event}</td>
+                    <td>${it.method}</td>
+                    <td class="fw-bold">${br(it.amount)}</td>
+                    <td><span class="badge badge-info">${it.status}</span></td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+
+          <div class="d-flex justify-content-between align-items-center mt-3 pt-3 border-top">
+            <span class="fw-bold text-muted">Total Selecionado na Visualização:</span>
+            <span class="fs-lg fw-bold text-primary">${br(totalVal)}</span>
+          </div>
+        </div>
+        <div class="modal-footer d-flex justify-content-end p-3 bg-light">
+          <button type="button" class="btn btn-outline-secondary" onclick="window.app.closeModal()">Fechar</button>
+        </div>
+      </div>
+    `);
+  }
+
+  p19ConcFilter(status = '') {
+    const rows = document.querySelectorAll('#p19ConcTable tbody tr');
+    rows.forEach(tr => {
+      tr.style.display = (!status || tr.dataset.status === status) ? '' : 'none';
+    });
+    financialStore.showToast('Filtro de Conciliação', status ? `Exibindo apenas: ${status}` : 'Exibindo todos os registros', 'info');
+  }
+
+  p19ConcLayer(layer = '') {
+    const rows = document.querySelectorAll('#p19ConcTable tbody tr');
+    rows.forEach(tr => {
+      tr.style.display = (!layer || tr.dataset.layer === layer) ? '' : 'none';
+    });
+    financialStore.showToast('Camada de Conciliação', layer ? `Filtrando por camada: ${layer}` : 'Exibindo todas as camadas', 'info');
+  }
+
+  p19ConcDetail(id) {
+    const st = financialStore.getState();
+    const item = (st.data.reconciliationItems && st.data.reconciliationItems.find(x => x.id === id)) || {
+      id: id,
+      layer: 'Ledger',
+      description: `Registro ${id}`,
+      internalVal: 350.00,
+      externalVal: 350.00,
+      diff: 0.00,
+      status: 'Conciliado',
+      date: '29/09/2026'
+    };
+    const br = v => (Number(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+    this.showModal(`
+      <div class="modal-card" style="max-width: 650px;">
+        <div class="modal-header d-flex justify-content-between align-items-center">
+          <div>
+            <h4 class="mb-0">Dossiê de Conciliação: ${item.id}</h4>
+            <div class="text-muted fs-sm">Camada: <strong>${item.layer}</strong> · Data: ${item.date || '29/09/2026'}</div>
+          </div>
+          <button class="modal-close-btn" onclick="window.app.closeModal()">&times;</button>
+        </div>
+        <div class="modal-body p-4">
+          <div class="card p-3 mb-3 bg-light border-0">
+            <div class="row g-3">
+              <div class="col-6">
+                <span class="text-muted fs-xs text-uppercase d-block">Valor Sistema / Interno</span>
+                <strong class="fs-md">${br(item.internalVal)}</strong>
+              </div>
+              <div class="col-6">
+                <span class="text-muted fs-xs text-uppercase d-block">Valor Externo (Banco/Adquirente)</span>
+                <strong class="fs-md">${br(item.externalVal)}</strong>
+              </div>
+              <div class="col-6">
+                <span class="text-muted fs-xs text-uppercase d-block">Diferença Apurada</span>
+                <strong class="fs-md ${item.diff !== 0 ? 'text-danger' : 'text-success'}">${br(item.diff)}</strong>
+              </div>
+              <div class="col-6">
+                <span class="text-muted fs-xs text-uppercase d-block">Status</span>
+                <span class="badge ${item.status === 'Conciliado' ? 'badge-success' : 'badge-danger'}">${item.status}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="p-3 border rounded mb-3">
+            <h6 class="fw-bold mb-1">Auditoria & Rastreabilidade Ledger:</h6>
+            <div class="text-muted fs-sm">Partida dobrada vinculada: <code>#LEDGER-${item.id.replace(/[^0-9]/g, '') || '20260929-01'}</code></div>
+            <div class="text-muted fs-sm">Origem dos dados: Base operacional de transações e extrato de homologação.</div>
+            ${item.treatmentNote ? `<div class="mt-2 p-2 bg-light rounded text-dark fs-sm"><strong>Tratamento Registrado:</strong> ${item.treatmentNote} (por ${item.treatedBy || 'Karine'})</div>` : ''}
+          </div>
+        </div>
+        <div class="modal-footer d-flex justify-content-end p-3 bg-light">
+          <button type="button" class="btn btn-outline-secondary" onclick="window.app.closeModal()">Fechar</button>
+        </div>
+      </div>
+    `);
+  }
+
+  p19Investigate(id) {
+    const st = financialStore.getState();
+    const item = (st.data.reconciliationItems && st.data.reconciliationItems.find(x => x.id === id)) || {
+      id: id,
+      layer: 'PIX / CNAB',
+      description: 'PIX Venda Balcão #4412',
+      internalVal: 350.00,
+      externalVal: 300.00,
+      diff: -50.00,
+      status: 'Divergência'
+    };
+    const br = v => (Number(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+    this.showModal(`
+      <div class="modal-card" style="max-width: 680px;">
+        <div class="modal-header d-flex justify-content-between align-items-center">
+          <div>
+            <h4 class="mb-0">Investigar & Tratar Divergência: ${id}</h4>
+            <div class="text-muted fs-sm">Valores originais são preservados com auditoria imutável</div>
+          </div>
+          <button class="modal-close-btn" onclick="window.app.closeModal()">&times;</button>
+        </div>
+        <form class="modal-body p-4" onsubmit="window.app.p19Resolve(event, '${id}')">
+          <div class="alert alert-danger mb-3">
+            <strong>Divergência detectada:</strong><br>
+            Valor Sistema: <strong>${br(item.internalVal)}</strong> vs Valor Banco/Gateway: <strong>${br(item.externalVal)}</strong> (Diferença: <strong>${br(item.diff)}</strong>)
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-bold">Causa Identificada *</label>
+            <select name="cause" class="form-select" required>
+              <option value="">Selecione a causa</option>
+              <option value="Tarifa bancária" selected>Tarifa bancária de liquidação PIX (R$ 50,00)</option>
+              <option value="MDR divergente">MDR divergente entre adquirente e regra</option>
+              <option value="Liquidação parcial">Liquidação parcial pelo banco</option>
+              <option value="Pagamento rejeitado">Pagamento rejeitado ou devolvido</option>
+              <option value="Data diferente">Data de corte diferente</option>
+              <option value="Duplicidade">Duplicidade de transação</option>
+              <option value="Chargeback">Chargeback ou contestação de compra</option>
+              <option value="Erro cadastral">Erro cadastral de conta bancária</option>
+            </select>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-bold">Responsável Financeiro</label>
+            <input type="text" name="owner" class="form-control" readonly value="karine@diskingressos.com.br (Adm Financeiro)">
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-bold">Ação Corretiva *</label>
+            <select name="action" class="form-select" required>
+              <option value="Registrar tarifa" selected>Lançar tarifa bancária como despesa de liquidação</option>
+              <option value="Reprocessar">Reprocessar conciliação na próxima janela</option>
+              <option value="Corrigir cadastro">Corrigir cadastro e reabrir obrigação</option>
+              <option value="Ajuste autorizado">Registrar ajuste contábil autorizado</option>
+              <option value="Encerrar com justificativa">Encerrar divergência com justificativa formal</option>
+            </select>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-bold">Evidência / Observação de Auditoria *</label>
+            <textarea name="evidence" class="form-control" rows="3" required placeholder="Descreva os detalhes da conciliação e a evidência comprovada no extrato bancário...">Extrato Itaú confirma débito de tarifa operacional de R$ 50,00 referente à chave PIX de liquidação imediata.</textarea>
+          </div>
+
+          <div class="modal-footer px-0 pb-0 d-flex justify-content-end gap-2">
+            <button type="button" class="btn btn-outline-secondary" onclick="window.app.closeModal()">Cancelar</button>
+            <button type="submit" class="btn btn-primary">Registrar Tratamento e Atualizar Conciliação</button>
+          </div>
+        </form>
+      </div>
+    `);
+  }
+
+  p19Resolve(ev, id) {
+    ev.preventDefault();
+    try {
+      const f = Object.fromEntries(new FormData(ev.target).entries());
+      financialStore.saveReconciliationResolution(id, f);
+      this.closeModal();
+      financialStore.showToast('Divergência Tratada', `Item ${id} regularizado com sucesso no painel de conciliação.`, 'success');
+      this.render();
+    } catch (e) {
+      financialStore.showToast('Erro ao tratar', e.message, 'danger');
+    }
+  }
+
+  p19OpenTreasuryAccountModal(id = '') {
+    const st = financialStore.getState();
+    const acc = (st.data.treasuryAccounts && st.data.treasuryAccounts.find(x => x.id === id)) || null;
+
+    this.showModal(`
+      <div class="modal-card" style="max-width: 650px;">
+        <div class="modal-header d-flex justify-content-between align-items-center">
+          <div>
+            <h4 class="mb-0">${acc ? 'Editar Conta Corporativa Disk' : 'Nova Conta Corporativa Disk'}</h4>
+            <div class="text-muted fs-sm">Gestão de Tesouraria e Contas Bancárias Oficiais</div>
+          </div>
+          <button class="modal-close-btn" onclick="window.app.closeModal()">&times;</button>
+        </div>
+        <form class="modal-body p-4" onsubmit="window.app.p19SubmitTreasuryAccount(event, '${acc ? acc.id : ''}')">
+          <div class="row g-2 mb-3">
+            <div class="col-md-6">
+              <label class="form-label fw-bold">Instituição Bancária *</label>
+              <select name="bank" class="form-select" required>
+                <option value="Banco do Brasil (001)" ${acc && acc.bank.includes('001') ? 'selected' : ''}>Banco do Brasil (001)</option>
+                <option value="Itaú Unibanco (341)" ${acc && acc.bank.includes('341') ? 'selected' : ''}>Itaú Unibanco (341)</option>
+                <option value="Santander Brasil (033)" ${acc && acc.bank.includes('033') ? 'selected' : ''}>Santander Brasil (033)</option>
+                <option value="Bradesco (237)" ${acc && acc.bank.includes('237') ? 'selected' : ''}>Bradesco (237)</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-bold">Finalidade Estrita *</label>
+              <select name="purpose" class="form-select" required>
+                <option value="Operacional / CNAB Fornecedores" ${acc && acc.purpose.includes('Operacional') ? 'selected' : ''}>Operacional / CNAB Fornecedores</option>
+                <option value="Liquidação / PIX Produtores" ${acc && acc.purpose.includes('Liquidação') ? 'selected' : ''}>Liquidação / PIX Produtores</option>
+                <option value="Arrecadação de Vendas" ${acc && acc.purpose.includes('Arrecadação') ? 'selected' : ''}>Arrecadação de Vendas</option>
+                <option value="Fundo de Reserva / Rendimento" ${acc && acc.purpose.includes('Reserva') ? 'selected' : ''}>Fundo de Reserva / Rendimento</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="row g-2 mb-3">
+            <div class="col-md-5">
+              <label class="form-label fw-bold">Agência *</label>
+              <input type="text" name="agency" class="form-control" required value="${acc ? acc.agency : '3412-1'}">
+            </div>
+            <div class="col-md-5">
+              <label class="form-label fw-bold">Conta Corrente *</label>
+              <input type="text" name="account" class="form-control" required value="${acc ? acc.account : '55400'}">
+            </div>
+            <div class="col-md-2">
+              <label class="form-label fw-bold">Dígito *</label>
+              <input type="text" name="digit" class="form-control" required value="${acc ? acc.digit : '2'}">
+            </div>
+          </div>
+
+          <div class="row g-2 mb-3">
+            <div class="col-md-6">
+              <label class="form-label fw-bold">Chave PIX</label>
+              <input type="text" name="pixKey" class="form-control" value="${acc ? acc.pixKey : 'financeiro@diskingressos.com.br'}">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-bold">Limite Diário Operacional (R$)</label>
+              <input type="number" name="dailyLimit" class="form-control" value="${acc ? acc.dailyLimit : 2000000}">
+            </div>
+          </div>
+
+          <div class="modal-footer px-0 pb-0 d-flex justify-content-end gap-2">
+            <button type="button" class="btn btn-outline-secondary" onclick="window.app.closeModal()">Cancelar</button>
+            <button type="submit" class="btn btn-primary">${acc ? 'Salvar Alterações' : 'Cadastrar Conta Corporativa'}</button>
+          </div>
+        </form>
+      </div>
+    `);
+  }
+
+  p19SubmitTreasuryAccount(ev, id = '') {
+    ev.preventDefault();
+    try {
+      const f = Object.fromEntries(new FormData(ev.target).entries());
+      financialStore.saveTreasuryAccount(f, id || null);
+      this.closeModal();
+      financialStore.showToast('Conta Salva', 'Conta bancária corporativa registrada na Tesouraria.', 'success');
+      this.render();
+    } catch (e) {
+      financialStore.showToast('Erro ao salvar conta', e.message, 'danger');
+    }
+  }
+
+  p19TreasuryAccountStatement(id) {
+    const st = financialStore.getState();
+    const acc = (st.data.treasuryAccounts && st.data.treasuryAccounts.find(x => x.id === id)) || {
+      id: id,
+      bank: 'Banco do Brasil (001)',
+      agency: '3412-1',
+      account: '55400-2',
+      purpose: 'Operacional / CNAB Fornecedores',
+      balance: 1240500.00
+    };
+    const br = v => (Number(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+    this.showModal(`
+      <div class="modal-card" style="max-width: 750px;">
+        <div class="modal-header d-flex justify-content-between align-items-center">
+          <div>
+            <h4 class="mb-0">Extrato Interno: ${acc.bank}</h4>
+            <div class="text-muted fs-sm">Ag: ${acc.agency} · Conta: ${acc.account} · Finalidade: ${acc.purpose}</div>
+          </div>
+          <button class="modal-close-btn" onclick="window.app.closeModal()">&times;</button>
+        </div>
+        <div class="modal-body p-4">
+          <div class="card p-3 mb-3 bg-light border-0 d-flex justify-content-between flex-row align-items-center">
+            <div>
+              <span class="text-muted fs-xs text-uppercase d-block">Saldo Disponível Conciliado</span>
+              <strong class="fs-lg text-success">${br(acc.balance)}</strong>
+            </div>
+            <span class="badge badge-success">Sincronizado via D+0</span>
+          </div>
+
+          <h6 class="fw-bold mb-2">Lançamentos Recentes no Período:</h6>
+          <div class="table-responsive">
+            <table class="limitless-table fs-sm">
+              <thead>
+                <tr>
+                  <th>Data</th>
+                  <th>Histórico</th>
+                  <th>Documento</th>
+                  <th>Tipo</th>
+                  <th>Valor</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>29/09/2026</td>
+                  <td>Liquidação Remessa CNAB 240 Lote 01</td>
+                  <td><code>CNAB-01</code></td>
+                  <td><span class="badge badge-danger">DÉBITO</span></td>
+                  <td class="text-danger fw-bold">- ${br(642890.00)}</td>
+                </tr>
+                <tr>
+                  <td>29/09/2026</td>
+                  <td>Repasse Arrecadação Cielo Crédito</td>
+                  <td><code>LIQ-CIELO-49</code></td>
+                  <td><span class="badge badge-success">CRÉDITO</span></td>
+                  <td class="text-success fw-bold">+ ${br(820000.00)}</td>
+                </tr>
+                <tr>
+                  <td>28/09/2026</td>
+                  <td>Tarifa de Manutenção e Mensageria CNAB</td>
+                  <td><code>TAR-BB-09</code></td>
+                  <td><span class="badge badge-danger">DÉBITO</span></td>
+                  <td class="text-danger fw-bold">- R$ 142,50</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="modal-footer d-flex justify-content-end p-3 bg-light">
+          <button type="button" class="btn btn-outline-secondary" onclick="window.app.closeModal()">Fechar</button>
+        </div>
+      </div>
+    `);
+  }
 }
 
 // ============================================================================
@@ -4525,6 +5448,126 @@ window.p18Tab = function(tab, btn) {
 window.p18Action = function(action, id) {
   if (window.app && typeof window.app.p18Action === 'function') {
     return window.app.p18Action(action, id);
+  }
+};
+
+window.p19FilterFees = function() {
+  if (window.app && typeof window.app.p19FilterFees === 'function') {
+    return window.app.p19FilterFees();
+  }
+};
+
+window.p19SimulateRule = function(id) {
+  if (window.app && typeof window.app.p19SimulateRule === 'function') {
+    return window.app.p19SimulateRule(id);
+  }
+};
+
+window.p19RecalcSim = function(ruleId) {
+  if (window.app && typeof window.app.p19RecalcSim === 'function') {
+    return window.app.p19RecalcSim(ruleId);
+  }
+};
+
+window.p19PrepareCnab = function(batchId) {
+  if (window.app && typeof window.app.p19PrepareCnab === 'function') {
+    return window.app.p19PrepareCnab(batchId);
+  }
+};
+
+window.p19DownloadCnabSample = function(batchId) {
+  if (window.app && typeof window.app.p19DownloadCnabSample === 'function') {
+    return window.app.p19DownloadCnabSample(batchId);
+  }
+};
+
+window.p19BatchDetail = function(id) {
+  if (window.app && typeof window.app.p19BatchDetail === 'function') {
+    return window.app.p19BatchDetail(id);
+  }
+};
+
+window.p19CnabOccurrencesModal = function() {
+  if (window.app && typeof window.app.p19CnabOccurrencesModal === 'function') {
+    return window.app.p19CnabOccurrencesModal();
+  }
+};
+
+window.p19TreatCnabOccurrence = function(occurrenceId) {
+  if (window.app && typeof window.app.p19TreatCnabOccurrence === 'function') {
+    return window.app.p19TreatCnabOccurrence(occurrenceId);
+  }
+};
+
+window.p19SubmitOccurrence = function(ev, id) {
+  if (window.app && typeof window.app.p19SubmitOccurrence === 'function') {
+    return window.app.p19SubmitOccurrence(ev, id);
+  }
+};
+
+window.p19CnabReturnsModal = function() {
+  if (window.app && typeof window.app.p19CnabReturnsModal === 'function') {
+    return window.app.p19CnabReturnsModal();
+  }
+};
+
+window.p19AgendaDrillDown = function(category) {
+  if (window.app && typeof window.app.p19AgendaDrillDown === 'function') {
+    return window.app.p19AgendaDrillDown(category);
+  }
+};
+
+window.p19ConcFilter = function(status) {
+  if (window.app && typeof window.app.p19ConcFilter === 'function') {
+    return window.app.p19ConcFilter(status);
+  }
+};
+
+window.p19ConcLayer = function(layer) {
+  if (window.app && typeof window.app.p19ConcLayer === 'function') {
+    return window.app.p19ConcLayer(layer);
+  }
+};
+
+window.p19ConcDetail = function(id) {
+  if (window.app && typeof window.app.p19ConcDetail === 'function') {
+    return window.app.p19ConcDetail(id);
+  }
+};
+
+window.p19Investigate = function(id) {
+  if (window.app && typeof window.app.p19Investigate === 'function') {
+    return window.app.p19Investigate(id);
+  }
+};
+
+window.p19Resolve = function(ev, id) {
+  if (window.app && typeof window.app.p19Resolve === 'function') {
+    return window.app.p19Resolve(ev, id);
+  }
+};
+
+window.p19OpenTreasuryAccountModal = function(id) {
+  if (window.app && typeof window.app.p19OpenTreasuryAccountModal === 'function') {
+    return window.app.p19OpenTreasuryAccountModal(id);
+  }
+};
+
+window.p19SubmitTreasuryAccount = function(ev, id) {
+  if (window.app && typeof window.app.p19SubmitTreasuryAccount === 'function') {
+    return window.app.p19SubmitTreasuryAccount(ev, id);
+  }
+};
+
+window.p19TreasuryAccountStatement = function(id) {
+  if (window.app && typeof window.app.p19TreasuryAccountStatement === 'function') {
+    return window.app.p19TreasuryAccountStatement(id);
+  }
+};
+
+window.toggleDemoBarCollapse = function() {
+  if (window.app && typeof window.app.toggleDemoBarCollapse === 'function') {
+    return window.app.toggleDemoBarCollapse();
   }
 };
 

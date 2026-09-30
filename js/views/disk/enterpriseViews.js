@@ -584,6 +584,9 @@ export function renderDiskTaxas(state, filter = 'disk') {
                       </td>
                       <td style="text-align: right;">
                         <div style="display: flex; gap: 4px; justify-content: flex-end;">
+                          <button class="btn btn-outline-success btn-xs" title="Simular taxa e conferir spread" onclick="window.app.p19SimulateRule('${t.id}')">
+                            <i class="ph-calculator"></i>
+                          </button>
                           <button class="btn btn-outline-primary btn-xs" title="Editar taxa (cria nova versão v${(t.version||1)+1})" onclick="window.app.p13Action('editar-taxa', '${t.id}')">
                             <i class="ph-pencil"></i>
                           </button>

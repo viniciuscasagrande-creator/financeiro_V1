@@ -220,6 +220,110 @@ class CoreFinanceiroStore {
       { id: 'PAG-003', creditor: 'Agência Tráfego Ads', dueDate: '05/07/2026', amount: 7600, status: 'Pendente' }
     ];
     this.data.refundRequests = this.data.refundRequests || [];
+
+    // Pacote 19: Conciliação Financeira Multicamadas
+    this.data.reconciliationItems = this.data.reconciliationItems || [
+      { id: 'CON-001', camada: 'Adquirentes', origem: 'Adquirente → Recebível', ref: 'LIQ-20260929-0182', produtor: 'Produtora ABC Ltda.', evento: 'Festival Curitiba 2026', esperado: 184520.00, realizado: 184520.00, status: 'Conciliado' },
+      { id: 'CON-002', camada: 'Gateways', origem: 'Gateway → Adquirente', ref: 'GTW-20260929-7710', produtor: 'Live Music Produções', evento: 'Arena Music Festival', esperado: 96340.50, realizado: 96340.50, status: 'Conciliado' },
+      { id: 'CON-003', camada: 'PIX/CNAB', origem: 'Banco → PIX', ref: 'PIX-20260929-4412', produtor: 'Produtora ABC Ltda.', evento: 'Festival Curitiba 2026', esperado: 48200.00, realizado: 48150.00, status: 'Divergência' },
+      { id: 'CON-004', camada: 'Bancária', origem: 'Ledger × Extrato Banco do Brasil', ref: 'LDG-20260929-9182', produtor: 'Produtora ABC Ltda.', evento: 'Festival Curitiba 2026', esperado: 126800.00, realizado: 126800.00, status: 'Conciliado' },
+      { id: 'CON-005', camada: 'Recebíveis', origem: 'Venda × Agenda × Recebimento', ref: 'REC-20260929-0044', produtor: 'Disk Ingressos (Geral)', evento: 'Consolidado Vendas', esperado: 884200.00, realizado: 884200.00, status: 'Conciliado' },
+      { id: 'CON-006', camada: 'Repasses', origem: 'Obrigação Repasse → Banco', ref: 'REP-2026-00128', produtor: 'Produtora ABC Ltda.', evento: 'Festival Curitiba 2026', esperado: 50000.00, realizado: 50000.00, status: 'Conciliado' }
+    ];
+
+    // Pacote 19: Ocorrências e Retornos de Remessas Bancárias CNAB
+    this.data.cnabOccurrences = this.data.cnabOccurrences || [
+      {
+        id: 'OC-01',
+        batchId: 'CNAB-20260928-02',
+        paymentRef: 'PGT-REP-00119',
+        producer: 'Produtora ABC Ltda.',
+        bank: 'Caixa Econômica Federal (104)',
+        bankCode: '03 - Conta corrente encerrada / inválida',
+        reason: 'Divergência de dígito verificador na conta cadastrada',
+        amount: 1850.00,
+        attempts: 2,
+        owner: 'Karine (Adm Financeiro)',
+        status: 'Pendente'
+      },
+      {
+        id: 'OC-02',
+        batchId: 'CNAB-20260928-02',
+        paymentRef: 'PGT-REP-00121',
+        producer: 'Live Music Produções',
+        bank: 'Bradesco (237)',
+        bankCode: '15 - Titularidade divergente (CPF/CNPJ)',
+        reason: 'CNPJ favorecido não confere com contrato do produtor',
+        amount: 4200.00,
+        attempts: 1,
+        owner: 'Karine (Adm Financeiro)',
+        status: 'Pendente'
+      }
+    ];
+
+    this.data.cnabReturns = this.data.cnabReturns || [
+      {
+        id: 'RET-20260929-01.ret',
+        batchId: 'CNAB-240-20260929-01',
+        bank: 'Banco do Brasil S.A. (001)',
+        processedAt: '29/09/2026 17:45',
+        settledCount: 14,
+        totalSettled: 642890.00,
+        occurrencesCount: 0,
+        status: 'Processado e Conciliado'
+      },
+      {
+        id: 'RET-20260928-03.ret',
+        batchId: 'CNAB-20260928-03',
+        bank: 'Itaú Unibanco (341)',
+        processedAt: '28/09/2026 18:20',
+        settledCount: 22,
+        totalSettled: 884200.00,
+        occurrencesCount: 0,
+        status: 'Processado e Conciliado'
+      },
+      {
+        id: 'RET-20260928-02.ret',
+        batchId: 'CNAB-20260928-02',
+        bank: 'Banco do Brasil S.A. (001)',
+        processedAt: '28/09/2026 16:30',
+        settledCount: 6,
+        totalSettled: 195450.00,
+        occurrencesCount: 2,
+        status: 'Ocorrências Pendentes'
+      }
+    ];
+
+    // Pacote 19: Contas Corporativas da Tesouraria com Finalidade Definida
+    this.data.treasuryAccounts = this.data.treasuryAccounts || [
+      {
+        id: 'bb-operacional',
+        bankName: 'Banco do Brasil S.A. (001)',
+        accountType: 'Conta Corrente Corporativa PJ',
+        agency: '1890-X',
+        accountNumber: '55400-1',
+        balance: 1240500.00,
+        purpose: 'Conta Operacional (Pagamentos, Fornecedores & CNAB 240/400)',
+        settlementChannel: 'CNAB / TED / TEF',
+        status: 'Ativa',
+        isMain: true,
+        updatedAt: '30/09/2026 08:30'
+      },
+      {
+        id: 'itau-liquidacao',
+        bankName: 'Itaú Unibanco (341)',
+        accountType: 'Conta Corrente Corporativa PJ',
+        agency: '0910',
+        accountNumber: '28910-2',
+        balance: 699500.00,
+        purpose: 'Conta de Liquidação (PIX Instantâneo, Recebimentos & Split SPI)',
+        settlementChannel: 'PIX SPI / DICT Bacen',
+        status: 'Ativa',
+        isMain: false,
+        updatedAt: '30/09/2026 08:30'
+      }
+    ];
+
     this.data.approvalQueue = (this.data.approvalQueue || []).map(item => ({
       ...item,
       protocol: item.protocol || item.id,
@@ -1975,6 +2079,136 @@ class CoreFinanceiroStore {
       `Pago R$ ${row.amount.toFixed(2)} via ${row.authCode}`,
       'Tesouraria / Advanced'
     );
+    this.notify();
+    return row;
+  }
+
+  // ==========================================================================
+  // PACOTE 19: CONCILIAÇÃO FINANCEIRA OPERACIONAL & TRATAMENTO DE DIVERGÊNCIAS
+  // ==========================================================================
+  saveReconciliationResolution(id, payload) {
+    if (!['disk', 'admin'].includes(this.state.currentUser.role)) {
+      throw new Error('Ação restrita ao Financeiro Disk.');
+    }
+    const row = (this.data.reconciliationItems || []).find(x => x.id === id);
+    if (!row) throw new Error('Item de conciliação não encontrado.');
+    if (!payload.cause || !payload.owner || !payload.action || !payload.evidence) {
+      throw new Error('Informe causa, responsável, ação corretiva e evidência/observação obrigatória.');
+    }
+
+    const now = new Date().toLocaleString('pt-BR');
+    row.status = 'Resolvida';
+    row.resolution = {
+      cause: payload.cause,
+      owner: payload.owner,
+      action: payload.action,
+      evidence: payload.evidence,
+      resolvedAt: now,
+      resolvedBy: this.state.currentUser.name
+    };
+
+    this.recordOperationEvent(
+      { id: row.id, protocol: row.ref, workflowId: `WF-${row.ref}` },
+      'Divergência de conciliação tratada',
+      `${row.camada} · Causa: ${payload.cause} · Ação: ${payload.action}. Valores contábeis originais preservados.`,
+      'Conciliação Financeira'
+    );
+    this.persist();
+    this.notify();
+    return row;
+  }
+
+  // ==========================================================================
+  // PACOTE 19: TRATAMENTO DE OCORRÊNCIAS CNAB
+  // ==========================================================================
+  resolveCnabOccurrence(occurrenceId, actionType, note = '', newAccount = null) {
+    if (!['disk', 'admin'].includes(this.state.currentUser.role)) {
+      throw new Error('Ação restrita ao Financeiro Disk.');
+    }
+    const occ = (this.data.cnabOccurrences || []).find(o => o.id === occurrenceId);
+    if (!occ) throw new Error('Ocorrência CNAB não encontrada.');
+
+    const now = new Date().toLocaleString('pt-BR');
+    occ.status = actionType === 'cancelar' ? 'Cancelada' : actionType === 'reprocessar' ? 'Reprocessada' : 'Tratada';
+    occ.resolution = {
+      action: actionType,
+      note: note || 'Tratada pela mesa de tesouraria',
+      newAccount: newAccount || null,
+      resolvedAt: now,
+      resolvedBy: this.state.currentUser.name
+    };
+
+    this.recordOperationEvent(
+      { id: occ.id, protocol: occ.paymentRef, workflowId: `WF-${occ.batchId}` },
+      `Ocorrência CNAB ${occ.status.toLowerCase()}`,
+      `${occ.producer} · Motivo: ${occ.reason} · Ação: ${actionType}`,
+      'Tesouraria CNAB'
+    );
+    this.persist();
+    this.notify();
+    return occ;
+  }
+
+  // ==========================================================================
+  // PACOTE 19: GESTÃO DE CONTAS CORPORATIVAS DA TESOURARIA DISK
+  // ==========================================================================
+  saveTreasuryAccount(payload, id = null) {
+    if (!['disk', 'admin'].includes(this.state.currentUser.role)) {
+      throw new Error('Ação restrita ao Financeiro Disk.');
+    }
+    if (!payload.bankName?.trim() || !payload.accountNumber?.trim()) {
+      throw new Error('Informe o banco e o número da conta corporativa.');
+    }
+
+    const now = new Date().toLocaleString('pt-BR');
+    let row = id ? (this.data.treasuryAccounts || []).find(a => a.id === id) : null;
+    if (row) {
+      Object.assign(row, payload, { updatedAt: now });
+    } else {
+      row = {
+        id: `treasury-${Date.now()}`,
+        bankName: payload.bankName,
+        accountType: payload.accountType || 'Conta Corrente Corporativa PJ',
+        agency: payload.agency || '',
+        accountNumber: payload.accountNumber,
+        balance: Number(payload.balance || 0),
+        purpose: payload.purpose || 'Operacional (Pagamentos & Recebimentos)',
+        settlementChannel: payload.settlementChannel || 'CNAB / PIX / TED',
+        status: 'Ativa',
+        isMain: !!payload.isMain,
+        updatedAt: now
+      };
+      this.data.treasuryAccounts.unshift(row);
+    }
+
+    this.recordOperationEvent(
+      { id: row.id, protocol: row.id, workflowId: `WF-${row.id}` },
+      id ? 'Conta corporativa atualizada' : 'Conta corporativa cadastrada',
+      `${row.bankName} · Ag. ${row.agency} · C/C ${row.accountNumber} · ${row.purpose}`,
+      'Tesouraria'
+    );
+    this.persist();
+    this.notify();
+    return row;
+  }
+
+  toggleTreasuryAccountStatus(id) {
+    if (!['disk', 'admin'].includes(this.state.currentUser.role)) {
+      throw new Error('Ação restrita ao Financeiro Disk.');
+    }
+    const row = (this.data.treasuryAccounts || []).find(a => a.id === id);
+    if (!row) throw new Error('Conta corporativa não encontrada.');
+
+    row.status = row.status === 'Ativa' ? 'Inativa' : 'Ativa';
+    row.updatedAt = new Date().toLocaleString('pt-BR');
+
+    this.recordOperationEvent(
+      { id: row.id, protocol: row.id, workflowId: `WF-${row.id}` },
+      `Conta corporativa ${row.status.toLowerCase()}`,
+      `${row.bankName} · C/C ${row.accountNumber}`,
+      'Tesouraria'
+    );
+    this.persist();
     this.notify();
     return row;
   }
