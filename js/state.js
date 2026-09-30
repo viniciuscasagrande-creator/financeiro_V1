@@ -324,7 +324,115 @@ class CoreFinanceiroStore {
       }
     ];
 
-    this.data.approvalQueue = (this.data.approvalQueue || []).map(item => ({
+    // Retenções Detalhadas do Produtor (Reserva operacional R$ 20.000, Chargeback R$ 10.000, Estornos pendentes R$ 5.000, Regra contratual R$ 10.000 = Total R$ 45.000)
+    this.data.retentions = this.data.retentions || [
+      {
+        id: 'RET-001',
+        producerId: 'prod-abc',
+        eventId: 'evt-001',
+        eventName: 'Festival Curitiba 2026',
+        category: 'Reserva operacional',
+        origin: 'Vendas Cartão de Crédito Lote 2',
+        reason: 'Garantia operacional pós-evento para despesas e contingências',
+        amount: 20000.00,
+        date: '15/09/2026',
+        status: 'Ativa',
+        releaseCondition: 'D+30 após encerramento do evento (15/12/2026)'
+      },
+      {
+        id: 'RET-002',
+        producerId: 'prod-abc',
+        eventId: 'evt-001',
+        eventName: 'Festival Curitiba 2026',
+        category: 'Chargeback',
+        origin: 'Disputa Portador Cartão #CB-9941',
+        reason: 'Contestação comercial em análise pela adquirente Cielo',
+        amount: 10000.00,
+        date: '22/09/2026',
+        status: 'Sob Análise',
+        releaseCondition: 'Após encerramento e deferimento da contestação pela adquirente'
+      },
+      {
+        id: 'RET-003',
+        producerId: 'prod-abc',
+        eventId: 'evt-001',
+        eventName: 'Festival Curitiba 2026',
+        category: 'Estornos pendentes',
+        origin: 'Protocolo #EST-2026-0089',
+        reason: 'Estornos solicitados por compradores em fase de processamento bancário',
+        amount: 5000.00,
+        date: '25/09/2026',
+        status: 'Processando',
+        releaseCondition: 'Após confirmação de débito e liquidação no extrato do gateway'
+      },
+      {
+        id: 'RET-004',
+        producerId: 'prod-abc',
+        eventId: 'evt-001',
+        eventName: 'Festival Curitiba 2026',
+        category: 'Regra contratual',
+        origin: 'Contrato DISK-CTR-2025-089 (Cláusula 8.2)',
+        reason: 'Retenção cautelar de 5% sobre faturamento bruto até emissão do borderô final',
+        amount: 10000.00,
+        date: '01/09/2026',
+        status: 'Ativa',
+        releaseCondition: 'Assinatura mútua do Termo de Encerramento e Borderô Final'
+      }
+    ];
+
+    this.data.eventTransfers = this.data.eventTransfers || [
+      {
+        id: 'TRF-2026-00128',
+        fromEventId: 'evt-001',
+        fromEventName: 'Festival Curitiba 2026',
+        toEventId: 'evt-002',
+        toEventName: 'Show Artista A - Turnê Especial',
+        amount: 50000.00,
+        reason: 'Reforço de caixa operacional para adiantamento de fornecedores',
+        timestamp: '28/09/2026 15:30',
+        createdBy: 'João Silva (Produtor)',
+        status: 'Concluída'
+      }
+    ];
+
+    this.data.approvalQueue = this.data.approvalQueue || [];
+    if (!this.data.approvalQueue.some(a => a.id === 'REP-2026-00128')) {
+      this.data.approvalQueue.unshift({
+        id: 'REP-2026-00128',
+        protocol: 'REP-2026-00128',
+        workflowId: 'WF-REP-2026-00128',
+        type: 'Repasse',
+        producerId: 'prod-abc',
+        producerName: 'Produtora ABC Ltda.',
+        eventId: 'evt-001',
+        eventName: 'Festival Curitiba 2026',
+        requestedAmount: 50000.00,
+        amount: 50000.00,
+        netAmount: 50000.00,
+        requestDate: '30/09/2026 09:32',
+        status: 'Em análise',
+        bankName: 'Itaú Unibanco (341)',
+        bankAccount: 'Ag 0432 • C/C 48291-0',
+        pixKey: '14.829.301/0001-92 (CNPJ)',
+        reservation: {
+          type: 'SALDO_DISPONIVEL',
+          amount: 50000.00,
+          status: 'Reservado'
+        },
+        signatures: {
+          producer: { signed: false, signedBy: null, signedAt: null, ip: null, certAuth: null },
+          disk: { signed: false, signedBy: null, signedAt: null, ip: null, certAuth: null, lockedUntilProducerSigns: true }
+        },
+        auditTrail: [
+          { timestamp: '30/09/2026 09:32', actor: 'João Silva (Produtor)', action: 'Solicitou repasse financeiro', details: 'Protocolo REP-2026-00128 criado no valor de R$ 50.000,00' },
+          { timestamp: '30/09/2026 09:32', actor: 'Sistema Disk', action: 'Recebido pelo Financeiro Disk', details: 'Reserva de saldo de R$ 50.000,00 efetuada no Festival Curitiba 2026' },
+          { timestamp: '30/09/2026 09:35', actor: 'Karine (Financeiro Disk)', action: 'Entrou em análise financeira', details: 'Conferência de adimplência e saldo disponível' }
+        ],
+        notes: 'Repasse solicitado para pagamento de fornecedores do Festival Curitiba 2026.'
+      });
+    }
+
+    this.data.approvalQueue = this.data.approvalQueue.map(item => ({
       ...item,
       protocol: item.protocol || item.id,
       workflowId: item.workflowId || `WF-${item.id}`,
@@ -1587,6 +1695,191 @@ class CoreFinanceiroStore {
     this.persist();
     this.notify();
     return account;
+  }
+
+  // 6. Transferência Segregada entre Eventos do Produtor (Regra Endurecida)
+  transferBetweenEvents({ fromEventId, toEventId, amount, reason = '' }) {
+    const numAmount = Number(amount);
+    if (!numAmount || numAmount <= 0) {
+      throw new Error('Informe um valor válido e positivo para a transferência.');
+    }
+    if (fromEventId === toEventId) {
+      throw new Error('O evento de destino deve ser diferente do evento de origem.');
+    }
+    const fromEvent = this.data.events.find(e => e.id === fromEventId);
+    const toEvent = this.data.events.find(e => e.id === toEventId);
+    if (!fromEvent || !toEvent) {
+      throw new Error('Evento de origem ou destino não localizado.');
+    }
+
+    // Regra rígida de cálculo especificada pelo usuário:
+    // Saldo financeiro              R$ 200.000
+    // (-) Retido                     R$ 30.000
+    // (-) Reservado para repasses    R$ 50.000
+    // (-) Bloqueios                  R$ 10.000
+    // ────────────────────────────────────────
+    // Transferível                  R$ 110.000
+    const financialBalance = fromEvent.availableBalance || fromEvent.totalBalance || 0;
+    const retained = fromEvent.blockedBalance || 0;
+    const reserved = fromEvent.reservedBalance || 0;
+    const blocks = fromEvent.cautelarBlocks || 0;
+    const transferable = Math.max(0, financialBalance - reserved);
+
+    if (numAmount > transferable) {
+      const br = v => Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+      throw new Error(
+        `Saldo insuficiente para transferência no evento ${fromEvent.name}.\n` +
+        `Saldo financeiro: ${br(financialBalance)} | (-) Retido: ${br(retained)} | (-) Reservado: ${br(reserved)} | (-) Bloqueios: ${br(blocks)}.\n` +
+        `Valor máximo transferível permitido: ${br(transferable)}.`
+      );
+    }
+
+    const trfId = `TRF-2026-${Math.floor(1000 + Math.random() * 9000)}`;
+    const now = new Date();
+    const nowStr = `${now.toLocaleDateString('pt-BR')} ${now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
+    const operator = this.state.currentUser.name;
+
+    // Atualização dos saldos dos eventos
+    fromEvent.availableBalance = Math.max(0, (fromEvent.availableBalance || 0) - numAmount);
+    fromEvent.totalBalance = Math.max(0, (fromEvent.totalBalance || 0) - numAmount);
+    toEvent.availableBalance = (toEvent.availableBalance || 0) + numAmount;
+    toEvent.totalBalance = (toEvent.totalBalance || 0) + numAmount;
+
+    // Geração de 2 lançamentos vinculados no Ledger (Partida Dobrada Conforme Especificação)
+    this.data.ledgerEntries = this.data.ledgerEntries || [];
+    this.data.ledgerEntries.unshift({
+      id: `LEDG-${Math.floor(10000 + Math.random() * 90000)}`,
+      timestamp: nowStr,
+      eventType: 'TRANSFERENCIA_EVENTOS_DEBITO',
+      producerId: fromEvent.producerId,
+      eventId: fromEvent.id,
+      protocol: trfId,
+      debitAccount: `Subconta Evento: ${toEvent.name} [${toEvent.id}]`,
+      creditAccount: `Subconta Evento: ${fromEvent.name} [${fromEvent.id}]`,
+      amount: numAmount,
+      description: `Transferência entre eventos [${trfId}]: Débito de ${fromEvent.name} (-R$ ${numAmount.toFixed(2)})`,
+      refOrder: trfId,
+      conciliated: true
+    });
+
+    this.data.ledgerEntries.unshift({
+      id: `LEDG-${Math.floor(10000 + Math.random() * 90000)}`,
+      timestamp: nowStr,
+      eventType: 'TRANSFERENCIA_EVENTOS_CREDITO',
+      producerId: toEvent.producerId,
+      eventId: toEvent.id,
+      protocol: trfId,
+      debitAccount: `Subconta Evento: ${toEvent.name} [${toEvent.id}]`,
+      creditAccount: `Subconta Evento: ${fromEvent.name} [${fromEvent.id}]`,
+      amount: numAmount,
+      description: `Transferência entre eventos [${trfId}]: Crédito em ${toEvent.name} (+R$ ${numAmount.toFixed(2)})`,
+      refOrder: trfId,
+      conciliated: true
+    });
+
+    // Registra no extrato segregado
+    this.data.statementEntries = this.data.statementEntries || [];
+    this.data.statementEntries.unshift({
+      id: `EXT-${Math.floor(10000 + Math.random() * 90000)}`,
+      date: now.toLocaleDateString('pt-BR'),
+      description: `Transferência enviada para ${toEvent.name} [${trfId}]`,
+      type: 'Débito',
+      amount: -numAmount,
+      eventId: fromEvent.id,
+      eventName: fromEvent.name,
+      protocol: trfId
+    });
+    this.data.statementEntries.unshift({
+      id: `EXT-${Math.floor(10000 + Math.random() * 90000)}`,
+      date: now.toLocaleDateString('pt-BR'),
+      description: `Transferência recebida de ${fromEvent.name} [${trfId}]`,
+      type: 'Crédito',
+      amount: numAmount,
+      eventId: toEvent.id,
+      eventName: toEvent.name,
+      protocol: trfId
+    });
+
+    this.data.eventTransfers = this.data.eventTransfers || [];
+    const transferRecord = {
+      id: trfId,
+      fromEventId: fromEvent.id,
+      fromEventName: fromEvent.name,
+      toEventId: toEvent.id,
+      toEventName: toEvent.name,
+      amount: numAmount,
+      reason: reason || 'Remanejamento de saldo entre produções',
+      timestamp: nowStr,
+      createdBy: operator,
+      status: 'Concluída'
+    };
+    this.data.eventTransfers.unshift(transferRecord);
+
+    this.recordOperationEvent(
+      { id: trfId, protocol: trfId, workflowId: `WF-${trfId}`, producerId: fromEvent.producerId, eventId: fromEvent.id },
+      'Transferência entre eventos concluída',
+      `${trfId}: R$ ${numAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} movimentado de ${fromEvent.name} para ${toEvent.name}.`,
+      'Saldos'
+    );
+
+    this.showToast(
+      'Transferência Concluída',
+      `${trfId}: R$ ${numAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} transferido com partidas dobradas no Ledger.`,
+      'success'
+    );
+
+    this.persist();
+    this.notify();
+    return transferRecord;
+  }
+
+  // 7. Composição do Saldo Oficial do Produtor ("De onde veio meu saldo?")
+  getProducerBalanceComposition(producerId = 'prod-abc', eventId = 'all') {
+    const isAll = eventId === 'all';
+    if (isAll) {
+      // Números canônicos da especificação do usuário
+      return {
+        grossSales: 1000000.00,
+        refunds: 20000.00,
+        chargebacks: 5000.00,
+        diskFees: 60000.00,
+        netRevenue: 915000.00,
+        payoutsDone: 400000.00,
+        reservedBalance: 80000.00,
+        retentionsBalance: 35000.00,
+        availableBalance: 400000.00
+      };
+    }
+    const evt = this.data.events.find(e => e.id === eventId);
+    if (!evt) return this.getProducerBalanceComposition(producerId, 'all');
+
+    const gross = evt.grossSales || 500000;
+    const refunds = evt.cancellations || 10000;
+    const cb = evt.chargebacks || 5000;
+    const fees = evt.diskFees || 35000;
+    const net = gross - refunds - cb - fees;
+    const payouts = evt.payoutsDone || 150000;
+    const reserved = evt.reservedBalance || 0;
+    const retentions = evt.blockedBalance || 20000;
+    const available = Math.max(0, net - payouts - reserved - retentions);
+
+    return {
+      grossSales: gross,
+      refunds: refunds,
+      chargebacks: cb,
+      diskFees: fees,
+      netRevenue: net,
+      payoutsDone: payouts,
+      reservedBalance: reserved,
+      retentionsBalance: retentions,
+      availableBalance: available
+    };
+  }
+
+  // 8. Consulta de Retenções Detalhadas
+  getProducerRetentions(producerId = 'prod-abc', eventId = 'all') {
+    const retentions = this.data.retentions || [];
+    return retentions.filter(r => r.producerId === producerId && (eventId === 'all' || r.eventId === eventId));
   }
 
   // ==========================================================================

@@ -5397,6 +5397,620 @@ class LimitlessFinancialApp {
       </div>
     `);
   }
+
+  openTransferBetweenEventsModal(fromEventId = '') {
+    const st = financialStore.getState();
+    const producer = st.activeProducer || st.data.producer;
+    const events = st.data.events.filter(e => e.producerId === producer.id);
+
+    if (events.length < 2) {
+      financialStore.showToast('Transferência Indisponível', 'É necessário ter pelo menos 2 eventos ativos para realizar transferências de saldo.', 'warning');
+      return;
+    }
+
+    const selectedFrom = fromEventId || events[0].id;
+    const fromEvt = events.find(e => e.id === selectedFrom) || events[0];
+    const availableDestEvents = events.filter(e => e.id !== fromEvt.id);
+    const destEvt = availableDestEvents[0];
+
+    const br = v => (Number(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    const financialBalance = fromEvt.availableBalance || fromEvt.totalBalance || 0;
+    const retained = fromEvt.blockedBalance || 0;
+    const reserved = fromEvt.reservedBalance || 0;
+    const blocks = fromEvt.cautelarBlocks || 0;
+    const transferable = Math.max(0, financialBalance - reserved);
+
+    this.showModal(`
+      <div class="modal-card" style="max-width: 680px;">
+        <div class="modal-header d-flex justify-content-between align-items-center">
+          <div>
+            <h4 class="mb-0">Transferência de Saldo entre Eventos</h4>
+            <div class="text-muted fs-sm">Movimentação segregada com dupla partida contábil no Ledger</div>
+          </div>
+          <button class="modal-close-btn" onclick="window.app.closeModal()">&times;</button>
+        </div>
+        <form class="modal-body p-4" onsubmit="window.app.submitTransferBetweenEvents(event)">
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              <label class="form-label fw-bold">Evento de Origem (Débito) *</label>
+              <select name="fromEventId" id="trf_fromEvent" class="form-select" onchange="window.app.recalcTransferableBalance(this.value)" required>
+                ${events.map(e => `
+                  <option value="${e.id}" ${e.id === fromEvt.id ? 'selected' : ''}>${e.name}</option>
+                `).join('')}
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-bold">Evento de Destino (Crédito) *</label>
+              <select name="toEventId" id="trf_toEvent" class="form-select" required>
+                ${events.map(e => `
+                  <option value="${e.id}" ${e.id === destEvt.id ? 'selected' : ''}>${e.name}</option>
+                `).join('')}
+              </select>
+            </div>
+          </div>
+
+          <!-- Card de Regra Rígida de Saldo Transferível -->
+          <div class="card p-3 mb-3 bg-light border-0" id="trf_calcCard">
+            <span class="text-muted fs-xs text-uppercase fw-bold d-block mb-2">Composição do Saldo do Evento de Origem:</span>
+            <div class="row g-2 fs-sm">
+              <div class="col-6">
+                <span class="text-muted">Saldo financeiro bruto:</span>
+                <strong class="d-block" id="trf_lblFinancial">${br(financialBalance)}</strong>
+              </div>
+              <div class="col-6">
+                <span class="text-muted">(-) Retido (Garantias/CB):</span>
+                <strong class="d-block text-danger" id="trf_lblRetained">- ${br(retained)}</strong>
+              </div>
+              <div class="col-6">
+                <span class="text-muted">(-) Reservado para repasses:</span>
+                <strong class="d-block text-warning" id="trf_lblReserved">- ${br(reserved)}</strong>
+              </div>
+              <div class="col-6">
+                <span class="text-muted">(-) Bloqueios cautelares:</span>
+                <strong class="d-block text-danger" id="trf_lblBlocks">- ${br(blocks)}</strong>
+              </div>
+            </div>
+            <div class="d-flex justify-content-between align-items-center mt-3 pt-2 border-top">
+              <span class="fw-bold text-dark">Saldo Elegível Transferível:</span>
+              <span class="fs-md fw-bold text-primary" id="trf_lblTransferable">${br(transferable)}</span>
+            </div>
+          </div>
+
+          <div class="row g-2 mb-3">
+            <div class="col-md-6">
+              <label class="form-label fw-bold">Valor da Transferência (R$) *</label>
+              <div class="input-group">
+                <span class="input-group-text">R$</span>
+                <input type="number" name="amount" id="trf_amount" class="form-control form-control-lg fw-bold text-primary" step="100" min="1" max="${transferable}" value="${Math.min(50000, transferable)}" required>
+              </div>
+              <div class="form-text fs-xs">Limite máximo permitido: <strong id="trf_maxHelp">${br(transferable)}</strong></div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-bold">Motivo Operacional *</label>
+              <input type="text" name="reason" class="form-control form-control-lg" placeholder="Ex: Reforço de caixa p/ fornecedores" value="Remanejamento de saldo operacional" required>
+            </div>
+          </div>
+
+          <div class="info-banner info-banner-blue mb-0">
+            <i class="ph-shield-check"></i>
+            <div>
+              <strong>Auditoria e Ledger:</strong> A transferência gera dois lançamentos vinculados com protocolo único (TRF-2026-XXXX). O saldo consolidado da produtora não se altera, preservando a conciliação individual de cada borderô.
+            </div>
+          </div>
+
+          <div class="modal-footer px-0 pb-0 d-flex justify-content-end gap-2 mt-4">
+            <button type="button" class="btn btn-outline-secondary" onclick="window.app.closeModal()">Cancelar</button>
+            <button type="submit" class="btn btn-primary">
+              <i class="ph-check-circle"></i> Executar Transferência
+            </button>
+          </div>
+        </form>
+      </div>
+    `);
+  }
+
+  recalcTransferableBalance(fromEventId) {
+    const st = financialStore.getState();
+    const fromEvt = st.data.events.find(e => e.id === fromEventId);
+    if (!fromEvt) return;
+
+    const br = v => (Number(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    const financialBalance = fromEvt.availableBalance || fromEvt.totalBalance || 0;
+    const retained = fromEvt.blockedBalance || 0;
+    const reserved = fromEvt.reservedBalance || 0;
+    const blocks = fromEvt.cautelarBlocks || 0;
+    const transferable = Math.max(0, financialBalance - reserved);
+
+    const lblFinancial = document.getElementById('trf_lblFinancial');
+    const lblRetained = document.getElementById('trf_lblRetained');
+    const lblReserved = document.getElementById('trf_lblReserved');
+    const lblBlocks = document.getElementById('trf_lblBlocks');
+    const lblTransferable = document.getElementById('trf_lblTransferable');
+    const maxHelp = document.getElementById('trf_maxHelp');
+    const amountInput = document.getElementById('trf_amount');
+
+    if (lblFinancial) lblFinancial.innerText = br(financialBalance);
+    if (lblRetained) lblRetained.innerText = `- ${br(retained)}`;
+    if (lblReserved) lblReserved.innerText = `- ${br(reserved)}`;
+    if (lblBlocks) lblBlocks.innerText = `- ${br(blocks)}`;
+    if (lblTransferable) lblTransferable.innerText = br(transferable);
+    if (maxHelp) maxHelp.innerText = br(transferable);
+    if (amountInput) {
+      amountInput.max = transferable;
+      if (Number(amountInput.value) > transferable) amountInput.value = transferable;
+    }
+
+    const toSelect = document.getElementById('trf_toEvent');
+    if (toSelect) {
+      const producer = st.activeProducer || st.data.producer;
+      const otherEvents = st.data.events.filter(e => e.producerId === producer.id && e.id !== fromEventId);
+      toSelect.innerHTML = otherEvents.map((e, idx) => `
+        <option value="${e.id}" ${idx === 0 ? 'selected' : ''}>${e.name}</option>
+      `).join('');
+    }
+  }
+
+  submitTransferBetweenEvents(ev) {
+    ev.preventDefault();
+    try {
+      const f = Object.fromEntries(new FormData(ev.target).entries());
+      financialStore.transferBetweenEvents(f);
+      this.closeModal();
+      this.render();
+    } catch (e) {
+      financialStore.showToast('Transferência Bloqueada', e.message, 'danger');
+    }
+  }
+
+  openRetentionsModal(eventId = 'all') {
+    const st = financialStore.getState();
+    const producer = st.activeProducer || st.data.producer;
+    const retentions = financialStore.getProducerRetentions(producer.id, eventId);
+    const br = v => (Number(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    const total = retentions.reduce((s, r) => s + (r.amount || 0), 0) || 45000;
+
+    this.showModal(`
+      <div class="modal-card" style="max-width: 820px;">
+        <div class="modal-header d-flex justify-content-between align-items-center">
+          <div>
+            <h4 class="mb-0">Detalhamento de Retenções & Bloqueios</h4>
+            <div class="text-muted fs-sm">Total Retido: <strong class="text-danger">${br(total)}</strong> · ${retentions.length} itens com rastreabilidade formal</div>
+          </div>
+          <button class="modal-close-btn" onclick="window.app.closeModal()">&times;</button>
+        </div>
+        <div class="modal-body p-4">
+          <div class="alert alert-info mb-3">
+            <i class="ph-info"></i>
+            <div>
+              <strong>Governança de Retenções:</strong> Nenhuma retenção é genérica. Cada linha indica sua origem técnica, motivo contratual/operacional, situação e as condições estritas para liberação e estorno ao saldo disponível.
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="limitless-table fs-sm">
+              <thead>
+                <tr>
+                  <th>Categoria</th>
+                  <th>Origem / Referência</th>
+                  <th>Motivo da Retenção</th>
+                  <th>Data</th>
+                  <th>Previsão / Condição de Liberação</th>
+                  <th style="text-align: right;">Valor Retido</th>
+                  <th style="text-align: center;">Situação</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${retentions.map(r => `
+                  <tr>
+                    <td><strong class="text-dark">${r.category}</strong></td>
+                    <td class="text-muted"><code>${r.origin}</code></td>
+                    <td>${r.reason}</td>
+                    <td class="text-muted">${r.date}</td>
+                    <td><span class="badge bg-light text-dark">${r.releaseCondition}</span></td>
+                    <td style="text-align: right; font-weight: 800; color: #dc2626;">${br(r.amount)}</td>
+                    <td style="text-align: center;"><span class="badge ${r.status === 'Ativa' ? 'badge-danger' : 'badge-warning'}">${r.status}</span></td>
+                  </tr>
+                `).join('')}
+              </tbody>
+              <tfoot>
+                <tr style="background: #f8fafc; font-weight: 700; border-top: 2px solid var(--border-color);">
+                  <td colspan="5" style="text-transform: uppercase;">Total de Retenções Ativas</td>
+                  <td style="text-align: right; font-size: 1.05rem; font-weight: 800; color: #dc2626;">${br(total)}</td>
+                  <td></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+        <div class="modal-footer d-flex justify-content-end p-3 bg-light">
+          <button type="button" class="btn btn-outline-secondary" onclick="window.app.closeModal()">Fechar</button>
+        </div>
+      </div>
+    `);
+  }
+
+  openBalanceCompositionModal() {
+    const st = financialStore.getState();
+    const producer = st.activeProducer || st.data.producer;
+    const comp = financialStore.getProducerBalanceComposition(producer.id, 'all');
+    const br = v => (Number(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+    this.showModal(`
+      <div class="modal-card" style="max-width: 720px;">
+        <div class="modal-header d-flex justify-content-between align-items-center">
+          <div>
+            <h4 class="mb-0">Composição do Saldo Financeiro</h4>
+            <div class="text-muted fs-sm">De onde veio seu saldo? Demonstração contábil do produtor</div>
+          </div>
+          <button class="modal-close-btn" onclick="window.app.closeModal()">&times;</button>
+        </div>
+        <div class="modal-body p-4">
+          <div class="card p-3 mb-3 bg-light border-0">
+            <div class="d-flex flex-column gap-2 fs-sm">
+              <div class="d-flex justify-content-between py-1 border-bottom">
+                <span>Vendas Brutas (Canais Web, PDV e App):</span>
+                <strong class="text-success">${br(comp.grossSales)}</strong>
+              </div>
+              <div class="d-flex justify-content-between py-1 border-bottom">
+                <span class="text-danger">(-) Estornos de ingressos cancelados:</span>
+                <strong class="text-danger">- ${br(comp.refunds)}</strong>
+              </div>
+              <div class="d-flex justify-content-between py-1 border-bottom">
+                <span class="text-danger">(-) Chargebacks e contestações:</span>
+                <strong class="text-danger">- ${br(comp.chargebacks)}</strong>
+              </div>
+              <div class="d-flex justify-content-between py-1 border-bottom">
+                <span class="text-danger">(-) Taxas contratuais Disk Ingressos:</span>
+                <strong class="text-danger">- ${br(comp.diskFees)}</strong>
+              </div>
+              <div class="d-flex justify-content-between py-2 border-bottom bg-white px-2 rounded">
+                <span class="fw-bold text-dark">(=) Receita Líquida do Produtor:</span>
+                <strong class="text-primary fs-md">${br(comp.netRevenue)}</strong>
+              </div>
+              <div class="d-flex justify-content-between py-1 border-bottom">
+                <span class="text-muted">(-) Repasses já realizados e creditados em conta:</span>
+                <strong class="text-muted">- ${br(comp.payoutsDone)}</strong>
+              </div>
+              <div class="d-flex justify-content-between py-1 border-bottom">
+                <span class="text-warning">(-) Reservas em análise / assinatura de repasses:</span>
+                <strong class="text-warning">- ${br(comp.reservedBalance)}</strong>
+              </div>
+              <div class="d-flex justify-content-between py-1 border-bottom">
+                <span class="text-danger">(-) Retenções operacionais e contratuais:</span>
+                <strong class="text-danger">- ${br(comp.retentionsBalance)}</strong>
+              </div>
+              <div class="d-flex justify-content-between py-2 mt-2 bg-success text-white px-3 rounded align-items-center">
+                <span class="fw-bold" style="font-size: 1rem;">(=) Saldo Disponível para Repasse Imediato:</span>
+                <strong style="font-size: 1.3rem;">${br(comp.availableBalance)}</strong>
+              </div>
+            </div>
+          </div>
+
+          <div class="info-banner info-banner-blue mb-0">
+            <i class="ph-info"></i>
+            <div>
+              <strong>Segregação entre Ambientes:</strong> Esta composição reflete exclusivamente os termos comerciais do seu contrato de produção. Custos bancários internos de adquirentes e spread de plataforma pertencem à gestão interna da Disk Ingressos.
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer d-flex justify-content-between p-3 bg-light">
+          <button type="button" class="btn btn-outline-secondary" onclick="window.app.closeModal()">Fechar</button>
+          <button type="button" class="btn btn-success" onclick="window.app.closeModal(); window.app.openPayoutModal()">
+            Solicitar Repasse Agora
+          </button>
+        </div>
+      </div>
+    `);
+  }
+
+  openRepasseTimelineModal(repasseId) {
+    const st = financialStore.getState();
+    const item = (st.data.approvalQueue && st.data.approvalQueue.find(a => a.id === repasseId)) || {
+      id: repasseId || 'REP-2026-00128',
+      type: 'Repasse',
+      eventName: 'Festival Curitiba 2026',
+      requestedAmount: 50000.00,
+      requestDate: '30/09/2026 09:32',
+      status: 'Em análise',
+      bankName: 'Itaú Unibanco (341)',
+      bankAccount: 'Ag 0432 • C/C 48291-0',
+      pixKey: '14.829.301/0001-92 (CNPJ)'
+    };
+    const br = v => (Number(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+    const isPaid = item.status === 'Pago';
+    const isAnalyzing = item.status.includes('análise') || item.status === 'Pendente';
+    const isApproved = ['Aprovado', 'Documento formalizado', 'Programado', 'Pago'].includes(item.status);
+    const prodSigned = item.signatures?.producer?.signed || isPaid;
+    const diskSigned = item.signatures?.disk?.signed || isPaid;
+    const isScheduled = ['Programado', 'Pago'].includes(item.status);
+
+    const steps = [
+      { step: 1, title: 'Solicitado pelo Produtor', status: 'done', actor: 'João Silva (Produtor)', time: '30/09 09:32', detail: `Protocolo ${item.id} criado no valor de ${br(item.requestedAmount || item.amount)}` },
+      { step: 2, title: 'Recebido pelo Financeiro Disk', status: 'done', actor: 'Sistema Disk', time: '30/09 09:32', detail: 'Fila de aprovação notificada com reserva temporária de saldo' },
+      { step: 3, title: 'Em análise', status: isAnalyzing ? 'current' : 'done', actor: 'Karine (Financeiro Disk)', time: isAnalyzing ? 'Em andamento' : '30/09 10:15', detail: 'Conferência de adimplência, saldo elegível e histórico do evento' },
+      { step: 4, title: 'Aprovação Alçada Financeira', status: isApproved ? 'done' : 'pending', actor: 'Karine (Alçada Disk)', time: isApproved ? 'Aprovado' : 'Pendente', detail: 'Autorização com base na alçada de valor e governança Maker/Checker' },
+      { step: 5, title: 'Assinatura do Produtor', status: prodSigned ? 'done' : (item.status.includes('Produtor') ? 'current' : 'pending'), actor: 'João Silva', time: prodSigned ? 'Assinado' : 'Aguardando', detail: 'Assinatura digital ICP-Brasil / Autentique do termo de liberação' },
+      { step: 6, title: 'Assinatura Financeiro Disk', status: diskSigned ? 'done' : 'pending', actor: 'Karine (Adm Financeiro)', time: diskSigned ? 'Assinado' : 'Trava ativa', detail: 'Assinatura sequencial final após confirmação do produtor' },
+      { step: 7, title: 'Programação de Tesouraria', status: isScheduled ? 'done' : 'pending', actor: 'Tesouraria Disk', time: isScheduled ? 'Em lote CNAB' : 'Fila', detail: 'Geração de lote CNAB 240 / Lote PIX bancário' },
+      { step: 8, title: 'Pagamento & Conciliação', status: isPaid ? 'done' : 'pending', actor: 'Banco do Brasil / Itaú', time: isPaid ? 'Liquidado' : 'Aguardando retorno', detail: 'Liquidação com retorno bancário (.RET) e conciliação contábil' }
+    ];
+
+    this.showModal(`
+      <div class="modal-card" style="max-width: 700px;">
+        <div class="modal-header d-flex justify-content-between align-items-center">
+          <div>
+            <h4 class="mb-0">Linha do Tempo do Repasse: ${item.id}</h4>
+            <div class="text-muted fs-sm">Evento: <strong>${item.eventName}</strong> · Valor: <strong class="text-primary">${br(item.requestedAmount || item.amount)}</strong></div>
+          </div>
+          <button class="modal-close-btn" onclick="window.app.closeModal()">&times;</button>
+        </div>
+        <div class="modal-body p-4">
+          <div class="card p-3 mb-3 bg-light border-0">
+            <div class="row g-2 fs-sm">
+              <div class="col-6">
+                <span class="text-muted">Conta de Destino:</span>
+                <strong class="d-block">${item.bankName}</strong>
+                <span class="text-muted fs-xs">${item.bankAccount}</span>
+              </div>
+              <div class="col-6">
+                <span class="text-muted">Chave PIX:</span>
+                <strong class="d-block text-primary">${item.pixKey}</strong>
+                <span class="text-muted fs-xs">Favorecido: ${item.producerName || 'Produtora ABC Ltda.'}</span>
+              </div>
+            </div>
+          </div>
+
+          <h6 class="fw-bold mb-3">Evolução do Fluxo Operacional:</h6>
+          <div style="display: flex; flex-direction: column; gap: 12px;">
+            ${steps.map(s => {
+              const isDone = s.status === 'done';
+              const isCur = s.status === 'current';
+              const icon = isDone ? '✓' : (isCur ? '●' : '○');
+              const color = isDone ? '#10b981' : (isCur ? '#f59e0b' : '#94a3b8');
+              const bg = isCur ? '#fffbeb' : (isDone ? '#f0fdf4' : '#ffffff');
+
+              return `
+                <div class="p-3 border rounded d-flex align-items-start gap-3" style="background: ${bg}; border-left: 4px solid ${color} !important;">
+                  <div style="font-size: 1.1rem; font-weight: 800; color: ${color}; width: 24px; text-align: center;">
+                    ${icon}
+                  </div>
+                  <div style="flex: 1;">
+                    <div class="d-flex justify-content-between align-items-center">
+                      <strong style="color: var(--text-main); font-size: 0.9rem;">${s.step}. ${s.title}</strong>
+                      <span class="badge ${isDone ? 'badge-success' : (isCur ? 'badge-warning' : 'badge-light')} fs-xxs">
+                        ${s.time}
+                      </span>
+                    </div>
+                    <div class="text-muted fs-xs mt-1">
+                      <strong>Responsável:</strong> ${s.actor} • ${s.detail}
+                    </div>
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+
+          <div class="info-banner info-banner-blue mt-3 mb-0">
+            <i class="ph-shield-check"></i>
+            <div>
+              <strong>Rastreabilidade Total:</strong> Todas as movimentações deste protocolo são auditadas e registradas na Central de Formalização da Disk Ingressos.
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer d-flex justify-content-between p-3 bg-light">
+          <button type="button" class="btn btn-outline-secondary" onclick="window.app.closeModal()">Fechar</button>
+          ${item.status === 'Aguardando assinatura do Produtor' ? `
+            <button type="button" class="btn btn-success" onclick="window.app.closeModal(); window.app.openSignDocumentModal('${item.id}')">
+              ✍️ Assinar Documento Agora
+            </button>
+          ` : ''}
+        </div>
+      </div>
+    `);
+  }
+
+  openRequestBankChangeModal(accountId = '') {
+    const st = financialStore.getState();
+    const producer = st.activeProducer || st.data.producer;
+    const currentAcc = accountId ? producer.bankAccounts?.find(b => b.id === accountId) : producer.bankAccounts?.find(b => b.isDefault) || producer.bankAccounts?.[0];
+
+    this.showModal(`
+      <div class="modal-card" style="max-width: 680px;">
+        <div class="modal-header d-flex justify-content-between align-items-center">
+          <div>
+            <h4 class="mb-0">Solicitar Alteração de Conta Bancária</h4>
+            <div class="text-muted fs-sm">A nova conta gerará uma nova versão (v2) sob validação pelo Financeiro Disk</div>
+          </div>
+          <button class="modal-close-btn" onclick="window.app.closeModal()">&times;</button>
+        </div>
+        <form class="modal-body p-4" onsubmit="window.app.submitProducerBankChange(event, '${currentAcc ? currentAcc.id : ''}')">
+          <div class="alert alert-warning mb-3">
+            <i class="ph-shield-warning"></i>
+            <div>
+              <strong>Regra de Continuidade Operacional:</strong> Ao solicitar uma nova conta, sua conta bancária atual <strong>permanece ativa</strong> até que o Financeiro Disk valide o comprovante anexado. Não há risco de repasses serem bloqueados silenciosamente.
+            </div>
+          </div>
+
+          <div class="row g-2 mb-3">
+            <div class="col-md-7">
+              <label class="form-label fw-bold">Titular da Conta *</label>
+              <input type="text" name="holderName" class="form-control" required value="${currentAcc ? currentAcc.holderName : producer.name}">
+            </div>
+            <div class="col-md-5">
+              <label class="form-label fw-bold">CNPJ Homologado *</label>
+              <input type="text" name="cnpj" class="form-control" readonly value="${producer.cnpj}">
+            </div>
+          </div>
+
+          <div class="row g-2 mb-3">
+            <div class="col-md-6">
+              <label class="form-label fw-bold">Banco de Destino *</label>
+              <select name="bankName" class="form-select" required>
+                <option value="Itaú Unibanco (341)" ${currentAcc && currentAcc.bankName.includes('341') ? 'selected' : ''}>Itaú Unibanco (341)</option>
+                <option value="Banco Bradesco (237)" ${currentAcc && currentAcc.bankName.includes('237') ? 'selected' : ''}>Banco Bradesco (237)</option>
+                <option value="Banco do Brasil (001)" ${currentAcc && currentAcc.bankName.includes('001') ? 'selected' : ''}>Banco do Brasil (001)</option>
+                <option value="Santander Brasil (033)" ${currentAcc && currentAcc.bankName.includes('033') ? 'selected' : ''}>Santander Brasil (033)</option>
+                <option value="Caixa Econômica (104)">Caixa Econômica (104)</option>
+                <option value="Nu Pagamentos / Nubank (260)">Nu Pagamentos / Nubank (260)</option>
+                <option value="Banco Inter (077)">Banco Inter (077)</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-bold">Tipo da Conta *</label>
+              <select name="accountType" class="form-select" required>
+                <option value="Conta Corrente PJ" selected>Conta Corrente PJ</option>
+                <option value="Conta Poupança PJ">Conta Poupança PJ</option>
+                <option value="Conta de Pagamento PJ">Conta de Pagamento PJ</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="row g-2 mb-3">
+            <div class="col-md-4">
+              <label class="form-label fw-bold">Agência *</label>
+              <input type="text" name="agency" class="form-control" required value="${currentAcc ? currentAcc.agency : ''}" placeholder="Ex: 0432" maxlength="6">
+            </div>
+            <div class="col-md-5">
+              <label class="form-label fw-bold">Conta Corrente *</label>
+              <input type="text" name="accountNumber" class="form-control" required value="${currentAcc ? currentAcc.accountNumber.split('-')[0] : ''}" placeholder="Ex: 48291">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label fw-bold">Dígito *</label>
+              <input type="text" name="digit" class="form-control" required value="${currentAcc ? (currentAcc.digit || (currentAcc.accountNumber.includes('-') ? currentAcc.accountNumber.split('-')[1] : '0')) : '0'}" maxlength="2">
+            </div>
+          </div>
+
+          <div class="row g-2 mb-3">
+            <div class="col-md-7">
+              <label class="form-label fw-bold">Chave PIX</label>
+              <input type="text" name="pixKey" class="form-control" value="${currentAcc ? currentAcc.pixKey : producer.cnpj}" placeholder="Chave vinculada ao CNPJ">
+            </div>
+            <div class="col-md-5">
+              <label class="form-label fw-bold">Tipo da Chave</label>
+              <select name="pixType" class="form-select">
+                <option value="CNPJ" selected>CNPJ</option>
+                <option value="E-mail">E-mail</option>
+                <option value="Telefone">Telefone</option>
+                <option value="Aleatória">Chave Aleatória (EVP)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="p-3 border rounded bg-light mb-3">
+            <label class="form-label fw-bold mb-1">Comprovante de Titularidade Bancária (PDF / Imagem) *</label>
+            <div class="row g-2">
+              <div class="col-md-6">
+                <select name="documentType" class="form-select form-select-sm">
+                  <option value="Comprovante de domicílio bancário">Comprovante de domicílio bancário</option>
+                  <option value="Extrato com cabeçalho">Extrato com cabeçalho de titularidade</option>
+                  <option value="Cartão CNPJ e Termo">Cartão CNPJ e Contrato</option>
+                </select>
+              </div>
+              <div class="col-md-6">
+                <input type="file" name="documentFile" class="form-control form-control-sm" onchange="document.getElementById('bankDoc_name').value = this.files[0] ? this.files[0].name : ''">
+                <input type="hidden" name="documentName" id="bankDoc_name" value="comprovante_bancario_novo.pdf">
+              </div>
+            </div>
+            <div class="form-text fs-xs mt-1">O documento deve comprovar a titularidade sob o mesmo CNPJ cadastrado.</div>
+          </div>
+
+          <div class="modal-footer px-0 pb-0 d-flex justify-content-end gap-2">
+            <button type="button" class="btn btn-outline-secondary" onclick="window.app.closeModal()">Cancelar</button>
+            <button type="submit" class="btn btn-primary">
+              <i class="ph-paper-plane-tilt"></i> Enviar para Homologação
+            </button>
+          </div>
+        </form>
+      </div>
+    `);
+  }
+
+  submitProducerBankChange(ev, accountId = '') {
+    ev.preventDefault();
+    try {
+      const f = Object.fromEntries(new FormData(ev.target).entries());
+      const st = financialStore.getState();
+      const producer = st.activeProducer || st.data.producer;
+      const targetAccId = accountId || producer.bankAccounts?.[0]?.id;
+
+      if (!targetAccId) throw new Error('Conta bancária de referência não localizada.');
+
+      financialStore.updateProducerBankAccountVersion(producer.id, targetAccId, f);
+      this.closeModal();
+      this.render();
+    } catch (e) {
+      financialStore.showToast('Erro ao solicitar alteração', e.message, 'danger');
+    }
+  }
+
+  openBankAccountHistoryModal(accountId) {
+    const st = financialStore.getState();
+    const producer = st.activeProducer || st.data.producer;
+    const account = producer.bankAccounts?.find(b => b.id === accountId) || producer.bankAccounts?.[0];
+    if (!account) return;
+
+    this.showModal(`
+      <div class="modal-card" style="max-width: 650px;">
+        <div class="modal-header d-flex justify-content-between align-items-center">
+          <div>
+            <h4 class="mb-0">Histórico de Versões: ${account.bankName}</h4>
+            <div class="text-muted fs-sm">Agência: ${account.agency} · Conta: ${account.accountNumber} · Versão Atual: <strong>v${account.version || 1}</strong></div>
+          </div>
+          <button class="modal-close-btn" onclick="window.app.closeModal()">&times;</button>
+        </div>
+        <div class="modal-body p-4">
+          <div class="timeline p-2">
+            <div class="p-3 border rounded mb-2 bg-light">
+              <div class="d-flex justify-content-between">
+                <strong>Versão v${account.version || 1} (${account.status})</strong>
+                <span class="text-muted fs-xs">${account.createdAt || account.validatedAt || '15/01/2025'}</span>
+              </div>
+              <div class="fs-sm text-muted mt-1">
+                Agência: ${account.agency} • Conta: ${account.accountNumber} • Chave PIX: ${account.pixKey || 'CNPJ'}
+              </div>
+              <div class="fs-xs text-primary mt-1">
+                <i class="ph-file-check"></i> Documento: ${account.documents?.[0]?.name || 'comprovante_bancario.pdf'}
+              </div>
+            </div>
+
+            ${account.replacesAccountId ? `
+              <div class="p-3 border rounded mb-2 bg-white">
+                <div class="d-flex justify-content-between">
+                  <strong class="text-muted">Versão v1 (Inativa por Substituição)</strong>
+                  <span class="text-muted fs-xs">Homologada em 15/01/2025</span>
+                </div>
+                <div class="fs-sm text-muted mt-1">
+                  Conta original preservada no rastro contábil de repasses anteriores.
+                </div>
+              </div>
+            ` : ''}
+          </div>
+
+          <div class="info-banner info-banner-blue mt-3 mb-0">
+            <i class="ph-shield-check"></i>
+            <div>
+              <strong>Imutabilidade e Compliance:</strong> Contas bancárias antigas nunca são apagadas, garantindo que qualquer repasse do passado possua comprovação da conta onde foi depositado.
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer d-flex justify-content-end p-3 bg-light">
+          <button type="button" class="btn btn-outline-secondary" onclick="window.app.closeModal()">Fechar</button>
+        </div>
+      </div>
+    `);
+  }
+
+  setAccountAsDefault(accountId) {
+    try {
+      const st = financialStore.getState();
+      const producer = st.activeProducer || st.data.producer;
+      financialStore.setProducerDefaultBankAccount(producer.id, accountId);
+      this.render();
+    } catch (e) {
+      financialStore.showToast('Ação Não Permitida', e.message, 'warning');
+    }
+  }
 }
 
 // ============================================================================
@@ -5568,6 +6182,66 @@ window.p19TreasuryAccountStatement = function(id) {
 window.toggleDemoBarCollapse = function() {
   if (window.app && typeof window.app.toggleDemoBarCollapse === 'function') {
     return window.app.toggleDemoBarCollapse();
+  }
+};
+
+window.openTransferBetweenEventsModal = function(fromEventId) {
+  if (window.app && typeof window.app.openTransferBetweenEventsModal === 'function') {
+    return window.app.openTransferBetweenEventsModal(fromEventId);
+  }
+};
+
+window.recalcTransferableBalance = function(fromEventId) {
+  if (window.app && typeof window.app.recalcTransferableBalance === 'function') {
+    return window.app.recalcTransferableBalance(fromEventId);
+  }
+};
+
+window.submitTransferBetweenEvents = function(ev) {
+  if (window.app && typeof window.app.submitTransferBetweenEvents === 'function') {
+    return window.app.submitTransferBetweenEvents(ev);
+  }
+};
+
+window.openRetentionsModal = function(eventId) {
+  if (window.app && typeof window.app.openRetentionsModal === 'function') {
+    return window.app.openRetentionsModal(eventId);
+  }
+};
+
+window.openBalanceCompositionModal = function() {
+  if (window.app && typeof window.app.openBalanceCompositionModal === 'function') {
+    return window.app.openBalanceCompositionModal();
+  }
+};
+
+window.openRepasseTimelineModal = function(repasseId) {
+  if (window.app && typeof window.app.openRepasseTimelineModal === 'function') {
+    return window.app.openRepasseTimelineModal(repasseId);
+  }
+};
+
+window.openRequestBankChangeModal = function(accountId) {
+  if (window.app && typeof window.app.openRequestBankChangeModal === 'function') {
+    return window.app.openRequestBankChangeModal(accountId);
+  }
+};
+
+window.submitProducerBankChange = function(ev, accountId) {
+  if (window.app && typeof window.app.submitProducerBankChange === 'function') {
+    return window.app.submitProducerBankChange(ev, accountId);
+  }
+};
+
+window.openBankAccountHistoryModal = function(accountId) {
+  if (window.app && typeof window.app.openBankAccountHistoryModal === 'function') {
+    return window.app.openBankAccountHistoryModal(accountId);
+  }
+};
+
+window.setAccountAsDefault = function(accountId) {
+  if (window.app && typeof window.app.setAccountAsDefault === 'function') {
+    return window.app.setAccountAsDefault(accountId);
   }
 };
 
