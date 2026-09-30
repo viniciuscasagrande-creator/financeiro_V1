@@ -155,6 +155,52 @@ class CoreFinanceiroStore {
       if (!r.version) r.version = 1;
       if (!r.history) r.history = [];
     });
+
+    this.data.gatewayConfigs = this.data.gatewayConfigs || (this.data.gateways || []).map((g, i) => ({
+      id: g.id,
+      name: g.name,
+      providerType: 'Adquirente / Gateway',
+      environment: i === 3 ? 'Sandbox' : 'Produção',
+      enabled: !g.status.includes('Backup'),
+      connectionStatus: i === 3 ? 'Não configurado' : 'Conectado (Produção)',
+      lastTestAt: '30/09/2026 09:12',
+      merchantId: i === 0 ? '••••8421' : '••••' + String(5100 + i),
+      clientId: '••••••••' + String(2100 + i),
+      secretConfigured: i !== 3,
+      cards: ['Visa', 'Mastercard', 'Elo', 'American Express'],
+      pix: { enabled: i !== 3, keyType: 'CNPJ', key: '12.345.678/0001-90', term: i === 0 ? 'D+0' : 'D+1', immediateSplit: true },
+      boleto: {
+        enabled: i < 2,
+        bank: i === 0 ? 'Banco do Brasil (001)' : 'Itaú Unibanco (341)',
+        wallet: i === 0 ? '17' : '109',
+        agreement: i === 0 ? '3482109' : '9823412',
+        agency: '1234',
+        account: '56789-0',
+        dueDays: 3,
+        finePercent: 2.0,
+        dailyInterestPercent: 0.033,
+        instructions: 'Sr. Caixa, não receber após 10 dias do vencimento. Aceitar somente valor nominal.'
+      },
+      installments: { max: 12, interestFrom: 7, minInstallmentAmount: 15.0 },
+      antifraud: { enabled: true, provider: i % 2 === 0 ? 'ClearSale Total' : 'Konduto Enterprise', mode: 'Automático com 3DS 2.0', scoreMinApproval: 85 },
+      webhooks: { enabled: i !== 3, urlConfigured: i !== 3, url: `https://api.diskingressos.com.br/v1/webhooks/${g.id}`, hmacConfigured: true },
+      updatedAt: '30/09/2026 09:30',
+      logs: [
+        { at: '30/09/2026 09:12', action: 'Teste de conexão executado', actor: 'Karine (Adm Financeiro)', result: i === 3 ? 'Pendente de credenciais' : 'Conexão local validada' },
+        { at: '29/09/2026 14:00', action: 'Homologação de ambiente', actor: 'Karine (Adm Financeiro)', result: 'Ambiente definido para ' + (i === 3 ? 'Sandbox' : 'Produção') }
+      ]
+    }));
+
+    // Normalização defensiva para gatewayConfigs existentes
+    this.data.gatewayConfigs.forEach(g => {
+      if (!g.cards) g.cards = ['Visa', 'Mastercard', 'Elo'];
+      if (!g.pix) g.pix = { enabled: true, term: 'D+0' };
+      if (!g.boleto) g.boleto = { enabled: true, bank: 'Banco do Brasil' };
+      if (!g.installments) g.installments = { max: 12, interestFrom: 7 };
+      if (!g.antifraud) g.antifraud = { enabled: true, provider: 'ClearSale Total' };
+      if (!g.webhooks) g.webhooks = { enabled: true, urlConfigured: true };
+      if (!g.logs) g.logs = [];
+    });
     this.data.splitRules = this.data.splitRules || [{
       id: 'SPL-001',
       eventId: 'evt-001',
@@ -1663,6 +1709,145 @@ class CoreFinanceiroStore {
     if (generalRule) return { rule: generalRule, resolvedScope: 'Geral Disk', priority: 3 };
 
     return { rule: rules[0] || null, resolvedScope: 'Padrão Geral', priority: 4 };
+  }
+
+  // ==========================================================================
+  // OPERAÇÕES DO PACOTE 18 (CENTRAL OPERACIONAL DE GATEWAYS E ADQUIRENTES)
+  // ==========================================================================
+  saveGatewayConfig(payload, id = null) {
+    if (!['disk', 'admin'].includes(this.state.currentUser.role)) {
+      throw new Error('Ação restrita ao Financeiro Disk.');
+    }
+    if (!payload.name?.trim()) {
+      throw new Error('Informe o nome do gateway/adquirente.');
+    }
+    const now = new Date().toLocaleString('pt-BR');
+    let row = id ? this.data.gatewayConfigs.find(x => x.id === id) : null;
+    if (row) {
+      Object.assign(row, payload, { updatedAt: now });
+    } else {
+      row = {
+        id: `gw-${Date.now()}`,
+        providerType: 'Gateway / Adquirente',
+        environment: payload.environment || 'Sandbox',
+        enabled: payload.enabled !== undefined ? payload.enabled : true,
+        connectionStatus: 'Não configurado',
+        cards: ['Visa', 'Mastercard', 'Elo'],
+        pix: { enabled: true, keyType: 'CNPJ', term: 'D+0', immediateSplit: true },
+        boleto: { enabled: true, bank: 'Banco do Brasil', wallet: '17', dueDays: 3, finePercent: 2.0, dailyInterestPercent: 0.033 },
+        installments: { max: 12, interestFrom: 7, minInstallmentAmount: 15.0 },
+        antifraud: { enabled: true, provider: 'ClearSale Total', mode: 'Automático' },
+        webhooks: { enabled: true, urlConfigured: true },
+        logs: [],
+        ...payload,
+        updatedAt: now
+      };
+      this.data.gatewayConfigs.unshift(row);
+    }
+    row.logs = row.logs || [];
+    row.logs.unshift({
+      at: now,
+      action: id ? 'Configuração atualizada' : 'Gateway cadastrado',
+      actor: this.state.currentUser.name
+    });
+    this.recordOperationEvent(
+      { id: row.id, protocol: row.id, workflowId: `WF-${row.id}` },
+      id ? 'Gateway atualizado' : 'Novo Gateway cadastrado',
+      `${row.name} · Ambiente: ${row.environment}`,
+      'Gateways e Adquirentes'
+    );
+    this.persist();
+    this.notify();
+    return row;
+  }
+
+  toggleGateway(id) {
+    if (!['disk', 'admin'].includes(this.state.currentUser.role)) {
+      throw new Error('Ação restrita ao Financeiro Disk.');
+    }
+    const row = this.data.gatewayConfigs.find(x => x.id === id);
+    if (!row) throw new Error('Gateway não encontrado.');
+    row.enabled = !row.enabled;
+    row.updatedAt = new Date().toLocaleString('pt-BR');
+    row.logs = row.logs || [];
+    row.logs.unshift({
+      at: row.updatedAt,
+      action: row.enabled ? 'Ativado na operação' : 'Inativado',
+      actor: this.state.currentUser.name
+    });
+    this.recordOperationEvent(
+      { id: row.id, protocol: row.id, workflowId: `WF-${row.id}` },
+      `Gateway ${row.enabled ? 'ativado' : 'inativado'}`,
+      `${row.name} (${row.id})`,
+      'Gateways e Adquirentes'
+    );
+    this.persist();
+    this.notify();
+    return row;
+  }
+
+  updateGatewaySection(id, section, data) {
+    if (!['disk', 'admin'].includes(this.state.currentUser.role)) {
+      throw new Error('Ação restrita ao Financeiro Disk.');
+    }
+    const row = this.data.gatewayConfigs.find(x => x.id === id);
+    if (!row) throw new Error('Gateway não encontrado.');
+    const now = new Date().toLocaleString('pt-BR');
+
+    if (section === 'cards' && Array.isArray(data)) {
+      row.cards = data;
+    } else {
+      row[section] = { ...(row[section] || {}), ...data };
+    }
+    row.updatedAt = now;
+    row.logs = row.logs || [];
+    row.logs.unshift({
+      at: now,
+      action: `Seção ${section.toUpperCase()} atualizada`,
+      actor: this.state.currentUser.name
+    });
+    this.recordOperationEvent(
+      { id: row.id, protocol: row.id, workflowId: `WF-${row.id}` },
+      `Configuração de ${section} alterada`,
+      `${row.name} (${row.id})`,
+      'Gateways e Adquirentes'
+    );
+    this.persist();
+    this.notify();
+    return row;
+  }
+
+  testGatewayConnection(id) {
+    if (!['disk', 'admin'].includes(this.state.currentUser.role)) {
+      throw new Error('Ação restrita ao Financeiro Disk.');
+    }
+    const row = this.data.gatewayConfigs.find(x => x.id === id);
+    if (!row) throw new Error('Gateway não encontrado.');
+    const now = new Date().toLocaleString('pt-BR');
+    const ready = !!row.secretConfigured && !!row.clientId && !!row.merchantId;
+
+    // Regra mandatória: sem falso positivo. Enquanto não houver backend homologado, informa a dependência de integração.
+    row.connectionStatus = ready
+      ? 'Credenciais cadastradas - teste real depende do backend'
+      : 'Não configurado (Credenciais incompletas)';
+    row.lastTestAt = now;
+
+    row.logs = row.logs || [];
+    row.logs.unshift({
+      at: now,
+      action: 'Teste de conexão solicitado',
+      actor: this.state.currentUser.name,
+      result: row.connectionStatus
+    });
+    this.recordOperationEvent(
+      { id: row.id, protocol: row.id, workflowId: `WF-${row.id}` },
+      'Teste de conexão de gateway',
+      `${row.name}: ${row.connectionStatus}`,
+      'Gateways e Adquirentes'
+    );
+    this.persist();
+    this.notify();
+    return { row, ready };
   }
 
   saveSplitRule({ eventId, name, beneficiaries }) {

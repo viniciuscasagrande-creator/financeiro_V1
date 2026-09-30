@@ -31,6 +31,7 @@ docs/
     ├── PACOTE_15_CORRECOES_REGRESSAO.md
     ├── PACOTE_16_VISAO_GERAL_FUNCIONAL.md
     ├── PACOTE_17_TAXAS_REGRAS_COMERCIAIS_FUNCIONAIS.md
+    ├── PACOTE_18_CENTRAL_GATEWAYS_ADQUIRENTES.md
     └── PACOTE_AJUSTE_FINANCEIRO_DISK.md
 ```
 
@@ -56,6 +57,7 @@ docs/
 | [Pacote 15](pacotes/PACOTE_15_CORRECOES_REGRESSAO.md) | Correções de Regressão & Estabilidade | Estabilização dos fluxos de aprovação e governança Maker/Checker |
 | [Pacote 16](pacotes/PACOTE_16_VISAO_GERAL_FUNCIONAL.md) | Visão Geral Funcional | Submenus especializados: Dashboard Executivo, Posição Geral, Indicadores e Inteligência |
 | [Pacote 17 — Taxas e Regras Comerciais](pacotes/PACOTE_17_TAXAS_REGRAS_COMERCIAIS_FUNCIONAIS.md) | Taxas & Regras Comerciais Administrativas | Gestão de MDR, taxas cobradas, spread automático, hierarquia Evento → Produtor → Geral Disk, versionamento e simulador |
+| [Pacote 18 — Gateways e Adquirentes](pacotes/PACOTE_18_CENTRAL_GATEWAYS_ADQUIRENTES.md) | Central Operacional de Gateways & Adquirentes | 12 abas operacionais (Credenciais seguras, Bandeiras, PIX, Boleto, Parcelamento, Antifraude, Webhooks, Logs, Relatórios), teste de conexão verídico e pipeline com Taxas e Conciliação |
 | [Pacote Ajuste — Contas Financeiras](pacotes/PACOTE_AJUSTE_FINANCEIRO_DISK.md) | Contas Financeiras & Bancárias | Cadastro de contas pelo Financeiro Disk, homologação Bacen/CIP, máscaras e bloqueio de repasses |
 
 ---

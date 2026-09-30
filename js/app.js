@@ -40,7 +40,7 @@ import {
 import { renderDiskAprovacoes } from './views/disk/aprovacoes.js';
 import { renderDiskSolicitacoes } from './views/disk/solicitacoes.js';
 import { renderDiskProdutores } from './views/disk/produtores.js';
-import { renderDiskGateways } from './views/disk/gatewaysMdr.js';
+import { renderDiskGateways, renderGatewayTab } from './views/disk/gatewaysMdr.js';
 import { renderDiskLedger } from './views/disk/ledger.js';
 import { renderDiskTesouraria } from './views/disk/tesouraria.js';
 import { renderDiskContasPagar } from './views/disk/diskContasPagar.js';
@@ -4004,6 +4004,476 @@ class LimitlessFinancialApp {
       alert(err.message);
     }
   }
+
+  // ==========================================================================
+  // PACOTE 18: CENTRAL OPERACIONAL DE GATEWAYS E ADQUIRENTES
+  // ==========================================================================
+  p18Tab(tab, btn) {
+    this.currentP18Tab = tab;
+    const box = document.getElementById('p18-tab-content');
+    if (!box) {
+      this.navigate('diskGateways');
+      return;
+    }
+    const state = financialStore.getState();
+    box.innerHTML = renderGatewayTab(state, tab);
+    if (btn && btn.parentElement) {
+      btn.parentElement.querySelectorAll('button').forEach(b => {
+        b.className = 'btn btn-light btn-sm';
+        b.style.background = '';
+        b.style.borderColor = '';
+        b.style.fontWeight = '600';
+        b.style.color = '#475569';
+      });
+      btn.className = 'btn btn-primary btn-sm';
+      btn.style.background = '#2563eb';
+      btn.style.borderColor = '#1d4ed8';
+      btn.style.fontWeight = '700';
+      btn.style.color = '#ffffff';
+    }
+  }
+
+  p18Action(action, id = '') {
+    try {
+      if (action === 'novo' || action === 'editar') {
+        return this.openGatewayModal(id);
+      }
+      if (action === 'testar') {
+        const r = financialStore.testGatewayConnection(id);
+        const ready = !!(r.secretConfigured && r.clientId && r.merchantId);
+        financialStore.showToast(
+          ready ? 'Credenciais Cadastradas' : 'Integração Pendente',
+          ready
+            ? 'Credenciais mínimas cadastradas com sucesso. O teste operacional com o adquirente em produção depende do backend/endpoint homologado.'
+            : 'Complete o cadastro de Merchant ID, Client ID e Secret antes de solicitar o teste.',
+          ready ? 'info' : 'warning'
+        );
+        return this.refreshP18View();
+      }
+      if (action === 'status') {
+        const r = financialStore.toggleGateway(id);
+        financialStore.showToast(
+          'Situação Atualizada',
+          `${r.name} agora está ${r.enabled ? 'Ativo' : 'Inativo'}.`,
+          r.enabled ? 'success' : 'warning'
+        );
+        return this.refreshP18View();
+      }
+      if (action === 'logs') {
+        this.p18Tab('logs');
+        return;
+      }
+      if (action.startsWith('configurar-')) {
+        const key = action.replace('configurar-', '');
+        return this.openGatewaySectionModal(id, key);
+      }
+    } catch (e) {
+      financialStore.showToast('Operação não concluída', e.message, 'danger');
+    }
+  }
+
+  refreshP18View() {
+    const state = financialStore.getState();
+    this.render(state);
+  }
+
+  openGatewayModal(id = '') {
+    const state = financialStore.getState();
+    const g = (state.data?.gatewayConfigs || []).find(x => x.id === id) || {};
+    const isEdit = !!id;
+
+    this.showModal(`
+      <div class="modal-card" style="max-width: 720px;">
+        <div class="modal-header d-flex justify-content-between align-items-center" style="background: #0f172a; color: white;">
+          <div>
+            <div class="fs-xs text-primary fw-bold text-uppercase">Central de Gateways & Adquirentes</div>
+            <h4 class="mb-0 text-white fw-bold">${isEdit ? 'Editar Configuração de Gateway' : 'Novo Gateway / Adquirente'}</h4>
+          </div>
+          <button class="modal-close-btn text-white" onclick="window.app.closeModal()">&times;</button>
+        </div>
+        <form class="modal-body p-4" onsubmit="window.app.submitGateway(event, '${id}')">
+          <div class="alert alert-info py-2 px-3 mb-3" style="font-size: 0.82rem; background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af;">
+            <i class="ph-info me-1"></i> As credenciais são mascaradas na interface. Os segredos técnicos e chaves de API não devem ser trafegados em texto aberto.
+          </div>
+          <div class="row g-3">
+            <div class="col-md-7">
+              <label class="form-label fw-bold">Nome do Provedor / Gateway *</label>
+              <input class="form-control" name="name" required value="${g.name || ''}" placeholder="Ex: Cielo 3.0, Rede e-Rede, Stone Pagar.me">
+            </div>
+            <div class="col-md-5">
+              <label class="form-label fw-bold">Ambiente de Execução *</label>
+              <select class="form-select" name="environment">
+                <option value="Produção" ${g.environment === 'Produção' ? 'selected' : ''}>Produção</option>
+                <option value="Sandbox" ${g.environment === 'Sandbox' ? 'selected' : ''}>Sandbox (Homologação)</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-bold">Merchant ID / Estabelecimento</label>
+              <input class="form-control" name="merchantId" value="${g.merchantId || ''}" placeholder="Identificador do lojista">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-bold">Client ID / App Key</label>
+              <input class="form-control" name="clientId" value="${g.clientId || ''}" placeholder="Identificador da aplicação">
+            </div>
+            <div class="col-12">
+              <label class="form-label fw-bold">Client Secret / API Token</label>
+              <input class="form-control" type="password" name="secret" placeholder="${g.secretConfigured ? '•••••••••••••••• (Deixe em branco para manter)' : 'Cole aqui a chave secreta'}">
+              <div class="form-text fs-xs text-muted">
+                Em produção, este valor é processado pelo secret manager e armazenado em vault com criptografia de ponta a ponta.
+              </div>
+            </div>
+          </div>
+          <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
+            <button type="button" class="btn btn-light" onclick="window.app.closeModal()">Cancelar</button>
+            <button type="submit" class="btn btn-primary" style="background: #2563eb; border-color: #1d4ed8;">
+              <i class="ph-check me-1"></i> Salvar Configurações
+            </button>
+          </div>
+        </form>
+      </div>
+    `);
+  }
+
+  submitGateway(e, id = '') {
+    e.preventDefault();
+    const f = new FormData(e.target);
+    const secret = String(f.get('secret') || '').trim();
+    const payload = {
+      name: f.get('name'),
+      environment: f.get('environment'),
+      merchantId: f.get('merchantId'),
+      clientId: f.get('clientId')
+    };
+    if (secret) {
+      payload.secretConfigured = true;
+    }
+    const r = financialStore.saveGatewayConfig(payload, id || null);
+    this.closeModal();
+    financialStore.showToast(
+      'Gateway Salvo',
+      `${r.name} atualizado com sucesso na configuração local.`,
+      'success'
+    );
+    this.refreshP18View();
+  }
+
+  openGatewaySectionModal(id, key) {
+    const state = financialStore.getState();
+    const g = (state.data?.gatewayConfigs || []).find(x => x.id === id);
+    if (!g) return;
+
+    const titles = {
+      cred: 'Credenciais & Conectividade',
+      cards: 'Bandeiras e Cartões Aceitos',
+      pix: 'Configuração Técnica do PIX',
+      boleto: 'Parâmetros de Boletos Bancários',
+      installments: 'Regras de Parcelamento e Juros',
+      antifraud: 'Mecanismos de Antifraude & 3DS',
+      webhooks: 'Webhooks & Notificações de Eventos'
+    };
+
+    let fieldsHtml = '';
+
+    if (key === 'cred') {
+      fieldsHtml = `
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label fw-bold">Ambiente</label>
+            <select class="form-select" name="environment">
+              <option value="Produção" ${g.environment === 'Produção' ? 'selected' : ''}>Produção</option>
+              <option value="Sandbox" ${g.environment === 'Sandbox' ? 'selected' : ''}>Sandbox</option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-bold">Merchant ID</label>
+            <input class="form-control" name="merchantId" value="${g.merchantId || ''}">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-bold">Client ID</label>
+            <input class="form-control" name="clientId" value="${g.clientId || ''}">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-bold">Client Secret</label>
+            <input class="form-control" type="password" name="secret" placeholder="${g.secretConfigured ? '•••••••• (Manter atual)' : 'Informar secret'}">
+          </div>
+        </div>
+      `;
+    } else if (key === 'cards') {
+      const currentCards = (g.cards || []).join(', ');
+      fieldsHtml = `
+        <div class="mb-3">
+          <label class="form-label fw-bold">Bandeiras Habilitadas (separadas por vírgula)</label>
+          <input class="form-control" name="cards" value="${currentCards}" placeholder="Visa, Mastercard, Elo, Amex, Hipercard">
+          <div class="form-text fs-xs text-muted">Bandeiras suportadas: Visa, Mastercard, Elo, American Express, Hipercard, Diners Club, Cabal.</div>
+        </div>
+      `;
+    } else if (key === 'pix') {
+      const pix = g.pix || {};
+      fieldsHtml = `
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label class="form-label fw-bold">PIX Habilitado</label>
+            <select class="form-select" name="enabled">
+              <option value="true" ${pix.enabled ? 'selected' : ''}>Sim</option>
+              <option value="false" ${!pix.enabled ? 'selected' : ''}>Não</option>
+            </select>
+          </div>
+          <div class="col-md-8">
+            <label class="form-label fw-bold">Chave PIX Cadastrada</label>
+            <input class="form-control" name="key" value="${pix.key || ''}" placeholder="Chave vinculada no PSP">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-bold">Prazo de Liquidação</label>
+            <select class="form-select" name="term">
+              <option value="D+0 (Instantâneo)" ${pix.term && pix.term.includes('D+0') ? 'selected' : ''}>D+0 (Instantâneo via SPI)</option>
+              <option value="D+1" ${pix.term && pix.term.includes('D+1') ? 'selected' : ''}>D+1 (Próximo dia útil)</option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-bold">Split SPI Nativo</label>
+            <select class="form-select" name="spiSplit">
+              <option value="true" ${pix.spiSplit !== false ? 'selected' : ''}>Habilitado (Direto na Conta)</option>
+              <option value="false" ${pix.spiSplit === false ? 'selected' : ''}>Desabilitado (Acúmulo Conta Gráfica)</option>
+            </select>
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-bold">Observações Técnicas</label>
+            <input class="form-control" name="note" value="${pix.note || ''}" placeholder="Ex: Gateway homologado no DICT Bacen">
+          </div>
+        </div>
+      `;
+    } else if (key === 'boleto') {
+      const boleto = g.boleto || {};
+      fieldsHtml = `
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label class="form-label fw-bold">Boleto Habilitado</label>
+            <select class="form-select" name="enabled">
+              <option value="true" ${boleto.enabled ? 'selected' : ''}>Sim</option>
+              <option value="false" ${!boleto.enabled ? 'selected' : ''}>Não</option>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-bold">Banco Emissor</label>
+            <input class="form-control" name="bank" value="${boleto.bank || 'Itaú Unibanco'}" placeholder="Itaú, Bradesco, Santander">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-bold">Carteira / Convênio</label>
+            <input class="form-control" name="wallet" value="${boleto.wallet || '109'}" placeholder="Ex: 109 ou 09">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-bold">Dias para Vencimento</label>
+            <input class="form-control" type="number" name="dueDays" value="${boleto.dueDays || 3}">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-bold">Multa por Atraso (%)</label>
+            <input class="form-control" type="number" step="0.01" name="finePercent" value="${boleto.finePercent || 2.00}">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-bold">Juros ao Mês (%)</label>
+            <input class="form-control" type="number" step="0.01" name="interestMonthly" value="${boleto.interestMonthly || 1.00}">
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-bold">Instruções de Impressão</label>
+            <input class="form-control" name="instructions" value="${boleto.instructions || 'Não receber após o vencimento. Venda sujeita a estorno.'}">
+          </div>
+        </div>
+      `;
+    } else if (key === 'installments') {
+      const inst = g.installments || {};
+      fieldsHtml = `
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label class="form-label fw-bold">Parcelamento Ativo</label>
+            <select class="form-select" name="enabled">
+              <option value="true" ${inst.enabled ? 'selected' : ''}>Sim</option>
+              <option value="false" ${!inst.enabled ? 'selected' : ''}>Não</option>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-bold">Parcelas Máximas</label>
+            <select class="form-select" name="max">
+              ${[1, 2, 3, 4, 5, 6, 10, 12].map(n => `<option value="${n}" ${inst.max === n ? 'selected' : ''}>Até ${n}x</option>`).join('')}
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-bold">Juros ao Comprador de</label>
+            <input class="form-control" name="interestFrom" value="${inst.interestFrom || '2x'}" placeholder="Ex: 2x ou Sem juros">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-bold">Valor Mínimo da Parcela (R$)</label>
+            <input class="form-control" type="number" step="0.01" name="minAmount" value="${inst.minAmount || 20.00}">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-bold">Observação</label>
+            <input class="form-control" name="note" value="${inst.note || ''}" placeholder="Diretriz para o checkout">
+          </div>
+        </div>
+      `;
+    } else if (key === 'antifraud') {
+      const anti = g.antifraud || {};
+      fieldsHtml = `
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label class="form-label fw-bold">Antifraude Ativo</label>
+            <select class="form-select" name="enabled">
+              <option value="true" ${anti.enabled ? 'selected' : ''}>Sim</option>
+              <option value="false" ${!anti.enabled ? 'selected' : ''}>Não</option>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-bold">Provedor Integrado</label>
+            <select class="form-select" name="provider">
+              <option value="ClearSale Total" ${anti.provider === 'ClearSale Total' ? 'selected' : ''}>ClearSale Total</option>
+              <option value="Konduto Shield" ${anti.provider === 'Konduto Shield' ? 'selected' : ''}>Konduto Shield</option>
+              <option value="Stone Shield" ${anti.provider === 'Stone Shield' ? 'selected' : ''}>Stone Shield</option>
+              <option value="Cybersource Decision" ${anti.provider === 'Cybersource Decision' ? 'selected' : ''}>Cybersource Decision</option>
+              <option value="3DS 2.0 Nativo" ${anti.provider === '3DS 2.0 Nativo' ? 'selected' : ''}>3DS 2.0 Nativo</option>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-bold">Modo de Operação</label>
+            <select class="form-select" name="mode">
+              <option value="Análise Ativa + 3DS" ${anti.mode === 'Análise Ativa + 3DS' ? 'selected' : ''}>Análise Ativa + 3DS</option>
+              <option value="Score Passivo" ${anti.mode === 'Score Passivo' ? 'selected' : ''}>Score Passivo</option>
+              <option value="Bloqueio Automático" ${anti.mode === 'Bloqueio Automático' ? 'selected' : ''}>Bloqueio Automático</option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-bold">Score de Corte / Limite</label>
+            <input class="form-control" name="scoreThreshold" value="${anti.scoreThreshold || '85 pontos'}" placeholder="Ex: 85 pontos ou 90%">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-bold">Observações</label>
+            <input class="form-control" name="note" value="${anti.note || ''}" placeholder="Regra de mitigação de chargeback">
+          </div>
+        </div>
+      `;
+    } else if (key === 'webhooks') {
+      const wh = g.webhooks || {};
+      fieldsHtml = `
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label class="form-label fw-bold">Webhook Ativo</label>
+            <select class="form-select" name="enabled">
+              <option value="true" ${wh.enabled ? 'selected' : ''}>Sim</option>
+              <option value="false" ${!wh.enabled ? 'selected' : ''}>Não</option>
+            </select>
+          </div>
+          <div class="col-md-8">
+            <label class="form-label fw-bold">URL de Notificação Endpoint</label>
+            <input class="form-control" name="url" value="${wh.url || ''}" placeholder="https://api.diskingressos.com.br/v1/gateways/webhook">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-bold">Validação de Assinatura HMAC</label>
+            <select class="form-select" name="hmac">
+              <option value="true" ${wh.hmac !== false ? 'selected' : ''}>Obrigatória (HMAC-SHA256)</option>
+              <option value="false" ${wh.hmac === false ? 'selected' : ''}>Opcional (Não recomendado)</option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-bold">Eventos Notificados</label>
+            <input class="form-control" name="events" value="${wh.events || 'payment.authorized, payment.captured, chargeback'}" placeholder="payment.authorized, ...">
+          </div>
+        </div>
+      `;
+    }
+
+    this.showModal(`
+      <div class="modal-card" style="max-width: 680px;">
+        <div class="modal-header d-flex justify-content-between align-items-center" style="background: #0f172a; color: white;">
+          <div>
+            <div class="fs-xs text-primary fw-bold text-uppercase">${g.name} &bull; Parâmetros Operacionais</div>
+            <h4 class="mb-0 text-white fw-bold">${titles[key] || key}</h4>
+          </div>
+          <button class="modal-close-btn text-white" onclick="window.app.closeModal()">&times;</button>
+        </div>
+        <form class="modal-body p-4" onsubmit="window.app.submitGatewaySection(event, '${id}', '${key}')">
+          ${fieldsHtml}
+          <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
+            <button type="button" class="btn btn-light" onclick="window.app.closeModal()">Cancelar</button>
+            <button type="submit" class="btn btn-primary" style="background: #2563eb; border-color: #1d4ed8;">
+              <i class="ph-check me-1"></i> Salvar Seção
+            </button>
+          </div>
+        </form>
+      </div>
+    `);
+  }
+
+  submitGatewaySection(e, id, key) {
+    e.preventDefault();
+    const f = new FormData(e.target);
+    const state = financialStore.getState();
+    const g = (state.data?.gatewayConfigs || []).find(x => x.id === id);
+    if (!g) return;
+
+    if (key === 'cards') {
+      const cards = String(f.get('cards') || '')
+        .split(',')
+        .map(x => x.trim())
+        .filter(Boolean);
+      financialStore.updateGatewaySection(id, 'cards', cards);
+    } else if (key === 'cred') {
+      const secret = String(f.get('secret') || '').trim();
+      const payload = {
+        environment: f.get('environment'),
+        merchantId: f.get('merchantId'),
+        clientId: f.get('clientId')
+      };
+      if (secret) payload.secretConfigured = true;
+      financialStore.saveGatewayConfig(payload, id);
+    } else if (key === 'pix') {
+      financialStore.updateGatewaySection(id, 'pix', {
+        enabled: f.get('enabled') === 'true',
+        key: f.get('key') || '',
+        term: f.get('term') || 'D+0 (Instantâneo)',
+        spiSplit: f.get('spiSplit') === 'true',
+        note: f.get('note') || ''
+      });
+    } else if (key === 'boleto') {
+      financialStore.updateGatewaySection(id, 'boleto', {
+        enabled: f.get('enabled') === 'true',
+        bank: f.get('bank') || '',
+        wallet: f.get('wallet') || '',
+        dueDays: Number(f.get('dueDays')) || 3,
+        finePercent: Number(f.get('finePercent')) || 2,
+        interestMonthly: Number(f.get('interestMonthly')) || 1,
+        instructions: f.get('instructions') || ''
+      });
+    } else if (key === 'installments') {
+      financialStore.updateGatewaySection(id, 'installments', {
+        enabled: f.get('enabled') === 'true',
+        max: Number(f.get('max')) || 12,
+        interestFrom: f.get('interestFrom') || '2x',
+        minAmount: Number(f.get('minAmount')) || 20,
+        note: f.get('note') || ''
+      });
+    } else if (key === 'antifraud') {
+      financialStore.updateGatewaySection(id, 'antifraud', {
+        enabled: f.get('enabled') === 'true',
+        provider: f.get('provider') || '',
+        mode: f.get('mode') || '',
+        scoreThreshold: f.get('scoreThreshold') || '',
+        note: f.get('note') || ''
+      });
+    } else if (key === 'webhooks') {
+      financialStore.updateGatewaySection(id, 'webhooks', {
+        enabled: f.get('enabled') === 'true',
+        url: f.get('url') || '',
+        hmac: f.get('hmac') === 'true',
+        events: f.get('events') || ''
+      });
+    }
+
+    this.closeModal();
+    financialStore.showToast(
+      'Configuração Salva',
+      'As alterações foram persistidas no estado e estão operacionais.',
+      'success'
+    );
+    this.refreshP18View();
+  }
 }
 
 // ============================================================================
@@ -4043,6 +4513,18 @@ window.p13Action = function(action, id) {
 window.p13RecalcSplit = function(raw) {
   if (window.app && typeof window.app.p13RecalcSplit === 'function') {
     return window.app.p13RecalcSplit(raw);
+  }
+};
+
+window.p18Tab = function(tab, btn) {
+  if (window.app && typeof window.app.p18Tab === 'function') {
+    return window.app.p18Tab(tab, btn);
+  }
+};
+
+window.p18Action = function(action, id) {
+  if (window.app && typeof window.app.p18Action === 'function') {
+    return window.app.p18Action(action, id);
   }
 };
 
