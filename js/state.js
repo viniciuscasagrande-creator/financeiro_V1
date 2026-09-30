@@ -169,6 +169,50 @@ class CoreFinanceiroStore {
       workflowId: item.workflowId || `WF-${item.id}`,
       updatedAt: item.updatedAt || item.requestDate || new Date().toLocaleString('pt-BR')
     }));
+
+    if (this.data.producers) {
+      this.data.producers.forEach(p => {
+        if (!p.bankAccounts) p.bankAccounts = [];
+        p.bankAccounts.forEach(b => {
+          if (!b.status) b.status = 'Ativa';
+          if (!b.bindingType) b.bindingType = 'geral';
+          if (!b.documents || !b.documents.length) {
+            b.documents = [{
+              id: `doc-${b.id}`,
+              name: 'comprovante_titularidade.pdf',
+              type: 'Comprovante bancário',
+              uploadedAt: b.validatedAt || '15/01/2025'
+            }];
+          }
+          if (!b.version) b.version = 1;
+        });
+      });
+      const xyz = this.data.producers.find(p => p.id === 'prod-xyz');
+      if (xyz && !xyz.bankAccounts.some(b => b.status === 'Pendente de validação')) {
+        xyz.bankAccounts.push({
+          id: 'bnk-xyz-2',
+          bankName: 'Santander Brasil (033)',
+          accountType: 'Conta Corrente PJ',
+          agency: '4321',
+          accountNumber: '9872-1',
+          digit: '1',
+          holderName: 'Eventos XYZ Produções Artísticas',
+          cnpj: '22.418.990/0001-44',
+          pixKey: '22.418.990/0001-44',
+          pixType: 'CNPJ',
+          purpose: 'Repasse',
+          bindingType: 'evento',
+          eventId: 'evt-002',
+          eventName: 'Show Internacional Rock Tour',
+          isDefault: false,
+          status: 'Pendente de validação',
+          createdAt: '28/09/2026 11:20',
+          documents: [
+            { id: 'doc-bnk-xyz-2', name: 'comprovante_bancario_santander.pdf', type: 'Comprovante bancário', uploadedAt: '28/09/2026' }
+          ]
+        });
+      }
+    }
   }
 
   recordOperationEvent(item, action, details = '', module = 'Core Financeiro') {
@@ -411,8 +455,8 @@ class CoreFinanceiroStore {
       alert(`Saldo insuficiente: O valor solicitado (${numericAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}) excede o saldo disponível de ${event.name} (${event.availableBalance.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}).`);
       return null;
     }
-    if (!bank) {
-      alert("Cadastre ou selecione uma conta bancária válida.");
+    if (!bank || !['Ativa', 'Validada & Ativa'].includes(bank.status)) {
+      alert("Pagamento bloqueado — Produtor sem conta bancária validada.");
       return null;
     }
 
@@ -702,6 +746,13 @@ class CoreFinanceiroStore {
       return;
     }
 
+    const prodCheck = this.data.producers.find(p => p.id === item.producerId);
+    const activeBank = prodCheck?.bankAccounts?.find(b => ['Ativa', 'Validada & Ativa'].includes(b.status));
+    if (!activeBank) {
+      alert("Pagamento bloqueado — Produtor sem conta bancária validada.");
+      return;
+    }
+
     const nowTime = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
     const nowDate = new Date().toLocaleDateString('pt-BR');
 
@@ -960,7 +1011,7 @@ class CoreFinanceiroStore {
     return newApprovalItem;
   }
 
-  // Cadastro de Nova Conta Bancária PJ Homologada
+  // Cadastro de Nova Conta Bancária PJ Homologada (Portal do Produtor)
   addBankAccount({ bankName, accountType, agency, accountNumber, pixKey, isDefault }) {
     const producer = this.getState().activeProducer;
     const newAccount = {
@@ -983,6 +1034,211 @@ class CoreFinanceiroStore {
 
     producer.bankAccounts.push(newAccount);
     this.showToast("Conta Cadastrada", `${bankName} cadastrado com sucesso para recebimento de repasses.`, "success");
+    this.notify();
+    return newAccount;
+  }
+
+  // ==========================================================================
+  // CONTAS FINANCEIRAS & BANCÁRIAS — FINANCEIRO DISK (PACOTE 17 / FLUXO COMPLETO)
+  // ==========================================================================
+
+  // 1. Financeiro Disk cadastra conta bancária informada pelo produtor (Status inicial: Pendente de validação)
+  addDiskProducerBankAccount({
+    producerId,
+    eventId,
+    bindingType,
+    holderName,
+    cnpj,
+    bankName,
+    accountType,
+    agency,
+    accountNumber,
+    digit,
+    pixKey,
+    pixType,
+    purpose,
+    documentType,
+    documentName
+  }) {
+    if (!['disk', 'admin'].includes(this.state.currentUser.role)) {
+      throw new Error('Somente o Financeiro Disk pode cadastrar contas bancárias de produtores.');
+    }
+    const producer = this.data.producers.find(p => p.id === producerId);
+    if (!producer) throw new Error('Produtor não encontrado.');
+    if (!bankName || !agency || !accountNumber || !holderName || !cnpj) {
+      throw new Error('Preencha os campos obrigatórios (Produtor, Titular, CPF/CNPJ, Banco, Agência e Conta).');
+    }
+
+    const fullAccNumber = digit ? `${accountNumber}-${digit}` : accountNumber;
+    const newId = `bnk-${Date.now()}`;
+    const event = eventId && eventId !== 'all' ? this.data.events.find(e => e.id === eventId) : null;
+
+    const newAccount = {
+      id: newId,
+      bankName,
+      accountType: accountType || 'Conta Corrente PJ',
+      agency,
+      accountNumber: fullAccNumber,
+      digit: digit || '',
+      holderName,
+      cnpj,
+      pixKey: pixKey || '',
+      pixType: pixType || 'CNPJ',
+      purpose: purpose || 'Ambos',
+      bindingType: bindingType || 'geral',
+      eventId: bindingType === 'evento' ? eventId : null,
+      eventName: bindingType === 'evento' ? (event?.name || 'Evento específico') : 'Geral (Todos os Eventos)',
+      isDefault: false,
+      status: 'Pendente de validação',
+      createdAt: new Date().toLocaleString('pt-BR'),
+      createdBy: this.state.currentUser.name,
+      version: 1,
+      documents: documentName ? [{
+        id: `doc-${Date.now()}`,
+        name: documentName,
+        type: documentType || 'Comprovante bancário',
+        uploadedAt: new Date().toLocaleDateString('pt-BR')
+      }] : [{
+        id: `doc-${Date.now()}`,
+        name: 'comprovante_bancario_anexado.pdf',
+        type: 'Comprovante bancário',
+        uploadedAt: new Date().toLocaleDateString('pt-BR')
+      }]
+    };
+
+    if (!producer.bankAccounts) producer.bankAccounts = [];
+    producer.bankAccounts.unshift(newAccount);
+
+    this.recordOperationEvent(
+      { id: newId, protocol: newId, workflowId: `WF-${newId}`, producerId: producer.id, eventId: newAccount.eventId },
+      'Conta bancária cadastrada (Pendente de validação)',
+      `${bankName} Ag. ${agency} / Conta ${fullAccNumber} · ${holderName} (${newAccount.eventName})`,
+      'Contas Financeiras'
+    );
+
+    this.showToast('Conta Cadastrada', `Conta bancária cadastrada para ${producer.name}. Status: Pendente de validação.`, 'warning');
+    this.persist();
+    this.notify();
+    return newAccount;
+  }
+
+  // 2. Homologação/Validação formal da conta bancária pela mesa do Financeiro Disk (Bacen / CIP)
+  validateProducerBankAccount({ producerId, accountId, approve = true, rejectionReason = '' }) {
+    if (!['disk', 'admin'].includes(this.state.currentUser.role)) {
+      throw new Error('Somente o Financeiro Disk pode homologar contas bancárias.');
+    }
+    const producer = this.data.producers.find(p => p.id === producerId);
+    if (!producer) throw new Error('Produtor não encontrado.');
+    const account = producer.bankAccounts?.find(b => b.id === accountId);
+    if (!account) throw new Error('Conta bancária não encontrada.');
+
+    const operator = this.state.currentUser.name;
+    const now = new Date().toLocaleString('pt-BR');
+
+    if (approve) {
+      account.status = 'Ativa';
+      account.validatedAt = `${now} via Bacen/CIP (${operator})`;
+      account.validatedBy = operator;
+
+      // Se esta conta substitui uma versão anterior:
+      if (account.replacesAccountId) {
+        const oldAcc = producer.bankAccounts.find(b => b.id === account.replacesAccountId);
+        if (oldAcc) {
+          oldAcc.status = 'Inativa (Substituída)';
+          oldAcc.replacedAt = now;
+          oldAcc.replacedByAccountId = account.id;
+        }
+      }
+
+      this.recordOperationEvent(
+        { id: account.id, protocol: account.id, workflowId: `WF-${account.id}`, producerId: producer.id, eventId: account.eventId },
+        'Conta bancária homologada & ativada',
+        `${account.bankName} Ag. ${account.agency} · Homologada por ${operator} via Bacen/CIP`,
+        'Contas Financeiras'
+      );
+      this.showToast('Conta Homologada', `Conta bancária do produtor ${producer.name} ativada com sucesso.`, 'success');
+    } else {
+      if (!rejectionReason?.trim()) {
+        throw new Error('Informe o motivo da recusa na validação da conta bancária.');
+      }
+      account.status = 'Rejeitada';
+      account.rejectionReason = rejectionReason;
+      account.rejectedAt = now;
+      account.rejectedBy = operator;
+
+      this.recordOperationEvent(
+        { id: account.id, protocol: account.id, workflowId: `WF-${account.id}`, producerId: producer.id, eventId: account.eventId },
+        'Validação de conta bancária recusada',
+        `Motivo: ${rejectionReason}`,
+        'Contas Financeiras'
+      );
+      this.showToast('Validação Recusada', `Conta rejeitada: ${rejectionReason}`, 'error');
+    }
+
+    this.persist();
+    this.notify();
+    return account;
+  }
+
+  // 3. Alteração Controlada de Conta Bancária Ativa (Preserva histórico e gera nova versão pendente)
+  requestBankAccountChange({ producerId, accountId, newBankData }) {
+    if (!['disk', 'admin'].includes(this.state.currentUser.role)) {
+      throw new Error('Somente o Financeiro Disk pode solicitar alteração de contas.');
+    }
+    const producer = this.data.producers.find(p => p.id === producerId);
+    if (!producer) throw new Error('Produtor não encontrado.');
+    const oldAccount = producer.bankAccounts?.find(b => b.id === accountId);
+    if (!oldAccount) throw new Error('Conta de origem não encontrada.');
+
+    const newId = `bnk-${Date.now()}`;
+    const version = (oldAccount.version || 1) + 1;
+    const fullAccNumber = newBankData.digit ? `${newBankData.accountNumber}-${newBankData.digit}` : newBankData.accountNumber;
+
+    const newAccount = {
+      id: newId,
+      replacesAccountId: oldAccount.id,
+      version: version,
+      bankName: newBankData.bankName || oldAccount.bankName,
+      accountType: newBankData.accountType || oldAccount.accountType,
+      agency: newBankData.agency || oldAccount.agency,
+      accountNumber: fullAccNumber || oldAccount.accountNumber,
+      digit: newBankData.digit || '',
+      holderName: newBankData.holderName || oldAccount.holderName,
+      cnpj: newBankData.cnpj || oldAccount.cnpj,
+      pixKey: newBankData.pixKey || '',
+      pixType: newBankData.pixType || 'CNPJ',
+      purpose: newBankData.purpose || oldAccount.purpose || 'Repasse',
+      bindingType: newBankData.bindingType || oldAccount.bindingType || 'geral',
+      eventId: newBankData.eventId !== undefined ? newBankData.eventId : oldAccount.eventId,
+      eventName: newBankData.eventName || oldAccount.eventName || 'Geral',
+      isDefault: false,
+      status: 'Pendente de validação',
+      createdAt: new Date().toLocaleString('pt-BR'),
+      createdBy: this.state.currentUser.name,
+      documents: newBankData.documentName ? [{
+        id: `doc-${Date.now()}`,
+        name: newBankData.documentName,
+        type: newBankData.documentType || 'Comprovante bancário',
+        uploadedAt: new Date().toLocaleDateString('pt-BR')
+      }] : [{
+        id: `doc-${Date.now()}`,
+        name: 'novo_comprovante_bancario.pdf',
+        type: 'Comprovante bancário',
+        uploadedAt: new Date().toLocaleDateString('pt-BR')
+      }]
+    };
+
+    producer.bankAccounts.unshift(newAccount);
+
+    this.recordOperationEvent(
+      { id: newId, protocol: newId, workflowId: `WF-${newId}`, producerId: producer.id, eventId: newAccount.eventId },
+      `Alteração de conta bancária solicitada (v${version})`,
+      `Substituição da conta ${oldAccount.bankName} Ag. ${oldAccount.agency}. Nova versão pendente de validação.`,
+      'Contas Financeiras'
+    );
+
+    this.showToast('Alteração Solicitada', `Nova versão da conta gerada (v${version}). Aguardando validação para ativação.`, 'info');
+    this.persist();
     this.notify();
     return newAccount;
   }

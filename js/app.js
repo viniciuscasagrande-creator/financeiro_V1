@@ -194,6 +194,14 @@ class LimitlessFinancialApp {
       }
     }
 
+    if (targetView === 'diskProdutores') {
+      if (filterArg === 'contas') {
+        this.diskProdutoresTab = 'bancarias';
+      } else if (filterArg === 'all') {
+        this.diskProdutoresTab = 'dossie';
+      }
+    }
+
     if (targetView === 'diskSaldos') {
       if (filterArg === 'evento' || filterArg === 'por-evento') {
         this.diskBalanceTab = 'por-evento';
@@ -1241,17 +1249,27 @@ class LimitlessFinancialApp {
               <div class="form-text fs-xs text-muted">Máximo disponível neste evento: <strong id="modalMaxAvailable" class="text-success">${formatCurrency(selectedEvent.availableBalance)}</strong></div>
             </div>
 
-            <div class="mb-3">
-              <label class="form-label fw-bold fs-xs text-uppercase text-muted">Conta Bancária de Destino</label>
-              <select class="form-select" id="modalPayoutBank">
-                ${bankAccounts.map(b => `
-                  <option value="${b.id}">
-                    ${b.bankName} - Ag: ${b.agency} Conta: ${b.accountNumber} (${b.isDefault ? 'Principal' : 'Secundária'})
-                  </option>
-                `).join('')}
-              </select>
-              <div class="form-text fs-xs text-muted">Mesmo titular: ${producer.cnpj}</div>
-            </div>
+            ${bankAccounts.some(b => ['Ativa', 'Validada & Ativa'].includes(b.status)) ? `
+              <div class="mb-3">
+                <label class="form-label fw-bold fs-xs text-uppercase text-muted">Conta Bancária de Destino</label>
+                <select class="form-select" id="modalPayoutBank">
+                  ${bankAccounts.filter(b => ['Ativa', 'Validada & Ativa'].includes(b.status)).map(b => `
+                    <option value="${b.id}">
+                      ${b.bankName} - Ag: ${b.agency} Conta: ${b.accountNumber} (${b.isDefault ? 'Principal' : 'Secundária'})
+                    </option>
+                  `).join('')}
+                </select>
+                <div class="form-text fs-xs text-muted">Mesmo titular: ${producer.cnpj}</div>
+              </div>
+            ` : `
+              <div class="alert alert-danger p-3 mb-3" style="font-size: 0.85rem; border-left: 4px solid #dc2626; background: #fef2f2; color: #991b1b; border-radius: 6px;">
+                <div class="fw-bold mb-1"><i class="ph-warning-octagon"></i> Pagamento bloqueado — Produtor sem conta bancária validada.</div>
+                <div style="font-size: 0.78rem; opacity: 0.9; margin-bottom: 8px;">Para solicitar repasses, é obrigatório possuir ao menos uma conta bancária PJ homologada via Bacen/CIP.</div>
+                <button type="button" class="btn btn-sm btn-warning fw-bold" onclick="window.app.closeModal(); window.app.navigate('diskProdutores', 'contas'); window.app.openAddProducerBankModal('${producer.id}')">
+                  Cadastrar Conta Bancária →
+                </button>
+              </div>
+            `}
 
             <div class="mb-3">
               <label class="form-label fw-bold fs-xs text-uppercase text-muted">Observações Internas (Opcional)</label>
@@ -1260,7 +1278,7 @@ class LimitlessFinancialApp {
 
             <div class="modal-footer px-0 pb-0 pt-2 d-flex justify-content-end gap-2">
               <button type="button" class="btn btn-secondary" onclick="window.app.closeModal()">Cancelar</button>
-              <button type="submit" class="btn btn-success">Confirmar e Enviar para Análise</button>
+              <button type="submit" class="btn btn-success" ${!bankAccounts.some(b => ['Ativa', 'Validada & Ativa'].includes(b.status)) ? 'disabled' : ''}>Confirmar e Enviar para Análise</button>
             </div>
           </form>
         </div>
@@ -1548,7 +1566,7 @@ class LimitlessFinancialApp {
           viewHtml = renderDiskInteligencia(state);
           break;
         case 'diskProdutores':
-          viewHtml = renderDiskProdutores(state);
+          viewHtml = renderDiskProdutores(state, this.currentFilterArg);
           break;
         case 'diskEventos':
           viewHtml = renderDiskEventos(state, this.currentFilterArg);
@@ -2817,6 +2835,646 @@ class LimitlessFinancialApp {
         <div class="p13-track"><i style="width:${x.percent}%"></i></div>
       </div>
     `).join('');
+  }
+
+  // ==========================================================================
+  // CONTAS FINANCEIRAS & BANCÁRIAS — MODAIS & AÇÕES (PACOTE 17)
+  // ==========================================================================
+
+  setDiskProdutoresTab(tab) {
+    this.diskProdutoresTab = tab;
+    financialStore.notify();
+  }
+
+  setBankFilterProducer(producerId) {
+    this.filterBankProducer = producerId;
+    financialStore.notify();
+  }
+
+  setBankFilterStatus(status) {
+    this.filterBankStatus = status;
+    financialStore.notify();
+  }
+
+  openAddProducerBankModal(defaultProducerId = null, defaultEventId = null) {
+    const state = financialStore.getState();
+    const producers = state.data.producers || [];
+    const prodId = defaultProducerId || (state.selectedProducerId !== 'all' ? state.selectedProducerId : (producers[0]?.id || ''));
+    const prod = producers.find(p => p.id === prodId) || producers[0];
+    const events = (state.data.events || []).filter(e => e.producerId === prodId);
+
+    const html = `
+      <div class="modal-card" style="max-width: 660px;">
+        <div class="modal-header" style="background: #0f172a; color: white; border-bottom: 2px solid #3b82f6;">
+          <div>
+            <h4 class="mb-0 fw-bold" style="color: #f8fafc; font-size: 1.15rem;">
+              <i class="ph-bank" style="color: #60a5fa; margin-right: 6px;"></i>
+              Adicionar Conta Financeira / Bancária
+            </h4>
+            <div style="font-size: 0.78rem; color: #94a3b8; margin-top: 2px;">
+              Cadastro de conta bancária de repasse informada pelo produtor (Entra como 🟡 Pendente de Validação)
+            </div>
+          </div>
+          <button class="modal-close-btn" style="color: #94a3b8;" onclick="window.app.closeModal()">&times;</button>
+        </div>
+        <div class="modal-body" style="padding: 24px;">
+          <form id="addProducerBankForm" onsubmit="window.app.handleAddProducerBankSubmit(event)">
+            
+            <!-- Produtor -->
+            <div class="form-group mb-3">
+              <label class="form-label fw-bold">Produtor Titular *</label>
+              <select class="form-control" id="addBank_producerId" required onchange="window.app.onAddBankProducerChange(this.value)">
+                ${producers.map(p => `
+                  <option value="${p.id}" ${p.id === prodId ? 'selected' : ''}>
+                    ${p.name} (${p.cnpj})
+                  </option>
+                `).join('')}
+              </select>
+            </div>
+
+            <!-- Vinculação: Geral ou Evento -->
+            <div class="form-group mb-3">
+              <label class="form-label fw-bold">Vinculação da Conta *</label>
+              <div style="display: flex; gap: 20px; margin-top: 4px;">
+                <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 0.88rem;">
+                  <input type="radio" name="addBank_bindingType" value="geral" ${!defaultEventId ? 'checked' : ''} onchange="window.app.onAddBankBindingChange('geral')">
+                  <span>● Conta geral do Produtor (Todos os eventos)</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 0.88rem;">
+                  <input type="radio" name="addBank_bindingType" value="evento" ${defaultEventId ? 'checked' : ''} onchange="window.app.onAddBankBindingChange('evento')">
+                  <span>○ Vincular a evento específico</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Evento (se vinculado) -->
+            <div class="form-group mb-3" id="addBank_eventWrapper" style="${defaultEventId ? '' : 'display: none;'}">
+              <label class="form-label fw-bold">Evento Selecionado *</label>
+              <select class="form-control" id="addBank_eventId">
+                <option value="">Selecione o evento deste produtor...</option>
+                ${events.map(e => `
+                  <option value="${e.id}" ${e.id === defaultEventId ? 'selected' : ''}>
+                    ${e.name}
+                  </option>
+                `).join('')}
+              </select>
+            </div>
+
+            <div class="row g-2 mb-3">
+              <div class="col-md-7">
+                <label class="form-label fw-bold">Titular da Conta *</label>
+                <input type="text" class="form-control" id="addBank_holderName" required value="${prod?.name || ''}" placeholder="Razão Social ou Nome do Titular">
+              </div>
+              <div class="col-md-5">
+                <label class="form-label fw-bold">CPF/CNPJ do Titular *</label>
+                <input type="text" class="form-control" id="addBank_cnpj" required value="${prod?.cnpj || ''}" placeholder="00.000.000/0000-00">
+              </div>
+            </div>
+
+            <div class="row g-2 mb-3">
+              <div class="col-md-6">
+                <label class="form-label fw-bold">Instituição Bancária *</label>
+                <select class="form-control" id="addBank_bankName" required>
+                  <option value="Itaú Unibanco (341)">Itaú Unibanco (341)</option>
+                  <option value="Banco Bradesco (237)">Banco Bradesco (237)</option>
+                  <option value="Banco do Brasil (001)">Banco do Brasil (001)</option>
+                  <option value="Santander Brasil (033)">Santander Brasil (033)</option>
+                  <option value="Caixa Econômica (104)">Caixa Econômica (104)</option>
+                  <option value="Nu Pagamentos / Nubank (260)">Nu Pagamentos / Nubank (260)</option>
+                  <option value="Banco Inter (077)">Banco Inter (077)</option>
+                  <option value="BTG Pactual (208)">BTG Pactual (208)</option>
+                  <option value="Banco C6 (336)">Banco C6 (336)</option>
+                  <option value="Banco Safra (422)">Banco Safra (422)</option>
+                  <option value="Banco Sicredi (748)">Banco Sicredi (748)</option>
+                  <option value="Banco Sicoob (756)">Banco Sicoob (756)</option>
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-bold">Tipo de Conta *</label>
+                <select class="form-control" id="addBank_accountType" required>
+                  <option value="Conta Corrente PJ">Conta Corrente PJ</option>
+                  <option value="Conta Poupança PJ">Conta Poupança PJ</option>
+                  <option value="Conta de Pagamento PJ">Conta de Pagamento PJ</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="row g-2 mb-3">
+              <div class="col-md-4">
+                <label class="form-label fw-bold">Agência (sem dígito) *</label>
+                <input type="text" class="form-control" id="addBank_agency" required placeholder="Ex: 0432" maxlength="6">
+              </div>
+              <div class="col-md-5">
+                <label class="form-label fw-bold">Número da Conta *</label>
+                <input type="text" class="form-control" id="addBank_accountNumber" required placeholder="Ex: 48291" maxlength="15">
+              </div>
+              <div class="col-md-3">
+                <label class="form-label fw-bold">Dígito *</label>
+                <input type="text" class="form-control" id="addBank_digit" required placeholder="Ex: 0" maxlength="2">
+              </div>
+            </div>
+
+            <div class="row g-2 mb-3">
+              <div class="col-md-7">
+                <label class="form-label fw-bold">Chave PIX para Liquidação</label>
+                <input type="text" class="form-control" id="addBank_pixKey" placeholder="CNPJ, E-mail, Celular ou EVP">
+              </div>
+              <div class="col-md-5">
+                <label class="form-label fw-bold">Tipo da Chave PIX</label>
+                <select class="form-control" id="addBank_pixType">
+                  <option value="CNPJ">CNPJ</option>
+                  <option value="CPF">CPF</option>
+                  <option value="E-mail">E-mail</option>
+                  <option value="Telefone">Telefone</option>
+                  <option value="Chave Aleatória (EVP)">Chave Aleatória (EVP)</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-group mb-3">
+              <label class="form-label fw-bold">Finalidade da Conta</label>
+              <select class="form-control" id="addBank_purpose">
+                <option value="Repasse">Repasse (Liquidação de Vendas)</option>
+                <option value="Recebimento">Recebimento</option>
+                <option value="Ambos" selected>Ambos (Repasse & Recebimento)</option>
+              </select>
+            </div>
+
+            <!-- COMPROVAÇÃO E DOSSIÊ -->
+            <div class="card-panel" style="background: #f8fafc; border: 1px dashed #cbd5e1; padding: 14px; margin-bottom: 20px;">
+              <label class="form-label fw-bold" style="color: #1e293b; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
+                <i class="ph-file-arrow-up" style="color: #2563eb;"></i>
+                Comprovação Documental (Dossiê Financeiro do Produtor)
+              </label>
+              <p style="font-size: 0.78rem; color: #64748b; margin-bottom: 10px;">
+                Anexe o comprovante bancário ou contrato social recebido do produtor para subsidiar a homologação via Bacen/CIP.
+              </p>
+              <div class="row g-2">
+                <div class="col-md-5">
+                  <select class="form-control form-control-sm" id="addBank_documentType">
+                    <option value="Comprovante bancário">○ Comprovante bancário</option>
+                    <option value="Comprovante de titularidade">○ Comprovante de titularidade</option>
+                    <option value="Contrato Social">○ Contrato Social / PJ</option>
+                    <option value="Outro">○ Outro documento</option>
+                  </select>
+                </div>
+                <div class="col-md-7">
+                  <input type="text" class="form-control form-control-sm" id="addBank_documentName" value="comprovante_bancario_homologacao.pdf" placeholder="Nome do arquivo ou anexo">
+                </div>
+              </div>
+            </div>
+
+            <div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; padding: 10px 14px; margin-bottom: 20px; font-size: 0.8rem; color: #92400e;">
+              <strong>Fluxo de Governança:</strong> Esta conta será salva com status <strong>PENDENTE DE VALIDAÇÃO</strong>. Os repasses para ela só serão liberados após a conferência documental e validação Bacen/CIP pela mesa financeira.
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; gap: 10px;">
+              <button type="button" class="btn btn-secondary" onclick="window.app.closeModal()">Cancelar</button>
+              <button type="submit" class="btn btn-primary" style="background: #2563eb; border-color: #1d4ed8; font-weight: 700;">
+                Salvar Conta (Pendente de Validação)
+              </button>
+            </div>
+
+          </form>
+        </div>
+      </div>
+    `;
+    this.showModal(html);
+  }
+
+  onAddBankProducerChange(producerId) {
+    const state = financialStore.getState();
+    const prod = (state.data.producers || []).find(p => p.id === producerId);
+    if (!prod) return;
+    const nameEl = document.getElementById('addBank_holderName');
+    const cnpjEl = document.getElementById('addBank_cnpj');
+    if (nameEl) nameEl.value = prod.name;
+    if (cnpjEl) cnpjEl.value = prod.cnpj;
+
+    const events = (state.data.events || []).filter(e => e.producerId === producerId);
+    const eventSel = document.getElementById('addBank_eventId');
+    if (eventSel) {
+      eventSel.innerHTML = '<option value="">Selecione o evento deste produtor...</option>' +
+        events.map(e => `<option value="${e.id}">${e.name}</option>`).join('');
+    }
+  }
+
+  onAddBankBindingChange(bindingType) {
+    const wrap = document.getElementById('addBank_eventWrapper');
+    if (wrap) {
+      wrap.style.display = bindingType === 'evento' ? '' : 'none';
+    }
+  }
+
+  handleAddProducerBankSubmit(e) {
+    e.preventDefault();
+    try {
+      const producerId = document.getElementById('addBank_producerId').value;
+      const bindingType = document.querySelector('input[name="addBank_bindingType"]:checked')?.value || 'geral';
+      const eventId = bindingType === 'evento' ? document.getElementById('addBank_eventId').value : null;
+      const holderName = document.getElementById('addBank_holderName').value;
+      const cnpj = document.getElementById('addBank_cnpj').value;
+      const bankName = document.getElementById('addBank_bankName').value;
+      const accountType = document.getElementById('addBank_accountType').value;
+      const agency = document.getElementById('addBank_agency').value;
+      const accountNumber = document.getElementById('addBank_accountNumber').value;
+      const digit = document.getElementById('addBank_digit').value;
+      const pixKey = document.getElementById('addBank_pixKey').value;
+      const pixType = document.getElementById('addBank_pixType').value;
+      const purpose = document.getElementById('addBank_purpose').value;
+      const documentType = document.getElementById('addBank_documentType')?.value;
+      const documentName = document.getElementById('addBank_documentName')?.value;
+
+      financialStore.addDiskProducerBankAccount({
+        producerId,
+        eventId,
+        bindingType,
+        holderName,
+        cnpj,
+        bankName,
+        accountType,
+        agency,
+        accountNumber,
+        digit,
+        pixKey,
+        pixType,
+        purpose,
+        documentType,
+        documentName
+      });
+
+      this.closeModal();
+      this.setDiskProdutoresTab('bancarias');
+    } catch (err) {
+      alert(err.message);
+    }
+  }
+
+  openValidateBankModal(producerId, accountId) {
+    const state = financialStore.getState();
+    const prod = (state.data.producers || []).find(p => p.id === producerId);
+    if (!prod) return;
+    const b = (prod.bankAccounts || []).find(x => x.id === accountId);
+    if (!b) return;
+
+    const docName = b.documents && b.documents.length > 0 ? b.documents[0].name : 'comprovante_bancario.pdf';
+    const docType = b.documents && b.documents.length > 0 ? b.documents[0].type : 'Comprovante bancário';
+
+    const html = `
+      <div class="modal-card" style="max-width: 620px;">
+        <div class="modal-header" style="background: #14532d; color: white; border-bottom: 2px solid #22c55e;">
+          <div>
+            <h4 class="mb-0 fw-bold" style="color: #f0fdf4; font-size: 1.15rem;">
+              <i class="ph-shield-check" style="color: #4ade80; margin-right: 6px;"></i>
+              Homologação de Conta Bancária (Bacen / CIP)
+            </h4>
+            <div style="font-size: 0.78rem; color: #bbf7d0; margin-top: 2px;">
+              Validação formal da conta cadastrada para liberação de repasses do produtor
+            </div>
+          </div>
+          <button class="modal-close-btn" style="color: #bbf7d0;" onclick="window.app.closeModal()">&times;</button>
+        </div>
+        <div class="modal-body" style="padding: 24px;">
+          
+          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
+            <div style="font-size: 0.8rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Produtor</div>
+            <div style="font-size: 1.05rem; font-weight: 800; color: #1e293b;">${prod.name}</div>
+            <div style="font-size: 0.85rem; color: #475569; font-family: monospace;">CNPJ: ${prod.cnpj}</div>
+          </div>
+
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              <label class="form-label" style="font-size: 0.75rem; color: #64748b; font-weight: 700; text-transform: uppercase;">Banco</label>
+              <div style="font-weight: 700; font-size: 0.95rem; color: #1e293b;">${b.bankName}</div>
+              <div style="font-size: 0.8rem; color: #64748b;">${b.accountType || 'Conta Corrente PJ'}</div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" style="font-size: 0.75rem; color: #64748b; font-weight: 700; text-transform: uppercase;">Agência / Conta</label>
+              <div style="font-weight: 800; font-size: 1rem; color: #1e293b; font-family: monospace;">Agência ${b.agency} / Conta ${b.accountNumber}</div>
+              <div style="font-size: 0.78rem; color: #64748b;">Titular: ${b.holderName || prod.name}</div>
+            </div>
+          </div>
+
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              <label class="form-label" style="font-size: 0.75rem; color: #64748b; font-weight: 700; text-transform: uppercase;">Chave PIX</label>
+              <div style="font-weight: 700; font-size: 0.9rem; color: #2563eb; font-family: monospace;">${b.pixKey || 'Não cadastrada'}</div>
+              <div style="font-size: 0.75rem; color: #64748b;">${b.pixType || 'CNPJ'}</div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" style="font-size: 0.75rem; color: #64748b; font-weight: 700; text-transform: uppercase;">Vinculação</label>
+              <div style="font-weight: 600; font-size: 0.88rem; color: #1e293b;">${b.eventName || 'Geral (Todos os Eventos)'}</div>
+            </div>
+          </div>
+
+          <!-- Documento Comprobatório -->
+          <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 14px; margin-bottom: 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <span class="badge bg-primary text-white" style="font-size: 0.7rem; margin-bottom: 4px;">${docType}</span>
+                <div style="font-weight: 700; font-size: 0.9rem; color: #1e3a8a;"><i class="ph-file-pdf"></i> ${docName}</div>
+                <div style="font-size: 0.75rem; color: #3b82f6;">Recebido da produção e anexado ao Dossiê Financeiro</div>
+              </div>
+              <button class="btn btn-outline-primary btn-sm" onclick="alert('Visualizador de Dossiê: Exibindo ${docName} do produtor ${prod.name}')">
+                Abrir Documento
+              </button>
+            </div>
+          </div>
+
+          <!-- Checklist de Homologação -->
+          <div style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; margin-bottom: 20px;">
+            <div style="font-size: 0.82rem; font-weight: 700; color: #1e293b; margin-bottom: 10px;">Checklist de Conferência Cadastral:</div>
+            <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 0.85rem; cursor: pointer;">
+              <input type="checkbox" id="chk_titularidade" checked>
+              <span>Titularidade e CNPJ da conta bancária conferem com o cadastro homologado</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 0.85rem; cursor: pointer;">
+              <input type="checkbox" id="chk_bacen" checked>
+              <span>Validação Bacen/CIP e chave PIX ativas no Diretório DICT</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; cursor: pointer;">
+              <input type="checkbox" id="chk_doc" checked>
+              <span>Comprovante bancário idôneo anexado ao dossiê financeiro</span>
+            </label>
+          </div>
+
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+            <button type="button" class="btn btn-outline-danger btn-sm" onclick="window.app.handleValidateProducerBankSubmit('${prod.id}', '${b.id}', false)">
+              Recusar Validação
+            </button>
+            <div style="display: flex; gap: 10px;">
+              <button type="button" class="btn btn-secondary" onclick="window.app.closeModal()">Fechar</button>
+              <button type="button" class="btn btn-success" style="background: #16a34a; border-color: #15803d; font-weight: 700;" onclick="window.app.handleValidateProducerBankSubmit('${prod.id}', '${b.id}', true)">
+                Homologar & Ativar Conta
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    `;
+    this.showModal(html);
+  }
+
+  handleValidateProducerBankSubmit(producerId, accountId, approve) {
+    if (!approve) {
+      const reason = prompt('Informe a justificativa/motivo para recusar a validação desta conta bancária:');
+      if (!reason) return;
+      try {
+        financialStore.validateProducerBankAccount({ producerId, accountId, approve: false, rejectionReason: reason });
+        this.closeModal();
+      } catch (err) {
+        alert(err.message);
+      }
+      return;
+    }
+
+    try {
+      financialStore.validateProducerBankAccount({ producerId, accountId, approve: true });
+      this.closeModal();
+    } catch (err) {
+      alert(err.message);
+    }
+  }
+
+  openChangeBankModal(producerId, accountId) {
+    const state = financialStore.getState();
+    const prod = (state.data.producers || []).find(p => p.id === producerId);
+    if (!prod) return;
+    const b = (prod.bankAccounts || []).find(x => x.id === accountId);
+    if (!b) return;
+
+    const html = `
+      <div class="modal-card" style="max-width: 660px;">
+        <div class="modal-header" style="background: #78350f; color: white; border-bottom: 2px solid #f59e0b;">
+          <div>
+            <h4 class="mb-0 fw-bold" style="color: #fef3c7; font-size: 1.15rem;">
+              <i class="ph-arrows-clockwise" style="color: #fbbf24; margin-right: 6px;"></i>
+              Solicitar Alteração Controlada de Conta Bancária
+            </h4>
+            <div style="font-size: 0.78rem; color: #fde68a; margin-top: 2px;">
+              Geração de nova versão da conta para ${prod.name} (Preservação de histórico)
+            </div>
+          </div>
+          <button class="modal-close-btn" style="color: #fde68a;" onclick="window.app.closeModal()">&times;</button>
+        </div>
+        <div class="modal-body" style="padding: 24px;">
+          <div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 12px 16px; margin-bottom: 20px; font-size: 0.85rem; color: #92400e; line-height: 1.5;">
+            <strong>Regra de Governança:</strong> A conta atual (<strong>${b.bankName} Ag. ${b.agency} / C. ${b.accountNumber}</strong>) permanecerá ativa e associada a repasses anteriores. Esta solicitação gerará uma <strong>nova versão (v${(b.version || 1) + 1})</strong> com status <strong>Pendente de validação</strong>. Somente após a homologação a nova conta passará a ser utilizada e a anterior será arquivada.
+          </div>
+
+          <form id="changeBankForm" onsubmit="window.app.handleChangeProducerBankSubmit(event, '${prod.id}', '${b.id}')">
+            
+            <div class="row g-2 mb-3">
+              <div class="col-md-7">
+                <label class="form-label fw-bold">Novo Titular da Conta *</label>
+                <input type="text" class="form-control" id="changeBank_holderName" required value="${b.holderName || prod.name}">
+              </div>
+              <div class="col-md-5">
+                <label class="form-label fw-bold">Novo CPF/CNPJ *</label>
+                <input type="text" class="form-control" id="changeBank_cnpj" required value="${b.cnpj || prod.cnpj}">
+              </div>
+            </div>
+
+            <div class="row g-2 mb-3">
+              <div class="col-md-6">
+                <label class="form-label fw-bold">Novo Banco *</label>
+                <select class="form-control" id="changeBank_bankName" required>
+                  <option value="${b.bankName}" selected>${b.bankName} (Atual)</option>
+                  <option value="Itaú Unibanco (341)">Itaú Unibanco (341)</option>
+                  <option value="Banco Bradesco (237)">Banco Bradesco (237)</option>
+                  <option value="Banco do Brasil (001)">Banco do Brasil (001)</option>
+                  <option value="Santander Brasil (033)">Santander Brasil (033)</option>
+                  <option value="Caixa Econômica (104)">Caixa Econômica (104)</option>
+                  <option value="Nu Pagamentos / Nubank (260)">Nu Pagamentos / Nubank (260)</option>
+                  <option value="Banco Inter (077)">Banco Inter (077)</option>
+                  <option value="BTG Pactual (208)">BTG Pactual (208)</option>
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-bold">Tipo de Conta *</label>
+                <select class="form-control" id="changeBank_accountType" required>
+                  <option value="Conta Corrente PJ" ${b.accountType === 'Conta Corrente PJ' ? 'selected' : ''}>Conta Corrente PJ</option>
+                  <option value="Conta Poupança PJ" ${b.accountType === 'Conta Poupança PJ' ? 'selected' : ''}>Conta Poupança PJ</option>
+                  <option value="Conta de Pagamento PJ" ${b.accountType === 'Conta de Pagamento PJ' ? 'selected' : ''}>Conta de Pagamento PJ</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="row g-2 mb-3">
+              <div class="col-md-4">
+                <label class="form-label fw-bold">Nova Agência *</label>
+                <input type="text" class="form-control" id="changeBank_agency" required value="${b.agency}" maxlength="6">
+              </div>
+              <div class="col-md-5">
+                <label class="form-label fw-bold">Novo Número da Conta *</label>
+                <input type="text" class="form-control" id="changeBank_accountNumber" required value="${b.accountNumber.split('-')[0] || b.accountNumber}">
+              </div>
+              <div class="col-md-3">
+                <label class="form-label fw-bold">Dígito *</label>
+                <input type="text" class="form-control" id="changeBank_digit" required value="${b.digit || (b.accountNumber.includes('-') ? b.accountNumber.split('-')[1] : '0')}" maxlength="2">
+              </div>
+            </div>
+
+            <div class="row g-2 mb-3">
+              <div class="col-md-7">
+                <label class="form-label fw-bold">Nova Chave PIX</label>
+                <input type="text" class="form-control" id="changeBank_pixKey" value="${b.pixKey || ''}">
+              </div>
+              <div class="col-md-5">
+                <label class="form-label fw-bold">Tipo da Chave</label>
+                <select class="form-control" id="changeBank_pixType">
+                  <option value="CNPJ" ${b.pixType === 'CNPJ' ? 'selected' : ''}>CNPJ</option>
+                  <option value="CPF" ${b.pixType === 'CPF' ? 'selected' : ''}>CPF</option>
+                  <option value="E-mail" ${b.pixType === 'E-mail' ? 'selected' : ''}>E-mail</option>
+                  <option value="Telefone" ${b.pixType === 'Telefone' ? 'selected' : ''}>Telefone</option>
+                  <option value="Chave Aleatória (EVP)" ${b.pixType === 'Chave Aleatória (EVP)' ? 'selected' : ''}>Chave Aleatória (EVP)</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="card-panel" style="background: #f8fafc; border: 1px dashed #cbd5e1; padding: 14px; margin-bottom: 20px;">
+              <label class="form-label fw-bold" style="color: #1e293b; margin-bottom: 4px;">
+                Novo Comprovante Bancário / Dossiê *
+              </label>
+              <div class="row g-2">
+                <div class="col-md-5">
+                  <select class="form-control form-control-sm" id="changeBank_documentType">
+                    <option value="Comprovante bancário">○ Comprovante bancário</option>
+                    <option value="Comprovante de titularidade">○ Comprovante de titularidade</option>
+                    <option value="Contrato Social">○ Contrato Social / Alteração</option>
+                  </select>
+                </div>
+                <div class="col-md-7">
+                  <input type="text" class="form-control form-control-sm" id="changeBank_documentName" value="novo_comprovante_bancario_${prod.id}.pdf">
+                </div>
+              </div>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; gap: 10px;">
+              <button type="button" class="btn btn-secondary" onclick="window.app.closeModal()">Cancelar</button>
+              <button type="submit" class="btn btn-warning" style="background: #d97706; border-color: #b45309; color: white; font-weight: 700;">
+                Registrar Nova Versão para Validação
+              </button>
+            </div>
+
+          </form>
+        </div>
+      </div>
+    `;
+    this.showModal(html);
+  }
+
+  handleChangeProducerBankSubmit(e, producerId, accountId) {
+    e.preventDefault();
+    try {
+      const holderName = document.getElementById('changeBank_holderName').value;
+      const cnpj = document.getElementById('changeBank_cnpj').value;
+      const bankName = document.getElementById('changeBank_bankName').value;
+      const accountType = document.getElementById('changeBank_accountType').value;
+      const agency = document.getElementById('changeBank_agency').value;
+      const accountNumber = document.getElementById('changeBank_accountNumber').value;
+      const digit = document.getElementById('changeBank_digit').value;
+      const pixKey = document.getElementById('changeBank_pixKey').value;
+      const pixType = document.getElementById('changeBank_pixType').value;
+      const documentType = document.getElementById('changeBank_documentType')?.value;
+      const documentName = document.getElementById('changeBank_documentName')?.value;
+
+      financialStore.requestBankAccountChange({
+        producerId,
+        accountId,
+        newBankData: {
+          holderName,
+          cnpj,
+          bankName,
+          accountType,
+          agency,
+          accountNumber,
+          digit,
+          pixKey,
+          pixType,
+          documentType,
+          documentName
+        }
+      });
+
+      this.closeModal();
+      this.setDiskProdutoresTab('bancarias');
+    } catch (err) {
+      alert(err.message);
+    }
+  }
+
+  openViewBankDetails(producerId, accountId) {
+    const state = financialStore.getState();
+    const prod = (state.data.producers || []).find(p => p.id === producerId);
+    if (!prod) return;
+    const b = (prod.bankAccounts || []).find(x => x.id === accountId);
+    if (!b) return;
+
+    const docs = b.documents || [];
+    const html = `
+      <div class="modal-card" style="max-width: 600px;">
+        <div class="modal-header" style="background: #0f172a; color: white; border-bottom: 2px solid #3b82f6;">
+          <h4 class="mb-0 fw-bold" style="color: #f8fafc; font-size: 1.15rem;">
+            Dossiê da Conta Bancária • ${prod.name}
+          </h4>
+          <button class="modal-close-btn" style="color: #94a3b8;" onclick="window.app.closeModal()">&times;</button>
+        </div>
+        <div class="modal-body" style="padding: 24px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+            <div>
+              <span class="badge ${['Ativa', 'Validada & Ativa'].includes(b.status) ? 'badge-success' : (b.status === 'Pendente de validação' ? 'badge-warning' : 'badge-neutral')}">
+                ${b.status}
+              </span>
+              <span class="badge badge-info" style="margin-left: 6px;">Versão ${b.version || 1}</span>
+            </div>
+            <div style="font-size: 0.78rem; color: #64748b;">
+              ID: <code style="font-size: 0.75rem;">${b.id}</code>
+            </div>
+          </div>
+
+          <table class="table table-sm table-bordered" style="font-size: 0.88rem; margin-bottom: 20px;">
+            <tbody>
+              <tr><th style="width: 35%; background: #f8fafc;">Produtor Titular</th><td><b>${prod.name}</b></td></tr>
+              <tr><th style="background: #f8fafc;">CNPJ do Produtor</th><td><span style="font-family: monospace;">${prod.cnpj}</span></td></tr>
+              <tr><th style="background: #f8fafc;">Banco</th><td>${b.bankName}</td></tr>
+              <tr><th style="background: #f8fafc;">Tipo de Conta</th><td>${b.accountType || 'Conta Corrente PJ'}</td></tr>
+              <tr><th style="background: #f8fafc;">Agência</th><td><b>${b.agency}</b></td></tr>
+              <tr><th style="background: #f8fafc;">Número da Conta</th><td><b style="font-family: monospace;">${b.accountNumber}</b></td></tr>
+              <tr><th style="background: #f8fafc;">Titularidade</th><td>${b.holderName || prod.name} (${b.cnpj || prod.cnpj})</td></tr>
+              <tr><th style="background: #f8fafc;">Chave PIX</th><td><span style="color: #2563eb; font-weight: 700; font-family: monospace;">${b.pixKey || '—'}</span> (${b.pixType || 'PIX'})</td></tr>
+              <tr><th style="background: #f8fafc;">Vinculação</th><td>${b.eventName || 'Geral (Todos os eventos)'}</td></tr>
+              <tr><th style="background: #f8fafc;">Finalidade</th><td>${b.purpose || 'Repasse'}</td></tr>
+              <tr><th style="background: #f8fafc;">Validação Bacen/CIP</th><td>${b.validatedAt || 'Pendente de validação pela mesa'}</td></tr>
+            </tbody>
+          </table>
+
+          <div class="card-panel" style="background: #f8fafc; padding: 14px; margin-bottom: 20px;">
+            <div style="font-size: 0.8rem; font-weight: 700; color: #1e293b; margin-bottom: 8px;">Documentos Comprobatórios Anexados:</div>
+            ${docs.length > 0 ? docs.map(d => `
+              <div style="display: flex; justify-content: space-between; align-items: center; background: white; padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 6px; margin-bottom: 6px;">
+                <div>
+                  <span style="font-weight: 700; font-size: 0.85rem;"><i class="ph-file-pdf" style="color: #dc2626;"></i> ${d.name}</span>
+                  <div style="font-size: 0.72rem; color: #64748b;">${d.type} • Enviado em ${d.uploadedAt}</div>
+                </div>
+                <button class="btn btn-outline-primary btn-xs" onclick="alert('Visualização do documento ${d.name}')">Ver</button>
+              </div>
+            `).join('') : '<div style="font-size: 0.8rem; color: #94a3b8;">Nenhum documento anexado.</div>'}
+          </div>
+
+          <div style="display: flex; justify-content: flex-end; gap: 8px;">
+            ${b.status === 'Pendente de validação' ? `
+              <button class="btn btn-success" onclick="window.app.closeModal(); window.app.openValidateBankModal('${prod.id}', '${b.id}')">
+                Validar Esta Conta
+              </button>
+            ` : ''}
+            <button class="btn btn-secondary" onclick="window.app.closeModal()">Fechar</button>
+          </div>
+        </div>
+      </div>
+    `;
+    this.showModal(html);
   }
 }
 
