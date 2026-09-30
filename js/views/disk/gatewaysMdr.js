@@ -9,6 +9,7 @@
  * repassada ao Produtor/Comprador e apurar o spread líquido.
  */
 import { formatCurrency, formatPercent } from '../../formatters.js';
+import { renderScrollSpyNav } from '../../components/scrollSpy.js';
 
 export const gatewayTabs = [
   ['config', 'Configurações', 'ph-sliders-horizontal'],
@@ -26,14 +27,15 @@ export const gatewayTabs = [
 ];
 
 export function renderDiskGateways(state, currentFilter = 'all') {
-  const gs = state.data.gatewayConfigs || [];
-  const rawGateways = state.data.gateways || [];
+  const data = state?.data || state || {};
+  const gs = data.gatewayConfigs || [];
+  const rawGateways = data.gateways || [];
   const activeGateways = gs.filter(x => x.enabled).length;
   const totalVolume = rawGateways.reduce((sum, g) => sum + (g.totalVolumeProcessed || 0), 0);
   const prodCount = gs.filter(x => x.environment === 'Produção').length;
   const pendingCount = gs.filter(x => x.connectionStatus && x.connectionStatus.includes('Não configurado')).length;
 
-  const activeTab = window.app?.currentP18Tab || 'config';
+  const activeTab = (typeof window !== 'undefined' ? window.app?.currentP18Tab : null) || 'config';
 
   return `
     <!-- Header Oficial Limitless -->
@@ -104,25 +106,38 @@ export function renderDiskGateways(state, currentFilter = 'all') {
         </div>
       </div>
 
-      <!-- Barra de Navegação Interna das 12 Seções Operacionais -->
-      <div class="card-panel" style="padding: 12px 16px; background: white; margin-bottom: 20px;">
-        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-          ${gatewayTabs.map(([tabId, tabName, iconClass]) => {
-            const isCurrent = activeTab === tabId;
-            return `
-              <button class="btn btn-sm ${isCurrent ? 'btn-primary' : 'btn-light'}" 
-                      style="${isCurrent ? 'background: #2563eb; border-color: #1d4ed8; font-weight: 700;' : 'font-weight: 600; color: #475569;'}"
-                      onclick="window.app.p18Tab('${tabId}', this)">
-                <i class="${iconClass} me-1"></i> ${tabName}
-              </button>
-            `;
-          }).join('')}
-        </div>
-      </div>
+      <!-- Barra de Navegação Interna Sticky ScrollSpy (12 Seções Operacionais) -->
+      ${renderScrollSpyNav(
+        gatewayTabs.map(([tabId, tabName, iconClass]) => ({
+          id: `sec-gw-${tabId}`,
+          label: tabName,
+          icon: iconClass
+        })),
+        `sec-gw-${activeTab}`,
+        { navId: 'gateways-scrollspy-nav' }
+      )}
 
-      <!-- Container Dinâmico de Conteúdo da Aba Selecionada -->
-      <div id="p18-tab-content">
-        ${renderGatewayTab(state, activeTab)}
+      <!-- Fluxo Contínuo das 12 Seções Operacionais com ScrollSpy -->
+      <div id="p18-scroll-container" class="scrollspy-content-flow">
+        ${gatewayTabs.map(([tabId, tabName, iconClass]) => `
+          <section id="sec-gw-${tabId}" class="scrollspy-section mb-4" data-scrollspy-section>
+            <div class="card-panel mb-2" style="background: #f8fafc; border-left: 3px solid #2563eb; padding: 10px 16px;">
+              <div class="d-flex align-items-center justify-content-between">
+                <div class="d-flex align-items-center gap-2">
+                  <i class="${iconClass} text-primary fs-5"></i>
+                  <span class="fw-bold text-dark fs-sm">${tabName}</span>
+                  <span class="badge bg-light text-muted border fs-xxs">SEÇÃO OPERACIONAL</span>
+                </div>
+                <button type="button" class="btn btn-link btn-xs text-muted text-decoration-none" onclick="window.app && window.app.scrollToSpySection('sec-gw-config')">
+                  <i class="ph-arrow-up"></i> Topo
+                </button>
+              </div>
+            </div>
+            <div id="p18-tab-${tabId}-body">
+              ${renderGatewayTab(state, tabId)}
+            </div>
+          </section>
+        `).join('')}
       </div>
 
     </div>

@@ -4,6 +4,7 @@
  */
 
 import { formatCurrency, formatNumber, formatPercent, createStatusBadge } from '../../formatters.js';
+import { renderScrollSpyNav } from '../../components/scrollSpy.js';
 
 // Helper de cabeçalho padrão das telas do Financeiro Disk
 function createHeader(sectionTitle, subTitle, activeFilter = 'all') {
@@ -391,6 +392,14 @@ export function renderDiskTaxas(state, filter = 'disk') {
     : '0.00';
   const customRulesCount = rules.filter(r => r.scopeType && r.scopeType !== 'Geral Disk').length;
 
+  const taxasSpyItems = [
+    { id: 'sec-taxas-kpis', label: 'Indicadores & KPIs', icon: 'ph-chart-line-up' },
+    { id: 'sec-taxas-governanca', label: 'Governança & Hierarquia', icon: 'ph-shield-check' },
+    { id: 'sec-taxas-matriz', label: 'Matriz de Tarifas & MDR', icon: 'ph-table', badge: filtered.length },
+    { id: 'sec-taxas-simulador', label: 'Simulador de Spread', icon: 'ph-calculator' },
+    { id: 'sec-taxas-politicas', label: 'Políticas & Prazos', icon: 'ph-clock-clockwise' }
+  ];
+
   return `
     <div class="limitless-page-header" style="background: #0f172a; color: white; border-bottom: 2px solid #3b82f6;">
       <div class="breadcrumbs" style="color: #94a3b8;">
@@ -408,8 +417,8 @@ export function renderDiskTaxas(state, filter = 'disk') {
           </p>
         </div>
         <div class="header-action-group" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-          <button class="btn btn-light btn-sm" onclick="window.app.p13Action('simular-spread')">
-            <i class="ph-calculator me-1"></i> Simulador de Spread
+          <button class="btn btn-light btn-sm" onclick="window.app.scrollToSpySection('sec-taxas-simulador')">
+            <i class="ph-calculator me-1"></i> Ir para Simulador
           </button>
           <button class="btn btn-primary btn-sm" onclick="window.app.p13Action('nova-taxa')" style="background: #2563eb; border-color: #1d4ed8; font-weight: 700;">
             <i class="ph-plus me-1"></i> + Nova Taxa
@@ -419,45 +428,55 @@ export function renderDiskTaxas(state, filter = 'disk') {
     </div>
 
     <div class="limitless-content">
-      
-      <!-- KPIs do Motor de Taxas e Spread -->
-      <div class="kpi-grid">
-        <div class="kpi-card highlight">
-          <div class="kpi-header"><span class="kpi-title">Total de Regras</span></div>
-          <div class="kpi-value">${rules.length}</div>
-          <div class="kpi-subtext"><span>${activeRules.length} ativas no motor financeiro</span></div>
-        </div>
 
-        <div class="kpi-card success-accent">
-          <div class="kpi-header"><span class="kpi-title">Spread Médio Líquido</span></div>
-          <div class="kpi-value" style="color: #059669;">+${avgSpread}%</div>
-          <div class="kpi-subtext"><span>Margem líquida da Disk Ingressos</span></div>
-        </div>
+      <!-- Barra de Navegação Interna Sticky ScrollSpy -->
+      ${renderScrollSpyNav(taxasSpyItems, 'sec-taxas-kpis', { navId: 'taxas-scrollspy-nav' })}
 
-        <div class="kpi-card">
-          <div class="kpi-header"><span class="kpi-title">MDR Médio Adquirentes</span></div>
-          <div class="kpi-value" style="color: #64748b;">${avgMdr}%</div>
-          <div class="kpi-subtext"><span>Custo base retido pelas operadoras</span></div>
-        </div>
+      <!-- SEÇÃO 1: KPIs & Indicadores de Spread -->
+      <section id="sec-taxas-kpis" class="scrollspy-section mb-4" data-scrollspy-section>
+        <div class="kpi-grid">
+          <div class="kpi-card highlight">
+            <div class="kpi-header"><span class="kpi-title">Total de Regras</span></div>
+            <div class="kpi-value">${rules.length}</div>
+            <div class="kpi-subtext"><span>${activeRules.length} ativas no motor financeiro</span></div>
+          </div>
 
-        <div class="kpi-card warning-accent">
-          <div class="kpi-header"><span class="kpi-title">Regras Customizadas</span></div>
-          <div class="kpi-value" style="color: #d97706;">${customRulesCount}</div>
-          <div class="kpi-subtext"><span>Exceções por Produtor ou Evento</span></div>
-        </div>
-      </div>
+          <div class="kpi-card success-accent">
+            <div class="kpi-header"><span class="kpi-title">Spread Médio Líquido</span></div>
+            <div class="kpi-value" style="color: #059669;">+${avgSpread}%</div>
+            <div class="kpi-subtext"><span>Margem líquida da Disk Ingressos</span></div>
+          </div>
 
-      <!-- Banner de Governança e Hierarquia de Resolução -->
-      <div class="card-panel" style="background: #eff6ff; border-left: 4px solid #2563eb; padding: 14px 20px; margin-bottom: 16px;">
-        <div style="font-weight: 700; color: #1e40af; font-size: 0.95rem; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
-          <i class="ph-shield-check" style="font-size: 1.1rem;"></i>
-          Hierarquia de Prioridade das Regras Comerciais & Separação de Acessos
+          <div class="kpi-card">
+            <div class="kpi-header"><span class="kpi-title">MDR Médio Adquirentes</span></div>
+            <div class="kpi-value" style="color: #64748b;">${avgMdr}%</div>
+            <div class="kpi-subtext"><span>Custo base retido pelas operadoras</span></div>
+          </div>
+
+          <div class="kpi-card warning-accent">
+            <div class="kpi-header"><span class="kpi-title">Regras Customizadas</span></div>
+            <div class="kpi-value" style="color: #d97706;">${customRulesCount}</div>
+            <div class="kpi-subtext"><span>Exceções por Produtor ou Evento</span></div>
+          </div>
         </div>
-        <div style="font-size: 0.85rem; color: #1e3a8a; line-height: 1.5;">
-          <strong>Ordem de Aplicação Automática:</strong> 1º Regra do Evento → 2º Regra do Produtor → 3º Regra Geral Disk.<br>
-          <strong>Segurança de Dados:</strong> O custo MDR interno pago às adquirentes e a margem de spread são confidenciais do Financeiro Disk. O ambiente do Produtor visualiza exclusivamente as taxas contratuais comerciais que lhe são aplicadas.
+      </section>
+
+      <!-- SEÇÃO 2: Governança & Hierarquia de Resolução -->
+      <section id="sec-taxas-governanca" class="scrollspy-section mb-4" data-scrollspy-section>
+        <div class="card-panel" style="background: #eff6ff; border-left: 4px solid #2563eb; padding: 14px 20px;">
+          <div style="font-weight: 700; color: #1e40af; font-size: 0.95rem; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
+            <i class="ph-shield-check" style="font-size: 1.1rem;"></i>
+            Hierarquia de Prioridade das Regras Comerciais & Separação de Acessos
+          </div>
+          <div style="font-size: 0.85rem; color: #1e3a8a; line-height: 1.5;">
+            <strong>Ordem de Aplicação Automática:</strong> 1º Regra do Evento → 2º Regra do Produtor → 3º Regra Geral Disk.<br>
+            <strong>Segurança de Dados:</strong> O custo MDR interno pago às adquirentes e a margem de spread são confidenciais do Financeiro Disk. O ambiente do Produtor visualiza exclusivamente as taxas contratuais comerciais que lhe são aplicadas.
+          </div>
         </div>
-      </div>
+      </section>
+
+      <!-- SEÇÃO 3: Matriz de Tarifas & Regras Comerciais -->
+      <section id="sec-taxas-matriz" class="scrollspy-section mb-4" data-scrollspy-section>
 
       <!-- Barra de Filtros e Busca -->
       <div class="card-panel" style="padding: 14px 20px; background: white; margin-bottom: 16px;">
@@ -618,6 +637,94 @@ export function renderDiskTaxas(state, filter = 'disk') {
           </div>
         </div>
       </div>
+      </section>
+
+      <!-- SEÇÃO 4: Simulador Rápido de Spread & Viabilidade -->
+      <section id="sec-taxas-simulador" class="scrollspy-section mb-4" data-scrollspy-section>
+        <div class="card-panel">
+          <div class="card-header-bar">
+            <div class="card-title-group">
+              <h2>Simulador de Spread Líquido & Margem Transacional</h2>
+              <p class="card-subtitle">Calcule o impacto financeiro imediato entre a taxa cobrada do organizador/comprador e o custo MDR da adquirente</p>
+            </div>
+            <button class="btn btn-outline-primary btn-sm" onclick="window.app.p13Action('simular-spread')">
+              <i class="ph-arrows-clockwise me-1"></i> Abrir Assistente Avançado
+            </button>
+          </div>
+          <div class="card-body p-4">
+            <div class="row g-3 align-items-center">
+              <div class="col-md-3">
+                <label class="form-label fs-xs fw-bold text-uppercase text-muted">Ticket Médio Simulado</label>
+                <div class="input-group">
+                  <span class="input-group-text">R$</span>
+                  <input type="number" id="quickSimTicket" class="form-control fw-bold" value="150" step="10" oninput="window.app.runQuickTaxasSim()">
+                </div>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label fs-xs fw-bold text-uppercase text-muted">Taxa Comercial Cobrada (%)</label>
+                <div class="input-group">
+                  <input type="number" id="quickSimCharged" class="form-control fw-bold" value="10.0" step="0.1" oninput="window.app.runQuickTaxasSim()">
+                  <span class="input-group-text">%</span>
+                </div>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label fs-xs fw-bold text-uppercase text-muted">Custo Adquirente MDR (%)</label>
+                <div class="input-group">
+                  <input type="number" id="quickSimMdr" class="form-control fw-bold" value="2.15" step="0.05" oninput="window.app.runQuickTaxasSim()">
+                  <span class="input-group-text">%</span>
+                </div>
+              </div>
+              <div class="col-md-3">
+                <div class="p-3 rounded border text-center" style="background: #f0fdf4; border-color: #86efac;">
+                  <span class="fs-xxs fw-bold text-success text-uppercase">Spread Líquido Apurado</span>
+                  <div class="fs-4 fw-bold text-success" id="quickSimSpreadResult">+7.85%</div>
+                  <span class="fs-xxs text-muted" id="quickSimMargemResult">Margem Disk: R$ 11,78 por ingresso</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SEÇÃO 5: Políticas de Parcelamento & Prazos de Liquidação -->
+      <section id="sec-taxas-politicas" class="scrollspy-section mb-4" data-scrollspy-section>
+        <div class="card-panel">
+          <div class="card-header-bar">
+            <div class="card-title-group">
+              <h2>Políticas de Parcelamento, Split & Prazos de Liquidação</h2>
+              <p class="card-subtitle">Regras de repasse de juros, compensação de antecipação e prazos contratuais homologados</p>
+            </div>
+          </div>
+          <div class="card-body p-4">
+            <div class="row g-3">
+              <div class="col-md-4">
+                <div class="p-3 border rounded bg-light">
+                  <div class="fw-bold text-dark fs-sm mb-1 d-flex align-items-center gap-2">
+                    <i class="ph-credit-card text-primary"></i> Parcelamento sem Juros
+                  </div>
+                  <p class="fs-xs text-muted mb-0">Custos de juros são absorvidos conforme parametrização comercial. A Disk antecipa ou repassa em fluxo D+30.</p>
+                </div>
+              </div>
+              <div class="col-md-4">
+                <div class="p-3 border rounded bg-light">
+                  <div class="fw-bold text-dark fs-sm mb-1 d-flex align-items-center gap-2">
+                    <i class="ph-hourglass-high text-warning"></i> Prazo Padrão de Recebimento
+                  </div>
+                  <p class="fs-xs text-muted mb-0">Cartão de Crédito à Vista: D+30. PIX Direto: D+0. Antecipação opcional a 2,5% a.m. com trava de saldo.</p>
+                </div>
+              </div>
+              <div class="col-md-4">
+                <div class="p-3 border rounded bg-light">
+                  <div class="fw-bold text-dark fs-sm mb-1 d-flex align-items-center gap-2">
+                    <i class="ph-shield-check text-success"></i> Trava de Segurança Antifraude
+                  </div>
+                  <p class="fs-xs text-muted mb-0">Retenção de reserva técnica obrigatória (5% a 10%) para mitigação de chargebacks até 30 dias após o evento.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
 
     </div>
   `;

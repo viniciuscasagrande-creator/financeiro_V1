@@ -7,15 +7,18 @@ const fresh = () => {
 };
 
 let ok = 0;
+const queue = [];
 function test(name, fn) {
-  try {
-    fn();
-    console.log('✓', name);
-    ok++;
-  } catch (e) {
-    console.error('✗', name, '\n ', e.message);
-    process.exitCode = 1;
-  }
+  queue.push(async () => {
+    try {
+      await fn();
+      console.log('✓', name);
+      ok++;
+    } catch (e) {
+      console.error('✗', name, '\n ', e.message);
+      process.exitCode = 1;
+    }
+  });
 }
 function throws(fn, pattern) {
   assert.throws(fn, pattern);
@@ -140,4 +143,48 @@ test('invariante contábil: Receita Líquida - Repasses - Reservas - Retenções
   assert.equal(comp.netRevenue - comp.payoutsDone - comp.reservedBalance - comp.retentionsBalance, comp.availableBalance);
 });
 
-console.log(`\n${ok}/12 teste(s) aprovados com sucesso.`);
+// 13. Componente ScrollSpy: Geração de markup com pills, data-target e acessibilidade
+test('renderScrollSpyNav gera barra sticky com pills e acessibilidade adequadas', async () => {
+  const { renderScrollSpyNav } = await import('../js/components/scrollSpy.js');
+  const items = [
+    { id: 'sec-config', label: 'Configurações', icon: 'ph-sliders-horizontal' },
+    { id: 'sec-credenciais', label: 'Credenciais', icon: 'ph-key' },
+    { id: 'sec-pix', label: 'PIX', icon: 'ph-qr-code', badge: 'Novo' }
+  ];
+
+  const html = renderScrollSpyNav(items, 'sec-config', { navId: 'test-spy' });
+  assert.ok(html.includes('limitless-scrollspy-bar'));
+  assert.ok(html.includes('data-target="sec-config"'));
+  assert.ok(html.includes('data-target="sec-credenciais"'));
+  assert.ok(html.includes('data-target="sec-pix"'));
+  assert.ok(html.includes('active'));
+  assert.ok(html.includes('scrollspy-badge'));
+  assert.ok(html.includes('role="tablist"'));
+});
+
+// 14. Integridade das Views com ScrollSpy: Gateways, Taxas e Conciliação
+test('views com ScrollSpy geram seções correspondentes aos pills', async () => {
+  const s = fresh();
+  const state = s.getState();
+  const { renderDiskGateways } = await import('../js/views/disk/gatewaysMdr.js');
+  const { renderDiskConciliacao } = await import('../js/views/disk/diskConciliacao.js');
+
+  const gwHtml = renderDiskGateways(state);
+  assert.ok(gwHtml.includes('id="gateways-scrollspy-nav"'));
+  assert.ok(gwHtml.includes('id="sec-gw-config"'));
+  assert.ok(gwHtml.includes('id="sec-gw-pix"'));
+  assert.ok(gwHtml.includes('id="sec-gw-relatorios"'));
+
+  const concHtml = renderDiskConciliacao(state);
+  assert.ok(concHtml.includes('id="conc-scrollspy-nav"'));
+  assert.ok(concHtml.includes('id="sec-conc-kpis"'));
+  assert.ok(concHtml.includes('id="sec-conc-camadas"'));
+  assert.ok(concHtml.includes('id="sec-conc-tabela"'));
+  assert.ok(concHtml.includes('id="sec-conc-divergencias"'));
+});
+
+for (const run of queue) {
+  await run();
+}
+
+console.log(`\n${ok}/${queue.length} teste(s) aprovados com sucesso.`);

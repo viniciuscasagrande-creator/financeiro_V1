@@ -72,6 +72,7 @@ import {
   renderDiskConfiguracoes,
   renderDiskFornecedores
 } from './views/disk/enterpriseViews.js';
+import { initScrollSpy } from './components/scrollSpy.js';
 
 class LimitlessFinancialApp {
   constructor() {
@@ -79,6 +80,7 @@ class LimitlessFinancialApp {
     this.sidebarNav = document.getElementById('main-sidebar-nav');
     this.modalOverlay = document.getElementById('modal-overlay');
     this.modalContent = document.getElementById('modal-dynamic-content');
+    this.activeScrollSpy = null;
 
     // Subscribe to state changes
     financialStore.subscribe((state) => {
@@ -1524,6 +1526,10 @@ class LimitlessFinancialApp {
   // RENDERIZADOR CENTRAL LIMITLESS (NAVBAR, SIDEBAR E VIEWPORT)
   // ==========================================================================
   render(state) {
+    if (this.activeScrollSpy) {
+      this.activeScrollSpy.destroy();
+      this.activeScrollSpy = null;
+    }
     const isDisk = state.viewMode === 'disk';
     const isMaster = state.currentUser.role === 'admin';
 
@@ -1804,6 +1810,62 @@ class LimitlessFinancialApp {
     }
 
     this.mainContainer.innerHTML = viewHtml;
+    this.setupViewScrollSpy();
+  }
+
+  setupViewScrollSpy() {
+    const navBar = document.querySelector('.limitless-scrollspy-bar');
+    if (!navBar) return;
+
+    if (this.activeScrollSpy) {
+      this.activeScrollSpy.destroy();
+      this.activeScrollSpy = null;
+    }
+
+    this.activeScrollSpy = initScrollSpy({
+      navSelector: '.limitless-scrollspy-bar',
+      rootSelector: '#appMainContent',
+      offset: 76
+    });
+  }
+
+  scrollToSpySection(targetId, event) {
+    if (event && typeof event.preventDefault === 'function') {
+      event.preventDefault();
+    }
+    if (this.activeScrollSpy) {
+      this.activeScrollSpy.scrollTo(targetId);
+    } else {
+      const el = document.getElementById(targetId);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+  }
+
+  runQuickTaxasSim() {
+    const ticketEl = document.getElementById('quickSimTicket');
+    const chargedEl = document.getElementById('quickSimCharged');
+    const mdrEl = document.getElementById('quickSimMdr');
+    const spreadResEl = document.getElementById('quickSimSpreadResult');
+    const margemResEl = document.getElementById('quickSimMargemResult');
+
+    if (!ticketEl || !chargedEl || !mdrEl) return;
+
+    const ticket = parseFloat(ticketEl.value) || 0;
+    const chargedPct = parseFloat(chargedEl.value) || 0;
+    const mdrPct = parseFloat(mdrEl.value) || 0;
+
+    const spreadPct = chargedPct - mdrPct;
+    const margemReais = ticket * (spreadPct / 100);
+
+    if (spreadResEl) {
+      spreadResEl.innerText = (spreadPct >= 0 ? '+' : '') + spreadPct.toFixed(2) + '%';
+      spreadResEl.className = 'fs-4 fw-bold ' + (spreadPct >= 0 ? 'text-success' : 'text-danger');
+    }
+    if (margemResEl) {
+      margemResEl.innerText = `Margem Disk: ${formatCurrency(margemReais)} por ingresso`;
+    }
   }
 
   renderTopNavbar(state) {
@@ -4025,27 +4087,21 @@ class LimitlessFinancialApp {
   // ==========================================================================
   p18Tab(tab, btn) {
     this.currentP18Tab = tab;
+    const targetSec = document.getElementById(`sec-gw-${tab}`);
+    if (targetSec) {
+      this.scrollToSpySection(`sec-gw-${tab}`);
+      return;
+    }
     const box = document.getElementById('p18-tab-content');
     if (!box) {
       this.navigate('diskGateways');
+      setTimeout(() => {
+        this.scrollToSpySection(`sec-gw-${tab}`);
+      }, 50);
       return;
     }
     const state = financialStore.getState();
     box.innerHTML = renderGatewayTab(state, tab);
-    if (btn && btn.parentElement) {
-      btn.parentElement.querySelectorAll('button').forEach(b => {
-        b.className = 'btn btn-light btn-sm';
-        b.style.background = '';
-        b.style.borderColor = '';
-        b.style.fontWeight = '600';
-        b.style.color = '#475569';
-      });
-      btn.className = 'btn btn-primary btn-sm';
-      btn.style.background = '#2563eb';
-      btn.style.borderColor = '#1d4ed8';
-      btn.style.fontWeight = '700';
-      btn.style.color = '#ffffff';
-    }
   }
 
   p18Action(action, id = '') {

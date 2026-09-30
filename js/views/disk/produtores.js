@@ -3,6 +3,7 @@
  * Gestão de subcontas financeiras do Core e contas bancárias externas homologadas via Bacen/CIP para repasse
  */
 import { formatCurrency, formatNumber, createStatusBadge } from '../../formatters.js';
+import { renderScrollSpyNav } from '../../components/scrollSpy.js';
 
 // Helpers de mascaramento para proteção de dados sensíveis na listagem
 function maskAccount(accNumber) {
@@ -450,31 +451,46 @@ function renderTabDossieProdutor(state, activeProducer) {
   const producers = state.data.producers || [];
   const producerEvents = (state.data.events || []).filter(e => e.producerId === activeProducer.id);
   const producerApprovals = (state.data.approvalQueue || []).filter(a => a.producerId === activeProducer.id);
+  const bankAccounts = activeProducer.bankAccounts || [];
+
+  const dossieSpyItems = [
+    { id: 'sec-dossie-resumo', label: 'Produtor & Contrato', icon: 'ph-buildings' },
+    { id: 'sec-dossie-posicao', label: 'Posição Consolidada', icon: 'ph-wallet' },
+    { id: 'sec-dossie-eventos', label: 'Eventos & Produções', icon: 'ph-calendar', badge: producerEvents.length },
+    { id: 'sec-dossie-solicitacoes', label: 'Aprovações Pendentes', icon: 'ph-scales', badge: producerApprovals.length },
+    { id: 'sec-dossie-contas', label: 'Contas Homologadas', icon: 'ph-bank', badge: bankAccounts.length }
+  ];
 
   return `
-    <!-- Seletor Rápido de Produtor no Topo -->
-    <div class="card-panel" style="padding: 16px 20px; background: #ffffff; border-left: 4px solid #2563eb;">
-      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px;">
-        <div style="display: flex; align-items: center; gap: 12px;">
-          <span style="font-size: 0.82rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Produtor em Análise:</span>
-          <select class="form-control" style="width: 320px; font-weight: 700;" onchange="window.app.selectProducerInDisk(this.value)">
-            ${producers.map(p => `
-              <option value="${p.id}" ${p.id === activeProducer.id ? 'selected' : ''}>
-                ${p.name} (${p.cnpj})
-              </option>
-            `).join('')}
-          </select>
-        </div>
-        <div style="display: flex; gap: 10px;">
-          <span class="badge badge-success">Status: ${activeProducer.status}</span>
-          <span class="badge ${activeProducer.hasBlock ? 'badge-danger' : 'badge-neutral'}">
-            ${activeProducer.hasBlock ? 'Possui Bloqueio Cautelar' : 'Sem Bloqueios Ativos'}
-          </span>
+    <!-- Barra de Navegação Interna Sticky ScrollSpy do Dossiê -->
+    ${renderScrollSpyNav(dossieSpyItems, 'sec-dossie-resumo', { navId: 'dossie-scrollspy-nav' })}
+
+    <!-- SEÇÃO 1: Identificação & Governança do Produtor -->
+    <section id="sec-dossie-resumo" class="scrollspy-section mb-4" data-scrollspy-section>
+      <div class="card-panel" style="padding: 16px 20px; background: #ffffff; border-left: 4px solid #2563eb;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px;">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <span style="font-size: 0.82rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Produtor em Análise:</span>
+            <select class="form-control" style="width: 320px; font-weight: 700;" onchange="window.app.selectProducerInDisk(this.value)">
+              ${producers.map(p => `
+                <option value="${p.id}" ${p.id === activeProducer.id ? 'selected' : ''}>
+                  ${p.name} (${p.cnpj})
+                </option>
+              `).join('')}
+            </select>
+          </div>
+          <div style="display: flex; gap: 10px;">
+            <span class="badge badge-success">Status: ${activeProducer.status}</span>
+            <span class="badge ${activeProducer.hasBlock ? 'badge-danger' : 'badge-neutral'}">
+              ${activeProducer.hasBlock ? 'Possui Bloqueio Cautelar' : 'Sem Bloqueios Ativos'}
+            </span>
+          </div>
         </div>
       </div>
-    </div>
+    </section>
 
-    <!-- POSIÇÃO CONSOLIDADA DO PRODUTOR -->
+    <!-- SEÇÃO 2: POSIÇÃO CONSOLIDADA DO PRODUTOR -->
+    <section id="sec-dossie-posicao" class="scrollspy-section mb-4" data-scrollspy-section>
     <div class="card-panel">
       <div class="card-header-bar">
         <div class="card-title-group">
@@ -510,8 +526,10 @@ function renderTabDossieProdutor(state, activeProducer) {
         </div>
       </div>
     </div>
+    </section>
 
-    <!-- EVENTOS DO PRODUTOR -->
+    <!-- SEÇÃO 3: EVENTOS DO PRODUTOR -->
+    <section id="sec-dossie-eventos" class="scrollspy-section mb-4" data-scrollspy-section>
     <div class="card-panel">
       <div class="card-header-bar">
         <div class="card-title-group">
@@ -564,8 +582,10 @@ function renderTabDossieProdutor(state, activeProducer) {
         </div>
       </div>
     </div>
+    </section>
 
-    <!-- Pendências & Solicitações Deste Produtor -->
+    <!-- SEÇÃO 4: Pendências & Solicitações Deste Produtor -->
+    <section id="sec-dossie-solicitacoes" class="scrollspy-section mb-4" data-scrollspy-section>
     <div class="card-panel">
       <div class="card-header-bar">
         <div class="card-title-group">
@@ -614,5 +634,86 @@ function renderTabDossieProdutor(state, activeProducer) {
         </div>
       </div>
     </div>
+    </section>
+
+    <!-- SEÇÃO 5: Contas Bancárias de Repasse Cadastradas -->
+    <section id="sec-dossie-contas" class="scrollspy-section mb-4" data-scrollspy-section>
+    <div class="card-panel">
+      <div class="card-header-bar">
+        <div class="card-title-group">
+          <h2>Contas Bancárias de Repasse Homologadas</h2>
+          <p class="card-subtitle">Contas externas vinculadas a ${activeProducer.name} para liquidação via CIP/Bacen</p>
+        </div>
+        <button class="btn btn-outline-primary btn-sm" onclick="window.app.openAddProducerBankModal('${activeProducer.id}')">
+          <i class="ph-plus me-1"></i> + Adicionar Conta Bancária
+        </button>
+      </div>
+      <div class="card-body card-body-no-padding">
+        <div class="table-responsive">
+          <table class="limitless-table">
+            <thead>
+              <tr>
+                <th>Banco</th>
+                <th>Agência / Conta</th>
+                <th>PIX</th>
+                <th>Titularidade</th>
+                <th style="text-align: center;">Status</th>
+                <th style="text-align: right;">Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${bankAccounts.length > 0 ? bankAccounts.map(b => `
+                <tr>
+                  <td>
+                    <div class="fw-bold text-dark">${b.bankName}</div>
+                    <div class="fs-xxs text-muted">Cód: ${b.bankCode || '—'}</div>
+                  </td>
+                  <td>
+                    <div>Ag: ${b.agency} · CC: ${b.accountNumber}</div>
+                    ${b.isDefault ? '<span class="badge badge-primary fs-xxs">Conta Principal de Repasse</span>' : ''}
+                  </td>
+                  <td>
+                    ${b.pixKey ? `<span class="badge badge-info fs-xxs">${b.pixKeyType || 'PIX'}: ${b.pixKey}</span>` : '<span class="text-muted fs-xxs">Não cadastrado</span>'}
+                  </td>
+                  <td>
+                    <div class="fs-xs fw-semibold">${b.holderName || activeProducer.name}</div>
+                    <div class="fs-xxs text-muted">${b.holderDocument || activeProducer.cnpj}</div>
+                  </td>
+                  <td style="text-align: center;">
+                    <span class="badge ${b.status === 'Ativa' || b.status === 'Validada & Ativa' ? 'badge-success' : (b.status === 'Pendente' ? 'badge-warning' : 'badge-neutral')}">
+                      ${b.status}
+                    </span>
+                  </td>
+                  <td style="text-align: right;">
+                    <div class="d-flex gap-1 justify-content-end">
+                      <button class="btn btn-light btn-xs" onclick="window.app.openViewBankModal('${activeProducer.id}', '${b.id}')" title="Ver detalhes">
+                        <i class="ph-eye"></i>
+                      </button>
+                      ${b.status === 'Pendente' ? `
+                        <button class="btn btn-success btn-xs" onclick="window.app.validateBank('${activeProducer.id}', '${b.id}')" title="Validar conta">
+                          <i class="ph-check"></i> Validar
+                        </button>
+                      ` : ''}
+                      ${!b.isDefault && (b.status === 'Ativa' || b.status === 'Validada & Ativa') ? `
+                        <button class="btn btn-primary btn-xs" onclick="window.app.setDefaultBank('${activeProducer.id}', '${b.id}')" title="Definir Principal">
+                          <i class="ph-star"></i> Principal
+                        </button>
+                      ` : ''}
+                    </div>
+                  </td>
+                </tr>
+              `).join('') : `
+                <tr>
+                  <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 24px;">
+                    Nenhuma conta bancária externa cadastrada para este produtor.
+                  </td>
+                </tr>
+              `}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    </section>
   `;
 }
