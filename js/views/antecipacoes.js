@@ -7,6 +7,7 @@ import { formatCurrency, formatPercent, createStatusBadge } from '../formatters.
 export function renderAntecipacoes(state) {
   const ant = state.data.anticipations;
   const events = state.data.events;
+  const pendingAnticipationSign = state.data.approvalQueue.find(a => a.type === 'Antecipação' && a.status === 'Aguardando assinatura do Produtor');
 
   return `
     <!-- Header -->
@@ -30,6 +31,24 @@ export function renderAntecipacoes(state) {
     <!-- Content -->
     <div class="limitless-content">
 
+      <!-- Alerta de Assinatura do Contrato de Antecipação -->
+      ${pendingAnticipationSign ? `
+        <div class="info-banner info-banner-green" style="border-width: 2px; box-shadow: var(--shadow-md); margin-bottom: 20px;">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink: 0;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+          <div style="flex: 1; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+            <div>
+              <strong style="font-size: 0.95rem;">Ação Necessária: Contrato de Antecipação Aprovado pela Disk</strong>
+              <div style="font-size: 0.8rem; margin-top: 2px;">
+                A operação <strong>${pendingAnticipationSign.id}</strong> (Bruto: ${formatCurrency(pendingAnticipationSign.requestedAmount)} / Líquido: ${formatCurrency(pendingAnticipationSign.netAmount)}) aguarda sua assinatura digital (Produtor assina primeiro) para que a Tesouraria Disk assine por último e transfira os recursos.
+              </div>
+            </div>
+            <button class="btn btn-success" onclick="window.app.openSignDocumentModal('${pendingAnticipationSign.id}')">
+              ✍️ Assinar Contrato Agora
+            </button>
+          </div>
+        </div>
+      ` : ''}
+
       <!-- Informative Notice Banner -->
       <div class="info-banner info-banner-amber">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink: 0;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
@@ -44,6 +63,12 @@ export function renderAntecipacoes(state) {
           <div class="kpi-header"><span class="kpi-title">Limite Elegível para Antecipação</span></div>
           <div class="kpi-value" style="color: #2563eb;">${formatCurrency(ant.eligibleAmount)}</div>
           <div class="kpi-subtext"><span>Calculado sobre parcelas futuras de cartão</span></div>
+        </div>
+
+        <div class="kpi-card warning-accent">
+          <div class="kpi-header"><span class="kpi-title">Recebíveis Reservados</span></div>
+          <div class="kpi-value" style="color: #d97706;">${formatCurrency(state.activeProducer?.totals?.reservedReceivables || 0)}</div>
+          <div class="kpi-subtext"><span>Retido em solicitações de antecipação</span></div>
         </div>
 
         <div class="kpi-card">
@@ -152,6 +177,7 @@ export function renderAntecipacoes(state) {
                   <th style="text-align: right;">Desconto Financeiro</th>
                   <th style="text-align: right;">Líquido Creditado</th>
                   <th style="text-align: center;">Status</th>
+                  <th style="text-align: right;">Ações</th>
                 </tr>
               </thead>
               <tbody>
@@ -165,6 +191,23 @@ export function renderAntecipacoes(state) {
                     <td style="text-align: right; color: #dc2626;">-${formatCurrency(h.discountFee)}</td>
                     <td style="text-align: right; font-weight: 800; color: #059669;">${formatCurrency(h.netDisbursed)}</td>
                     <td style="text-align: center;">${createStatusBadge(h.status)}</td>
+                    <td style="text-align: right;">
+                      <div style="display: inline-flex; gap: 6px;">
+                        ${h.status === 'Aguardando assinatura do Produtor' ? `
+                          <button class="btn btn-success btn-sm" onclick="window.app.openSignDocumentModal('${h.id}')">
+                            ✍️ Assinar
+                          </button>
+                        ` : ''}
+                        ${h.status === 'Pago' ? `
+                          <button class="btn btn-secondary btn-sm" onclick="window.app.showPayoutReceipt('${h.id}')">
+                            Comprovante
+                          </button>
+                        ` : ''}
+                        <button class="btn btn-secondary btn-sm" onclick="window.app.openAuditTrailModal('${h.id}')" title="Trilha de Auditoria">
+                          📜
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 `).join('')}
               </tbody>

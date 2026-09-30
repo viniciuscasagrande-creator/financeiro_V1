@@ -29,7 +29,7 @@ export const CentralAprovacoes: React.FC = () => {
       ...solicitacaoAtiva,
       status: "AGUARDANDO_ASSINATURA_PRODUTOR",
       decisao: "APROVADO",
-      analisadoPor: "Maria Valente (Financeiro Disk)",
+      analisadoPor: "Karine (Financeiro Disk)",
       analisadoEm: agora
     };
     atualizarSolicitacao(atualizada);
@@ -42,12 +42,12 @@ export const CentralAprovacoes: React.FC = () => {
       ...solicitacaoAtiva,
       status: "REJEITADO",
       decisao: "REJEITADO",
-      analisadoPor: "Maria Valente (Financeiro Disk)",
+      analisadoPor: "Karine (Financeiro Disk)",
       analisadoEm: agora,
       rejeicao: {
         motivoCategoria: motivoRejeicao,
         justificativa: justificativa,
-        rejeitadoPor: "Maria Valente (Financeiro Disk)",
+        rejeitadoPor: "Karine (Financeiro Disk)",
         rejeitadoEm: agora
       }
     };
@@ -83,7 +83,7 @@ export const CentralAprovacoes: React.FC = () => {
       status: "ASSINADO",
       assinaturaFinanceiro: {
         assinado: true,
-        assinadoPor: "Maria Valente (Financeiro Disk)",
+        assinadoPor: "Karine (Financeiro Disk)",
         assinadoEm: agora,
         certificado: "DISK-AUTH-E-CNPJ"
       }
@@ -270,7 +270,7 @@ export const CentralAprovacoes: React.FC = () => {
                     <div>
                       <strong>3. Assinatura Financeiro Disk (SEMPRE POR ÚLTIMO):</strong>
                       <div className="fs-xxs text-muted">
-                        {diskSigned ? `✓ Assinado por Maria Valente` : !prodSigned ? "🔒 Bloqueado: O Financeiro assina após o Produtor" : "○ Liberado para assinatura final"}
+                        {diskSigned ? `✓ Assinado por Karine` : !prodSigned ? "🔒 Bloqueado: O Financeiro assina após o Produtor" : "○ Liberado para assinatura final"}
                       </div>
                     </div>
                     <span className={`badge ${diskSigned ? 'bg-success' : !prodSigned ? 'bg-secondary' : 'bg-primary'}`}>

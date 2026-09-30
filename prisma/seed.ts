@@ -16,19 +16,19 @@ export const mockSeedData = {
     },
     {
       id: "usr-fin-01",
-      nome: "Maria Valente",
-      email: "financeiro@demo.disk",
+      nome: "Karine",
+      email: "karine@diskingressos.com.br",
       perfil: "FINANCEIRO",
-      cargo: "Gerente de Tesouraria & Mesa de Aprovações",
+      cargo: "Administradora do Financeiro",
       produtorId: null,
       telefone: "(41) 3315-0820"
     },
     {
       id: "usr-adm-01",
-      nome: "Vinicius Casagrande",
-      email: "admin@demo.disk",
+      nome: "Karine",
+      email: "karine@diskingressos.com.br",
       perfil: "ADMINISTRADOR",
-      cargo: "Administrador Master (Governança & Risco)",
+      cargo: "Administradora do Financeiro",
       produtorId: null,
       telefone: "(41) 3315-0801"
     }

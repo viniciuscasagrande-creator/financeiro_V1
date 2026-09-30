@@ -176,6 +176,7 @@ export const initialMockDatabase = {
       // Estrutura de fechamento exata citada na especificação do usuário:
       // Vendas brutas: R$ 500.000 | Cancelamentos: R$ 10.000 | Taxas: R$ 35.000 | Estornos/Chargebacks: R$ 5.000 -> Líquido R$ 450.000
       // Repassado: R$ 150.000 | A receber: R$ 80.000 | Bloqueado: R$ 20.000 -> Saldo Disponível: R$ 200.000,00
+      // Regra Transferível: Saldo (200k) - Reservado (50k) - Retido (30k) - Bloqueado (10k) = R$ 110.000,00
       grossSales: 500000.00,
       cancellations: 10000.00,
       diskFees: 35000.00,
@@ -183,8 +184,11 @@ export const initialMockDatabase = {
       netRevenue: 450000.00,
       payoutsDone: 150000.00,
       futureReceivables: 80000.00,
-      blockedBalance: 20000.00,
+      financialBalance: 200000.00,
       availableBalance: 200000.00, // Disponível inicial R$ 200.000,00!
+      reservedBalance: 50000.00,
+      retainedBalance: 30000.00,
+      blockedBalance: 10000.00,
       totalBalance: 300000.00,     // Disponível (200k) + A receber (80k) + Bloqueado (20k)
       chargebackCases: 2,
       bannerColor: "#2563eb"
@@ -207,8 +211,11 @@ export const initialMockDatabase = {
       netRevenue: 223000.00,
       payoutsDone: 140000.00,
       futureReceivables: 30000.00,
-      blockedBalance: 5000.00,
+      financialBalance: 80000.00,
       availableBalance: 80000.00,
+      reservedBalance: 0.00,
+      retainedBalance: 15000.00,
+      blockedBalance: 5000.00,
       totalBalance: 115000.00,
       chargebackCases: 0,
       bannerColor: "#7c3aed"

@@ -100,7 +100,7 @@ export function renderRelatorios(state) {
             <input type="date" class="form-control" value="2026-09-30">
           </div>
 
-          <button class="btn btn-primary" onclick="window.app.integratedAction('aplicar-relatorio')">
+          <button class="btn btn-primary" onclick="alert('Filtros aplicados para a geração de relatórios.')">
             Filtrar Período
           </button>
         </div>

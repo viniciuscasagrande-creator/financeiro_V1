@@ -20,7 +20,6 @@ import { renderDiskPosicaoGeral, renderDiskIndicadores, renderDiskInteligencia }
 import { renderDiskSaldos } from '../js/views/disk/diskSaldos.js';
 import { renderDiskAprovacoes } from '../js/views/disk/aprovacoes.js';
 import { renderDiskSolicitacoes } from '../js/views/disk/solicitacoes.js';
-import { renderDiskProdutores } from '../js/views/disk/produtores.js';
 import { renderDiskGateways } from '../js/views/disk/gatewaysMdr.js';
 import { renderDiskLedger } from '../js/views/disk/ledger.js';
 import { renderDiskTesouraria } from '../js/views/disk/tesouraria.js';
@@ -90,7 +89,6 @@ const diskViews = [
   ['Disk: inteligencia', () => renderDiskInteligencia(stateDisk)],
   ['Disk: aprovacoes', () => renderDiskAprovacoes(stateDisk)],
   ['Disk: solicitacoes', () => renderDiskSolicitacoes(stateDisk)],
-  ['Disk: produtores', () => renderDiskProdutores(stateDisk)],
   ['Disk: saldos', () => renderDiskSaldos(stateDisk, 'consolidado')],
   ['Disk: gateways', () => renderDiskGateways(stateDisk)],
   ['Disk: spread', () => renderDiskFinanceiroAvancado(stateDisk, 'spread')],

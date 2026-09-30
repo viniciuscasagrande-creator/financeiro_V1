@@ -21,8 +21,8 @@ Este projeto implementa de uma única vez o ambiente demonstrativo completo do *
 | Perfil | E-mail de Demonstração | Senha | Direcionamento | Visão e Regras de Segurança |
 | :--- | :--- | :--- | :--- | :--- |
 | **PRODUTOR** | `produtor@demo.disk` | `demo123` | `/produtor` | Produtora ABC Ltda. Visualiza apenas seus próprios eventos e saldos. Proibido ver outros produtores. |
-| **FINANCEIRO** | `financeiro@demo.disk` | `demo123` | `/financeiro` | Maria Valente (Tesouraria). Visão transversal de todos os produtores, adquirentes e Central de Aprovações. |
-| **ADMINISTRADOR** | `admin@demo.disk` | `demo123` | `/financeiro` | Vinicius Master. Acesso total irrestrito a configurações fiscais, conciliação e reversões no Ledger. |
+| **FINANCEIRO** | `karine@diskingressos.com.br` | `demo123` | `/financeiro` | Karine (Adm do Financeiro). Visão transversal de todos os produtores, adquirentes e Central de Aprovações. |
+| **ADMINISTRADOR** | `karine@diskingressos.com.br` | `demo123` | `/financeiro` | Karine (Adm do Financeiro). Acesso total irrestrito a governança, conciliação e reversões no Ledger. |
 
 ---
 
@@ -130,19 +130,25 @@ disk-financeiro/
 │   ├── schema.prisma                # Modelos relacionais completos
 │   └── seed.ts                      # 3 produtores, 8 eventos, adquirentes e usuários
 │
-├── docs/                            # Documentação técnica e histórico de pacotes
-│   ├── README.md                    # Índice central da documentação
-│   ├── pacotes/                     # Especificações detalhadas dos pacotes (2 a 21.2)
-│   └── screenshots/                 # Capturas e mockups de referência
+├── docs/                            # Documentação Completa e Histórico de Pacotes
+│   ├── README.md                    # Índice central da documentação técnica
+│   ├── pacotes/                     # Documentação detalhada dos Pacotes 2 ao 17
+│   └── screenshots/                 # Capturas de tela e mockups da interface
 │
-├── tests/                           # Bateria de testes de integridade e renderização
-│   ├── integridade-financeira.test.mjs
-│   └── views-render.test.mjs
+├── js/                              # Core Runtime Vanilla JS (Padrão Limitless Oficial)
+│   ├── app.js                       # Controlador principal e roteador
+│   ├── state.js                     # Gerenciador de estado reativo e persistência
+│   ├── menuConfig.js                # Menus canônicos por perfil (Produtor vs Financeiro)
+│   ├── mockData.js                  # Base de dados em memória e sementes
+│   ├── formatters.js                # Formatadores BRL, datas e status
+│   └── views/                       # Telas do Produtor e do Financeiro Disk (disk/)
 │
-├── archives/                        # Arquivos compactados históricos (gitignored)
+├── css/                             # Folhas de estilo corporativas (Limitless Theme)
+├── img/                             # Assets e logotipo oficial Disk Ingressos
+├── dist/                            # Build estático otimizado para deploy em produção
 ├── index.html                       # Aplicação Web ao vivo estilo Limitless
 ├── server.js                        # Servidor HTTP estático nativo Node.js
-├── build.js                         # Script de empacotamento estático para Vercel
+├── build.js                         # Script de compilação estática para Vercel
 ├── tsconfig.json                    # Configuração TypeScript ES2022 + JSX
 ├── package.json
 └── README.md
@@ -162,7 +168,7 @@ O fluxo principal está 100% calibrado e interconectado de ponta a ponta:
    - O saldo disponível é imediatamente reservado (passa para **R$ 120.000,00**) e a solicitação `#REP-000129` é criada com status `Aguardando análise`.
 
 2. **Login no Financeiro Disk & Notificação:**
-   - Alterne o perfil para **Financeiro Disk (Maria Valente)**.
+   - Alterne o perfil para **Financeiro Disk (Karine)**.
    - O sino de notificações no topo exibe alerta de nova solicitação de repasse da Produtora ABC.
    - Abra a **Central de Aprovações (17)** e localize a solicitação `#REP-000129`.
    - Clique em **Analisar Ficha →**:
@@ -215,12 +221,3 @@ No rodapé da tela, a barra interativa permite a qualquer momento:
 - `+ Venda PIX`: injeta transação direta D+0 com saldo imediato.
 - `+ Chargeback`: simula contestação de operadora debitando garantia.
 - `Restaurar Dados da Demo`: retorna todo o banco de dados fictício ao estado inicial.
-
-## Pacote 6 — Fechamentos e Dossiês
-Inclui a Central Financeiro Disk para fechamento por evento, borderôs, prestação de contas, assinaturas sequenciais e dossiê financeiro auditável. Consulte `PACOTE_6_FECHAMENTOS_BORDEROS_DOSSIE.md`.
-
-## Pacote 12 — Funcionalização Integral
-A partir deste pacote os menus ficam congelados. O foco é persistência, workflow único, comunicação entre telas, validações, permissões e execução das ações já existentes. Consulte `PACOTE_12_FUNCIONALIZACAO_INTEGRAL.md`.
-
-## Pacote 19
-Consolidação operacional de Taxas, Tesouraria e Conciliação. Consulte `PACOTE_19_CONSOLIDACAO_TAXAS_TESOURARIA_CONCILIACAO.md`.

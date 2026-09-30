@@ -2,12 +2,13 @@
  * Borderô Oficial - Fechamento Financeiro e Contábil do Evento
  * Detalhamento por lote, setor, cortesias, canais/PDVs, deduções e saldo líquido final
  */
-import { formatCurrency, formatNumber } from '../formatters.js';
+import { formatCurrency, formatNumber, createStatusBadge } from '../formatters.js';
 
 export function renderBordero(state) {
   const bordero = state.data.bordero;
   const events = state.data.events;
   const s = bordero.summary;
+  const activeBordero = state.data.approvalQueue.find(a => a.type === 'Borderô' && a.eventId === bordero.eventId);
 
   return `
     <!-- Header -->
@@ -31,7 +32,10 @@ export function renderBordero(state) {
             Imprimir Borderô (PDF)
           </button>
           <button class="btn btn-primary" onclick="window.app.openPayoutModal('${bordero.eventId}')">
-            Solicitar Saldo Remanescente
+            Solicitar Saldo
+          </button>
+          <button class="btn btn-success" onclick="window.app.openSubmitBorderoModal('${bordero.eventId}')">
+            ✍️ Fechar & Homologar Borderô
           </button>
         </div>
       </div>
@@ -39,6 +43,57 @@ export function renderBordero(state) {
 
     <!-- Content -->
     <div class="limitless-content">
+
+      <!-- Status do Fechamento Formal com Dupla Assinatura -->
+      ${activeBordero ? `
+        <div class="card-panel" style="border-left: 4px solid #10b981; padding: 20px; background: #ffffff; margin-bottom: 20px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px; margin-bottom: 12px;">
+            <div>
+              <div style="font-size: 0.75rem; text-transform: uppercase; font-weight: 700; color: #059669; letter-spacing: 0.05em;">
+                HOMOLOGAÇÃO DE FECHAMENTO &bull; DUPLA ASSINATURA OBRIGATÓRIA (FINANCEIRO DISK POR ÚLTIMO)
+              </div>
+              <h3 style="font-size: 1.15rem; font-weight: 800; margin: 4px 0 0 0; color: var(--text-main);">
+                Protocolo de Fechamento: ${activeBordero.id} (${activeBordero.documentId})
+              </h3>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px;">
+              ${createStatusBadge(activeBordero.status)}
+              <button class="btn btn-secondary btn-sm" onclick="window.app.openAuditTrailModal('${activeBordero.id}')">
+                📜 Trilha
+              </button>
+            </div>
+          </div>
+
+          <div style="background: #f8fafc; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 14px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; font-size: 0.82rem;">
+            <div>
+              <span style="font-weight: 700; color: ${activeBordero.signatures?.producer.signed ? '#10b981' : '#2563eb'};">
+                ${activeBordero.signatures?.producer.signed ? `✓ Produtor Assinou (${activeBordero.signatures.producer.signedBy})` : '○ 1. Aguardando Assinatura do Produtor'}
+              </span>
+              <span style="margin: 0 8px; color: #94a3b8;">&bull;</span>
+              <span style="font-weight: 700; color: ${activeBordero.signatures?.disk.signed ? '#10b981' : (!activeBordero.signatures?.producer.signed ? '#94a3b8' : '#2563eb')};">
+                ${activeBordero.signatures?.disk.signed ? `✓ Financeiro Disk Assinou por Último` : '🔒 2. Assinatura Final Disk (Por Último)'}
+              </span>
+              <span style="margin: 0 8px; color: #94a3b8;">&bull;</span>
+              <span style="font-weight: 700; color: ${activeBordero.status === 'Pago' ? '#10b981' : '#94a3b8'};">
+                ${activeBordero.status === 'Pago' ? '✓ 3. Fechamento Liquidado / Concluído' : '○ 3. Liquidação'}
+              </span>
+            </div>
+
+            <div style="display: flex; gap: 8px;">
+              ${activeBordero.status === 'Aguardando assinatura do Produtor' ? `
+                <button class="btn btn-success btn-sm" onclick="window.app.openSignDocumentModal('${activeBordero.id}')">
+                  ✍️ Assinar Termo de Borderô (Produtor)
+                </button>
+              ` : ''}
+              ${activeBordero.status === 'Pago' ? `
+                <button class="btn btn-secondary btn-sm" onclick="window.app.showPayoutReceipt('${activeBordero.id}')">
+                  Comprovante de Liquidação
+                </button>
+              ` : ''}
+            </div>
+          </div>
+        </div>
+      ` : ''}
 
       <!-- Borderô Official Header Sheet -->
       <div class="card-panel" style="border-top: 4px solid var(--primary);">
