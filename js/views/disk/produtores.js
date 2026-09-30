@@ -231,8 +231,11 @@ function renderTabContasBancarias(state, bankAccounts, counts) {
                       <div style="font-size: 0.74rem; color: var(--text-muted); font-family: monospace;">${maskCnpjCpf(b.producerCnpj)}</div>
                     </td>
                     <td>
-                      <div style="font-weight: 600; color: #1e293b;">${b.bankName}</div>
-                      <div style="font-size: 0.72rem; color: #64748b;">${b.accountType || 'Conta Corrente PJ'}</div>
+                      <div style="font-weight: 600; color: #1e293b; display: flex; align-items: center; gap: 4px;">
+                        ${b.bankName}
+                        ${b.isDefault ? `<span class="badge bg-primary text-white" style="font-size: 0.65rem; padding: 2px 5px;" title="Conta bancária padrão para repasses">★ Principal</span>` : ''}
+                      </div>
+                      <div style="font-size: 0.72rem; color: #64748b;">${b.accountType || 'Conta Corrente PJ'} · v${b.version || 1}</div>
                     </td>
                     <td>
                       <div style="font-family: monospace; font-size: 0.85rem; font-weight: 700; color: #1e293b;">
@@ -244,7 +247,10 @@ function renderTabContasBancarias(state, bankAccounts, counts) {
                       <div style="font-family: monospace; font-size: 0.82rem; color: #2563eb; font-weight: 600;">
                         ${maskPix(b.pixKey, b.pixType)}
                       </div>
-                      <div style="font-size: 0.7rem; color: #94a3b8;">${b.pixType || 'Chave cadastrada'}</div>
+                      <div style="display: flex; align-items: center; gap: 4px; margin-top: 2px;">
+                        <span style="font-size: 0.7rem; color: #94a3b8;">${b.pixType || 'Chave cadastrada'}</span>
+                        ${b.pixKey ? `<button class="btn btn-outline-primary btn-xs" style="font-size: 0.62rem; padding: 0 4px; height: 18px; line-height: 16px;" onclick="window.app.testBankPixKey('${b.pixKey}', '${b.pixType || 'CNPJ'}', '${b.producerName}')" title="Testar chave no DICT/Bacen"><i class="ph-shield-check"></i> DICT</button>` : ''}
+                      </div>
                     </td>
                     <td>
                       ${b.bindingType === 'evento' && b.eventName
@@ -272,19 +278,38 @@ function renderTabContasBancarias(state, bankAccounts, counts) {
                       </div>
                     </td>
                     <td style="text-align: right;">
-                      <div style="display: flex; gap: 6px; justify-content: flex-end;">
+                      <div style="display: flex; gap: 4px; justify-content: flex-end; flex-wrap: wrap;">
                         ${isPending ? `
-                          <button class="btn btn-success btn-xs" style="font-weight: 700;" onclick="window.app.openValidateBankModal('${b.producerId}', '${b.id}')">
-                            Validar Conta
+                          <button class="btn btn-success btn-xs" style="font-weight: 700;" onclick="window.app.openValidateBankModal('${b.producerId}', '${b.id}')" title="Homologar conta via Bacen/CIP">
+                            <i class="ph-shield-check"></i> Validar
                           </button>
                         ` : ''}
                         ${isActive ? `
-                          <button class="btn btn-outline-warning btn-xs" style="font-weight: 600;" onclick="window.app.openChangeBankModal('${b.producerId}', '${b.id}')" title="Solicitar alteração controlada da conta">
-                            Alterar Conta
+                          ${!b.isDefault ? `
+                            <button class="btn btn-outline-secondary btn-xs" onclick="window.app.setDefaultBank('${b.producerId}', '${b.id}')" title="Definir como conta padrão de repasses">
+                              <i class="ph-star"></i> Principal
+                            </button>
+                          ` : ''}
+                          <button class="btn btn-outline-warning btn-xs" style="font-weight: 600;" onclick="window.app.openChangeBankModal('${b.producerId}', '${b.id}')" title="Solicitar alteração controlada (cria v${(b.version||1)+1})">
+                            <i class="ph-pencil"></i> Alterar
+                          </button>
+                          <button class="btn btn-outline-danger btn-xs" onclick="window.app.toggleBankStatus('${b.producerId}', '${b.id}')" title="Inativar conta para novos repasses">
+                            <i class="ph-prohibit"></i> Inativar
                           </button>
                         ` : ''}
-                        <button class="btn btn-outline-primary btn-xs" onclick="window.app.openViewBankDetails('${b.producerId}', '${b.id}')">
-                          Ver Dados
+                        ${isInactive ? `
+                          <button class="btn btn-outline-success btn-xs" onclick="window.app.toggleBankStatus('${b.producerId}', '${b.id}')" title="Reativar conta bancária">
+                            <i class="ph-arrow-counter-clockwise"></i> Reativar
+                          </button>
+                        ` : ''}
+                        <button class="btn btn-outline-primary btn-xs" onclick="window.app.openViewBankDetails('${b.producerId}', '${b.id}')" title="Ver dossiê e dados completos">
+                          <i class="ph-eye"></i> Ver
+                        </button>
+                        <button class="btn btn-light btn-xs" onclick="window.app.goToProducerDossier('${b.producerId}')" title="Ir para Dossiê do Produtor">
+                          <i class="ph-folder-user"></i>
+                        </button>
+                        <button class="btn btn-light btn-xs text-danger" onclick="window.app.deleteBank('${b.producerId}', '${b.id}')" title="Excluir conta (bloqueado se houver histórico)">
+                          <i class="ph-trash"></i>
                         </button>
                       </div>
                     </td>

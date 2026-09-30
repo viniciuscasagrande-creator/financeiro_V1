@@ -2550,6 +2550,28 @@ class LimitlessFinancialApp {
       if (action === 'nova-taxa' || action === 'editar-taxa' || action === 'duplicar-taxa') {
         return this.openSpreadRuleModal(action, id);
       }
+      if (action === 'status-taxa') {
+        const r = financialStore.setSpreadRuleStatus(id);
+        financialStore.showToast('Situação Atualizada', `${r.name}: ${r.status}.`, 'success');
+        financialStore.notify();
+        return;
+      }
+      if (action === 'historico-taxa') {
+        return this.openSpreadHistory(id);
+      }
+      if (action === 'excluir-taxa') {
+        try {
+          const r = financialStore.deleteSpreadRule(id);
+          financialStore.showToast('Regra Excluída', `${r.name} removida com sucesso.`, 'success');
+          financialStore.notify();
+        } catch (e) {
+          financialStore.showToast('Regra Preservada', e.message, 'warning');
+        }
+        return;
+      }
+      if (action === 'simular-spread') {
+        return this.openSpreadSimulatorModal();
+      }
       if (action === 'novo-lancamento') {
         return this.openPayableModal();
       }
@@ -2570,7 +2592,6 @@ class LimitlessFinancialApp {
         'historico-split': 'diskDivisaoReceitas'
       };
       const map = {
-        'simular-spread': ['Simulador de Spread', 'A simulação usa as regras persistidas e não altera o Ledger.'],
         'historico-split': ['Histórico de Splits', 'Histórico operacional preservado no estado do Core Financeiro.'],
         'exportar-estornos': ['Exportação', 'Visão de estornos preparada para exportação analítica.'],
         'analisar-estorno': ['Central de Aprovações', `Estorno ${id || ''} aberto na fila de análise com o mesmo protocolo.`]
@@ -2583,40 +2604,131 @@ class LimitlessFinancialApp {
     }
   }
 
+  // Filtros da Visão de Taxas e Spread
+  setSpreadFilterScope(scope) {
+    this.filterSpreadScope = scope;
+    financialStore.notify();
+  }
+  setSpreadFilterAcquirer(acquirer) {
+    this.filterSpreadAcquirer = acquirer;
+    financialStore.notify();
+  }
+  setSpreadFilterStatus(status) {
+    this.filterSpreadStatus = status;
+    financialStore.notify();
+  }
+
   openSpreadRuleModal(action = 'nova-taxa', id = '') {
     const st = financialStore.getState();
-    let r = st.data.spreadRules?.find(x => x.id === id) || { name: '', acquirer: '', chargedRate: '', mdr: '', fixedFee: 0, payer: 'Produtor', term: 'D+30' };
-    if (action === 'duplicar-taxa') r = { ...r, id: null, name: `${r.name} (cópia)` };
+    let r = st.data.spreadRules?.find(x => x.id === id) || {
+      name: '',
+      acquirer: 'Cielo',
+      paymentMethod: 'Cartão de Crédito',
+      brand: 'Visa/Mastercard',
+      installments: '1x',
+      chargedRate: '',
+      mdr: '',
+      fixedFee: 0,
+      payer: 'Produtor',
+      term: 'D+30',
+      scopeType: 'Geral Disk',
+      scopeId: 'all',
+      validFrom: new Date().toISOString().slice(0, 10),
+      validTo: ''
+    };
+    if (action === 'duplicar-taxa') {
+      r = { ...r, id: null, name: `${r.name} (cópia)`, version: 1, history: [] };
+    }
+
+    const producers = (st.data.producers || []).map(p =>
+      `<option value="${p.id}" ${r.scopeId === p.id ? 'selected' : ''}>Produtor: ${p.name}</option>`
+    ).join('');
+    const events = (st.data.events || []).map(e =>
+      `<option value="${e.id}" ${r.scopeId === e.id ? 'selected' : ''}>Evento: ${e.name}</option>`
+    ).join('');
+    const scopeOptions = `<option value="all" ${r.scopeId === 'all' ? 'selected' : ''}>Geral Disk (Todos)</option>${producers}${events}`;
+
+    const titleText = action === 'nova-taxa'
+      ? '+ Nova Taxa / Regra Comercial'
+      : (action === 'duplicar-taxa' ? 'Duplicar Taxa Comercial' : `Editar Taxa · Versão v${(r.version || 1) + 1}`);
+
     this.showModal(`
-      <div class="modal-card" style="max-width: 620px;">
-        <div class="modal-header">
-          <h4 class="mb-0 fw-bold">${action === 'nova-taxa' ? 'Nova' : (action === 'duplicar-taxa' ? 'Duplicar' : 'Editar')} Regra de Spread</h4>
-          <button class="modal-close-btn" onclick="window.app.closeModal()">&times;</button>
+      <div class="modal-card" style="max-width: 820px;">
+        <div class="modal-header" style="background: #0f172a; color: white; border-bottom: 2px solid #3b82f6;">
+          <div>
+            <h4 class="mb-0 fw-bold" style="color: #f8fafc; font-size: 1.15rem;">
+              <i class="ph-percent" style="color: #60a5fa; margin-right: 6px;"></i>
+              ${titleText}
+            </h4>
+            <div style="font-size: 0.78rem; color: #94a3b8; margin-top: 2px;">
+              MDR é o custo pago pela Disk; taxa cobrada é a regra comercial aplicada. Spread líquido calculado em tempo real.
+            </div>
+          </div>
+          <button class="modal-close-btn" style="color: #94a3b8;" onclick="window.app.closeModal()">&times;</button>
         </div>
         <form class="modal-body p-4" onsubmit="window.app.submitSpreadRule(event, '${action === 'editar-taxa' ? id : ''}')">
           <div class="row g-3">
             <div class="col-12">
-              <label class="form-label fw-bold">Regra / Meio de Pagamento</label>
+              <label class="form-label fw-bold">Nome da Regra Comercial *</label>
               <input name="name" class="form-control" required value="${r.name || ''}" placeholder="Ex: Cartão de Crédito Parcelado (2 a 6x)">
             </div>
-            <div class="col-md-6">
-              <label class="form-label fw-bold">Adquirente</label>
-              <input name="acquirer" class="form-control" required value="${r.acquirer || ''}" placeholder="Ex: Cielo, Rede, Stone">
-            </div>
-            <div class="col-md-3">
-              <label class="form-label fw-bold">Taxa Cobrada %</label>
-              <input name="chargedRate" type="number" step="0.01" class="form-control" required value="${r.chargedRate || ''}">
-            </div>
-            <div class="col-md-3">
-              <label class="form-label fw-bold">Custo MDR %</label>
-              <input name="mdr" type="number" step="0.01" class="form-control" required value="${r.mdr || ''}">
+            <div class="col-md-4">
+              <label class="form-label fw-bold">Adquirente / Gateway *</label>
+              <select name="acquirer" class="form-select" required>
+                <option value="Cielo" ${r.acquirer === 'Cielo' ? 'selected' : ''}>Cielo</option>
+                <option value="Rede" ${r.acquirer === 'Rede' ? 'selected' : ''}>Rede</option>
+                <option value="Stone" ${r.acquirer === 'Stone' ? 'selected' : ''}>Stone</option>
+                <option value="EfiPix" ${r.acquirer === 'EfiPix' ? 'selected' : ''}>EfiPix</option>
+                <option value="PagBank" ${r.acquirer === 'PagBank' ? 'selected' : ''}>PagBank</option>
+              </select>
             </div>
             <div class="col-md-4">
+              <label class="form-label fw-bold">Meio de Pagamento *</label>
+              <select name="paymentMethod" class="form-select" required>
+                <option ${r.paymentMethod === 'Cartão de Crédito' ? 'selected' : ''}>Cartão de Crédito</option>
+                <option ${r.paymentMethod === 'Cartão de Débito' ? 'selected' : ''}>Cartão de Débito</option>
+                <option ${r.paymentMethod === 'PIX' ? 'selected' : ''}>PIX</option>
+                <option ${r.paymentMethod === 'Boleto' ? 'selected' : ''}>Boleto</option>
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-bold">Bandeira</label>
+              <input name="brand" class="form-control" value="${r.brand || 'Visa/Mastercard'}" placeholder="Ex: Visa/Mastercard, Elo, Todas">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label fw-bold">Parcelamento</label>
+              <input name="installments" class="form-control" value="${r.installments || '1x'}" placeholder="Ex: 1x, 2 a 6x, 7 a 12x">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label fw-bold">Custo MDR Disk % *</label>
+              <input id="modalInputMdr" name="mdr" type="number" step="0.01" min="0" class="form-control" required value="${r.mdr}" placeholder="Ex: 2.80" oninput="window.app.recalcModalSpread()">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label fw-bold">Taxa Cobrada % *</label>
+              <input id="modalInputCharged" name="chargedRate" type="number" step="0.01" min="0" class="form-control" required value="${r.chargedRate}" placeholder="Ex: 8.00" oninput="window.app.recalcModalSpread()">
+            </div>
+            <div class="col-md-3">
               <label class="form-label fw-bold">Tarifa Fixa (R$)</label>
-              <input name="fixedFee" type="number" step="0.01" class="form-control" value="${r.fixedFee || 0}">
+              <input id="modalInputFixed" name="fixedFee" type="number" step="0.01" min="0" class="form-control" value="${r.fixedFee || 0}" oninput="window.app.recalcModalSpread()">
             </div>
+
+            <!-- Box Dinâmico de Cálculo de Spread Líquido -->
+            <div class="col-12">
+              <div id="modalSpreadLiveBox" style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                  <div style="font-size: 0.78rem; font-weight: 700; color: #166534; text-transform: uppercase;">Margem de Spread Líquido Calculada:</div>
+                  <div id="modalSpreadText" style="font-size: 1.15rem; font-weight: 800; color: #15803d;">
+                    ${(Number(r.chargedRate || 0) - Number(r.mdr || 0)).toFixed(2)}% de Spread Líquido
+                  </div>
+                </div>
+                <div style="font-size: 0.78rem; color: #166534; text-align: right;">
+                  Fórmula Oficial:<br><strong>Spread = Taxa Cobrada - Custo MDR Disk</strong>
+                </div>
+              </div>
+            </div>
+
             <div class="col-md-4">
-              <label class="form-label fw-bold">Quem Absorve</label>
+              <label class="form-label fw-bold">Quem Absorve a Taxa</label>
               <select name="payer" class="form-select">
                 <option value="Produtor" ${r.payer === 'Produtor' ? 'selected' : ''}>Produtor (Retenção)</option>
                 <option value="Comprador" ${r.payer === 'Comprador' ? 'selected' : ''}>Comprador (Conveniência)</option>
@@ -2624,30 +2736,285 @@ class LimitlessFinancialApp {
               </select>
             </div>
             <div class="col-md-4">
-              <label class="form-label fw-bold">Prazo Liquidação</label>
-              <input name="term" class="form-control" value="${r.term || 'D+30'}">
+              <label class="form-label fw-bold">Prazo de Liquidação</label>
+              <input name="term" class="form-control" value="${r.term || 'D+30'}" placeholder="Ex: D+0, D+1, D+14, D+30">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-bold">Abrangência da Regra *</label>
+              <select name="scopeType" class="form-select" onchange="document.getElementById('spreadScopeId').disabled = (this.value === 'Geral Disk')">
+                <option value="Geral Disk" ${r.scopeType === 'Geral Disk' ? 'selected' : ''}>Geral Disk</option>
+                <option value="Produtor" ${r.scopeType === 'Produtor' ? 'selected' : ''}>Produtor Específico</option>
+                <option value="Evento" ${r.scopeType === 'Evento' ? 'selected' : ''}>Evento Específico</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-bold">Produtor / Evento Vinculado</label>
+              <select id="spreadScopeId" name="scopeId" class="form-select" ${r.scopeType === 'Geral Disk' ? 'disabled' : ''}>
+                ${scopeOptions}
+              </select>
+              <div class="form-text" style="font-size: 0.75rem; color: #64748b;">
+                Hierarquia Automática: Evento → Produtor → Geral Disk.
+              </div>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label fw-bold">Início da Vigência</label>
+              <input name="validFrom" type="date" class="form-control" value="${r.validFrom || ''}">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label fw-bold">Fim da Vigência</label>
+              <input name="validTo" type="date" class="form-control" value="${r.validTo || ''}">
+            </div>
+
+            <div class="col-12">
+              <div class="info-banner info-banner-blue mb-0" style="padding: 10px 14px; font-size: 0.8rem;">
+                <i class="ph-info"></i>
+                <div>
+                  <strong>Auditoria e Versionamento:</strong> Ao editar uma taxa existente, uma nova versão (ex: v${(r.version || 1) + 1}) é registrada automaticamente e a versão anterior permanece no histórico de auditoria e contratos passados.
+                </div>
+              </div>
             </div>
           </div>
+
           <div class="modal-footer px-0 pb-0 mt-4">
             <button type="button" class="btn btn-light" onclick="window.app.closeModal()">Cancelar</button>
-            <button type="submit" class="btn btn-primary fw-bold">Salvar e Publicar</button>
+            <button type="submit" class="btn btn-primary fw-bold" style="background: #2563eb; border-color: #1d4ed8;">
+              <i class="ph-floppy-disk me-1"></i> Salvar e Publicar Regra
+            </button>
           </div>
         </form>
       </div>
     `);
   }
 
+  recalcModalSpread() {
+    const charged = parseFloat(document.getElementById('modalInputCharged')?.value) || 0;
+    const mdr = parseFloat(document.getElementById('modalInputMdr')?.value) || 0;
+    const fixed = parseFloat(document.getElementById('modalInputFixed')?.value) || 0;
+    const spread = charged - mdr;
+    const box = document.getElementById('modalSpreadText');
+    if (box) {
+      box.innerText = `+${spread.toFixed(2)}% de Spread Líquido ${fixed > 0 ? `(+ R$ ${fixed.toFixed(2)} fixa)` : ''}`;
+    }
+  }
+
   submitSpreadRule(ev, id = '') {
     ev.preventDefault();
     try {
       const f = Object.fromEntries(new FormData(ev.target).entries());
+      if (!f.scopeId) f.scopeId = 'all';
       const row = financialStore.saveSpreadRule(f, id || null);
       this.closeModal();
-      financialStore.showToast('Regra de Spread Salva', `${row.id} publicada e persistida com spread líquido de +${(row.chargedRate - row.mdr).toFixed(2)}%.`, 'success');
-      this.navigate('diskSpread');
+      financialStore.showToast(
+        'Taxa Comercial Salva',
+        `${row.id} · v${row.version} publicada e persistida com spread líquido de +${(row.chargedRate - row.mdr).toFixed(2)}%.`,
+        'success'
+      );
+      this.navigate('diskTaxas');
     } catch (e) {
       financialStore.showToast('Não foi possível salvar', e.message, 'danger');
     }
+  }
+
+  openSpreadHistory(id = '') {
+    const st = financialStore.getState();
+    const r = st.data.spreadRules?.find(x => x.id === id);
+    if (!r) return;
+    const versions = [
+      { version: r.version || 1, changedAt: r.updatedAt || r.createdAt || 'Atual', changedBy: 'Versão Vigente', snapshot: r },
+      ...(r.history || [])
+    ];
+
+    this.showModal(`
+      <div class="modal-card" style="max-width: 780px;">
+        <div class="modal-header" style="background: #0f172a; color: white; border-bottom: 2px solid #3b82f6;">
+          <div>
+            <h4 class="mb-0 fw-bold" style="color: #f8fafc; font-size: 1.15rem;">
+              <i class="ph-clock-counter-clockwise" style="color: #60a5fa; margin-right: 6px;"></i>
+              Histórico de Versões da Taxa Comercial
+            </h4>
+            <div style="font-size: 0.78rem; color: #94a3b8; margin-top: 2px;">
+              ${r.id} · ${r.name} · Adquirente: ${r.acquirer}
+            </div>
+          </div>
+          <button class="modal-close-btn" style="color: #94a3b8;" onclick="window.app.closeModal()">&times;</button>
+        </div>
+        <div class="modal-body p-4">
+          <div class="table-responsive">
+            <table class="limitless-table">
+              <thead>
+                <tr>
+                  <th>Versão</th>
+                  <th>Data & Responsável</th>
+                  <th style="text-align: right;">Taxa Cobrada</th>
+                  <th style="text-align: right;">Custo MDR</th>
+                  <th style="text-align: right;">Spread Líquido</th>
+                  <th>Abrangência</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${versions.map(v => {
+                  const x = v.snapshot || {};
+                  const charged = Number(x.chargedRate || 0);
+                  const mdr = Number(x.mdr || 0);
+                  const sp = charged - mdr;
+                  return `
+                    <tr>
+                      <td><span class="badge ${v.version === r.version ? 'badge-primary' : 'badge-neutral'}">v${v.version}</span></td>
+                      <td>
+                        <div style="font-weight: 600; font-size: 0.85rem;">${v.changedAt || '—'}</div>
+                        <div style="font-size: 0.72rem; color: #64748b;">${v.changedBy || 'Sistema'}</div>
+                      </td>
+                      <td style="text-align: right; font-weight: 700;">${charged.toFixed(2)}%</td>
+                      <td style="text-align: right; color: #dc2626;">${mdr.toFixed(2)}%</td>
+                      <td style="text-align: right; font-weight: 800; color: #059669;">+${sp.toFixed(2)}%</td>
+                      <td>
+                        <span class="badge badge-neutral" style="font-size: 0.72rem;">${x.scopeType || 'Geral Disk'}</span>
+                      </td>
+                    </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" onclick="window.app.closeModal()">Fechar</button>
+        </div>
+      </div>
+    `);
+  }
+
+  openSpreadSimulatorModal() {
+    const st = financialStore.getState();
+    const producers = st.data.producers || [];
+    const events = st.data.events || [];
+
+    this.showModal(`
+      <div class="modal-card" style="max-width: 700px;">
+        <div class="modal-header" style="background: #0f172a; color: white; border-bottom: 2px solid #3b82f6;">
+          <div>
+            <h4 class="mb-0 fw-bold" style="color: #f8fafc; font-size: 1.15rem;">
+              <i class="ph-calculator" style="color: #60a5fa; margin-right: 6px;"></i>
+              Simulador Financeiro de Spread & Rentabilidade
+            </h4>
+            <div style="font-size: 0.78rem; color: #94a3b8; margin-top: 2px;">
+              Simulação baseada na hierarquia oficial: Regra do Evento → Regra do Produtor → Regra Geral Disk
+            </div>
+          </div>
+          <button class="modal-close-btn" style="color: #94a3b8;" onclick="window.app.closeModal()">&times;</button>
+        </div>
+        <div class="modal-body p-4">
+          <div class="row g-3 mb-4">
+            <div class="col-md-6">
+              <label class="form-label fw-bold">Valor da Venda Simulado (R$)</label>
+              <input id="simTransAmount" type="number" step="0.01" class="form-control form-control-lg fw-bold" value="1000.00" oninput="window.app.updateSpreadSimulation()">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-bold">Meio de Pagamento</label>
+              <select id="simPayMethod" class="form-select form-select-lg" onchange="window.app.updateSpreadSimulation()">
+                <option value="Cartão de Crédito" selected>Cartão de Crédito</option>
+                <option value="PIX">PIX Instantâneo</option>
+                <option value="Cartão de Débito">Cartão de Débito</option>
+                <option value="Boleto">Boleto Bancário</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-bold">Produtor Contratante</label>
+              <select id="simProducerId" class="form-select" onchange="window.app.updateSpreadSimulation()">
+                <option value="">Nenhum (Padrão Geral)</option>
+                ${producers.map(p => `<option value="${p.id}">${p.name}</option>`).join('')}
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-bold">Evento Específico</label>
+              <select id="simEventId" class="form-select" onchange="window.app.updateSpreadSimulation()">
+                <option value="">Nenhum (Padrão Geral)</option>
+                ${events.map(e => `<option value="${e.id}">${e.name}</option>`).join('')}
+              </select>
+            </div>
+          </div>
+
+          <!-- Resultado da Simulação -->
+          <div id="simResultBox" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px;">
+            <!-- Preenchido dinamicamente por updateSpreadSimulation -->
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" onclick="window.app.closeModal()">Fechar</button>
+        </div>
+      </div>
+    `);
+    this.updateSpreadSimulation();
+  }
+
+  updateSpreadSimulation() {
+    const valInput = document.getElementById('simTransAmount');
+    const methInput = document.getElementById('simPayMethod');
+    const prodInput = document.getElementById('simProducerId');
+    const evtInput = document.getElementById('simEventId');
+    const resBox = document.getElementById('simResultBox');
+    if (!resBox) return;
+
+    const val = parseFloat(valInput?.value) || 1000.00;
+    const method = methInput?.value || 'Cartão de Crédito';
+    const prodId = prodInput?.value || null;
+    const evtId = evtInput?.value || null;
+
+    const resolved = financialStore.resolveCommercialFeeRule({
+      eventId: evtId,
+      producerId: prodId,
+      paymentMethod: method,
+      installments: '1x'
+    });
+
+    const rule = resolved.rule || { name: 'Regra Padrão', chargedRate: 5.0, mdr: 2.0, fixedFee: 0, acquirer: 'Cielo', term: 'D+30', payer: 'Produtor' };
+    const chargedPercent = Number(rule.chargedRate || 0);
+    const mdrPercent = Number(rule.mdr || 0);
+    const fixedFee = Number(rule.fixedFee || 0);
+
+    const chargedVal = (val * (chargedPercent / 100)) + fixedFee;
+    const mdrVal = (val * (mdrPercent / 100));
+    const spreadVal = chargedVal - mdrVal;
+    const netProducer = val - chargedVal;
+
+    resBox.innerHTML = `
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px;">
+        <div>
+          <div style="font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Regra Resolvida por Prioridade</div>
+          <div style="font-size: 1.05rem; font-weight: 800; color: #1e293b;">${rule.name}</div>
+          <div style="font-size: 0.75rem; color: #64748b;">Adquirente: ${rule.acquirer} · Liquidação: ${rule.term}</div>
+        </div>
+        <span class="badge ${resolved.resolvedScope === 'Evento' ? 'badge-info' : (resolved.resolvedScope === 'Produtor' ? 'badge-primary' : 'badge-neutral')}" style="padding: 6px 10px; font-weight: 700;">
+          Prioridade: ${resolved.resolvedScope}
+        </span>
+      </div>
+
+      <div class="row g-3">
+        <div class="col-4">
+          <div style="font-size: 0.75rem; color: #64748b;">Taxa Cobrada (${chargedPercent.toFixed(2)}%)</div>
+          <div style="font-size: 1.15rem; font-weight: 800; color: #1e293b;">R$ ${chargedVal.toFixed(2)}</div>
+        </div>
+        <div class="col-4">
+          <div style="font-size: 0.75rem; color: #dc2626;">Custo MDR Disk (${mdrPercent.toFixed(2)}%)</div>
+          <div style="font-size: 1.15rem; font-weight: 800; color: #dc2626;">-R$ ${mdrVal.toFixed(2)}</div>
+        </div>
+        <div class="col-4">
+          <div style="font-size: 0.75rem; color: #059669; font-weight: 700;">Spread Líquido Disk</div>
+          <div style="font-size: 1.25rem; font-weight: 800; color: #059669;">+R$ ${spreadVal.toFixed(2)}</div>
+        </div>
+      </div>
+
+      <div style="margin-top: 16px; background: white; border: 1px solid #cbd5e1; border-radius: 6px; padding: 12px; display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <div style="font-size: 0.75rem; color: #64748b;">Líquido Creditado ao Produtor:</div>
+          <div style="font-size: 1.25rem; font-weight: 800; color: #2563eb;">R$ ${netProducer.toFixed(2)}</div>
+        </div>
+        <div style="text-align: right; font-size: 0.75rem; color: #64748b;">
+          Absorção: <strong>${rule.payer}</strong><br>
+          Disponibilidade: <strong>${rule.term}</strong>
+        </div>
+      </div>
+    `;
   }
 
   openPayableModal() {
@@ -3405,7 +3772,7 @@ class LimitlessFinancialApp {
     }
   }
 
-  openViewBankDetails(producerId, accountId) {
+  openViewBankDetails(producerId, accountId, revealSensitive = false) {
     const state = financialStore.getState();
     const prod = (state.data.producers || []).find(p => p.id === producerId);
     if (!prod) return;
@@ -3413,68 +3780,229 @@ class LimitlessFinancialApp {
     if (!b) return;
 
     const docs = b.documents || [];
+    const isPending = b.status === 'Pendente de validação';
+    const isActive = ['Ativa', 'Validada & Ativa'].includes(b.status);
+    const isInactive = b.status && b.status.includes('Inativa');
+
+    // Funções locais de mascaramento condicional
+    const dispAccount = revealSensitive ? b.accountNumber : `••••${b.accountNumber.slice(-5)}`;
+    const dispCnpj = revealSensitive ? prod.cnpj : `${prod.cnpj.slice(0, 2)}.•••.•••/${prod.cnpj.slice(-6)}`;
+    const dispPix = revealSensitive ? (b.pixKey || '—') : (b.pixKey ? (b.pixKey.includes('@') ? `••••@${b.pixKey.split('@')[1]}` : `${b.pixKey.slice(0, 3)}••••${b.pixKey.slice(-3)}`) : '—');
+
     const html = `
-      <div class="modal-card" style="max-width: 600px;">
+      <div class="modal-card" style="max-width: 660px;">
         <div class="modal-header" style="background: #0f172a; color: white; border-bottom: 2px solid #3b82f6;">
-          <h4 class="mb-0 fw-bold" style="color: #f8fafc; font-size: 1.15rem;">
-            Dossiê da Conta Bancária • ${prod.name}
-          </h4>
+          <div>
+            <h4 class="mb-0 fw-bold" style="color: #f8fafc; font-size: 1.15rem;">
+              <i class="ph-bank" style="color: #60a5fa; margin-right: 6px;"></i>
+              Dossiê da Conta Bancária • ${prod.name}
+            </h4>
+            <div style="font-size: 0.78rem; color: #94a3b8; margin-top: 2px;">
+              Informações cadastrais, documentos de titularidade e esteira de auditoria Bacen/CIP
+            </div>
+          </div>
           <button class="modal-close-btn" style="color: #94a3b8;" onclick="window.app.closeModal()">&times;</button>
         </div>
         <div class="modal-body" style="padding: 24px;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-            <div>
-              <span class="badge ${['Ativa', 'Validada & Ativa'].includes(b.status) ? 'badge-success' : (b.status === 'Pendente de validação' ? 'badge-warning' : 'badge-neutral')}">
+          
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span class="badge ${isActive ? 'badge-success' : (isPending ? 'badge-warning' : 'badge-neutral')}" style="padding: 5px 9px; font-weight: 700;">
                 ${b.status}
               </span>
-              <span class="badge badge-info" style="margin-left: 6px;">Versão ${b.version || 1}</span>
+              <span class="badge badge-info">Versão v${b.version || 1}</span>
+              ${b.isDefault ? `<span class="badge bg-primary text-white">★ Conta Principal</span>` : ''}
             </div>
-            <div style="font-size: 0.78rem; color: #64748b;">
-              ID: <code style="font-size: 0.75rem;">${b.id}</code>
+            <div>
+              <button class="btn btn-outline-secondary btn-xs" onclick="window.app.openViewBankDetails('${prod.id}', '${b.id}', ${!revealSensitive})">
+                <i class="${revealSensitive ? 'ph-eye-slash' : 'ph-eye'}"></i> ${revealSensitive ? 'Ocultar Dados Sensíveis' : 'Revelar Dados Completos'}
+              </button>
             </div>
           </div>
 
           <table class="table table-sm table-bordered" style="font-size: 0.88rem; margin-bottom: 20px;">
             <tbody>
               <tr><th style="width: 35%; background: #f8fafc;">Produtor Titular</th><td><b>${prod.name}</b></td></tr>
-              <tr><th style="background: #f8fafc;">CNPJ do Produtor</th><td><span style="font-family: monospace;">${prod.cnpj}</span></td></tr>
-              <tr><th style="background: #f8fafc;">Banco</th><td>${b.bankName}</td></tr>
+              <tr><th style="background: #f8fafc;">CNPJ / CPF</th><td><span style="font-family: monospace; font-weight: 700;">${dispCnpj}</span></td></tr>
+              <tr><th style="background: #f8fafc;">Instituição Bancária</th><td>${b.bankName}</td></tr>
               <tr><th style="background: #f8fafc;">Tipo de Conta</th><td>${b.accountType || 'Conta Corrente PJ'}</td></tr>
-              <tr><th style="background: #f8fafc;">Agência</th><td><b>${b.agency}</b></td></tr>
-              <tr><th style="background: #f8fafc;">Número da Conta</th><td><b style="font-family: monospace;">${b.accountNumber}</b></td></tr>
-              <tr><th style="background: #f8fafc;">Titularidade</th><td>${b.holderName || prod.name} (${b.cnpj || prod.cnpj})</td></tr>
-              <tr><th style="background: #f8fafc;">Chave PIX</th><td><span style="color: #2563eb; font-weight: 700; font-family: monospace;">${b.pixKey || '—'}</span> (${b.pixType || 'PIX'})</td></tr>
+              <tr><th style="background: #f8fafc;">Agência / Conta</th><td><b style="font-family: monospace;">Agência ${b.agency} / Conta ${dispAccount}</b></td></tr>
+              <tr><th style="background: #f8fafc;">Titular Cadastrado</th><td>${b.holderName || prod.name}</td></tr>
+              <tr>
+                <th style="background: #f8fafc;">Chave PIX</th>
+                <td>
+                  <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="color: #2563eb; font-weight: 700; font-family: monospace;">${dispPix}</span>
+                    ${b.pixKey ? `
+                      <button class="btn btn-outline-primary btn-xs" style="font-size: 0.72rem; padding: 2px 6px;" onclick="window.app.testBankPixKey('${b.pixKey}', '${b.pixType || 'CNPJ'}', '${prod.name}')">
+                        <i class="ph-shield-check"></i> Testar no DICT
+                      </button>
+                    ` : ''}
+                  </div>
+                </td>
+              </tr>
               <tr><th style="background: #f8fafc;">Vinculação</th><td>${b.eventName || 'Geral (Todos os eventos)'}</td></tr>
               <tr><th style="background: #f8fafc;">Finalidade</th><td>${b.purpose || 'Repasse'}</td></tr>
               <tr><th style="background: #f8fafc;">Validação Bacen/CIP</th><td>${b.validatedAt || 'Pendente de validação pela mesa'}</td></tr>
+              <tr><th style="background: #f8fafc;">Data do Cadastro</th><td>${b.createdAt || 'Homologada no sistema'} por ${b.createdBy || 'Operador Disk'}</td></tr>
             </tbody>
           </table>
 
+          <!-- Seção de Documentos Comprobatórios do Dossiê -->
           <div class="card-panel" style="background: #f8fafc; padding: 14px; margin-bottom: 20px;">
-            <div style="font-size: 0.8rem; font-weight: 700; color: #1e293b; margin-bottom: 8px;">Documentos Comprobatórios Anexados:</div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+              <div style="font-size: 0.85rem; font-weight: 700; color: #1e293b;">
+                <i class="ph-file-pdf" style="color: #dc2626;"></i> Documentos do Dossiê Bancário:
+              </div>
+              <button class="btn btn-outline-primary btn-xs" onclick="window.app.attachBankDocumentModal('${prod.id}', '${b.id}')">
+                <i class="ph-paperclip"></i> + Anexar Documento
+              </button>
+            </div>
             ${docs.length > 0 ? docs.map(d => `
               <div style="display: flex; justify-content: space-between; align-items: center; background: white; padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 6px; margin-bottom: 6px;">
                 <div>
-                  <span style="font-weight: 700; font-size: 0.85rem;"><i class="ph-file-pdf" style="color: #dc2626;"></i> ${d.name}</span>
-                  <div style="font-size: 0.72rem; color: #64748b;">${d.type} • Enviado em ${d.uploadedAt}</div>
+                  <span style="font-weight: 700; font-size: 0.85rem;"><i class="ph-file-pdf" style="color: #dc2626; margin-right: 4px;"></i> ${d.name}</span>
+                  <div style="font-size: 0.72rem; color: #64748b;">${d.type} • Enviado em ${d.uploadedAt} ${d.uploadedBy ? `por ${d.uploadedBy}` : ''}</div>
                 </div>
-                <button class="btn btn-outline-primary btn-xs" onclick="alert('Visualização do documento ${d.name}')">Ver</button>
+                <button class="btn btn-outline-primary btn-xs" onclick="alert('Visualização do documento ${d.name} (${d.type}) do produtor ${prod.name}')">Ver</button>
               </div>
-            `).join('') : '<div style="font-size: 0.8rem; color: #94a3b8;">Nenhum documento anexado.</div>'}
+            `).join('') : '<div style="font-size: 0.8rem; color: #94a3b8;">Nenhum documento anexado ao cadastro.</div>'}
           </div>
 
-          <div style="display: flex; justify-content: flex-end; gap: 8px;">
-            ${b.status === 'Pendente de validação' ? `
-              <button class="btn btn-success" onclick="window.app.closeModal(); window.app.openValidateBankModal('${prod.id}', '${b.id}')">
-                Validar Esta Conta
-              </button>
-            ` : ''}
-            <button class="btn btn-secondary" onclick="window.app.closeModal()">Fechar</button>
+          <!-- Ações Operacionais de Rodapé -->
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+            <button class="btn btn-outline-secondary btn-sm" onclick="window.app.goToProducerDossier('${prod.id}'); window.app.closeModal();">
+              <i class="ph-folder-user"></i> Ir para Dossiê do Produtor
+            </button>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+              ${isPending ? `
+                <button class="btn btn-success btn-sm fw-bold" onclick="window.app.closeModal(); window.app.openValidateBankModal('${prod.id}', '${b.id}')">
+                  <i class="ph-shield-check"></i> Validar Esta Conta
+                </button>
+              ` : ''}
+              ${isActive ? `
+                ${!b.isDefault ? `
+                  <button class="btn btn-outline-secondary btn-sm" onclick="window.app.setDefaultBank('${prod.id}', '${b.id}'); window.app.closeModal();">
+                    <i class="ph-star"></i> Definir como Principal
+                  </button>
+                ` : ''}
+                <button class="btn btn-outline-warning btn-sm" onclick="window.app.closeModal(); window.app.openChangeBankModal('${prod.id}', '${b.id}')">
+                  <i class="ph-pencil"></i> Alterar Conta (v${(b.version||1)+1})
+                </button>
+                <button class="btn btn-outline-danger btn-sm" onclick="window.app.toggleBankStatus('${prod.id}', '${b.id}'); window.app.closeModal();">
+                  <i class="ph-prohibit"></i> Inativar
+                </button>
+              ` : ''}
+              ${isInactive ? `
+                <button class="btn btn-outline-success btn-sm" onclick="window.app.toggleBankStatus('${prod.id}', '${b.id}'); window.app.closeModal();">
+                  <i class="ph-arrow-counter-clockwise"></i> Reativar Conta
+                </button>
+              ` : ''}
+              <button class="btn btn-secondary btn-sm" onclick="window.app.closeModal()">Fechar</button>
+            </div>
           </div>
+
         </div>
       </div>
     `;
     this.showModal(html);
+  }
+
+  // Ações de Contas Bancárias (Pacote 17 / Governança Completa)
+  setDefaultBank(producerId, accountId) {
+    try {
+      financialStore.setProducerDefaultBankAccount(producerId, accountId);
+    } catch (err) {
+      alert(err.message);
+    }
+  }
+
+  toggleBankStatus(producerId, accountId) {
+    try {
+      financialStore.toggleProducerBankAccountStatus(producerId, accountId);
+    } catch (err) {
+      alert(err.message);
+    }
+  }
+
+  deleteBank(producerId, accountId) {
+    if (!confirm('Deseja realmente remover esta conta bancária do cadastro?')) return;
+    try {
+      financialStore.deleteProducerBankAccount(producerId, accountId);
+    } catch (err) {
+      alert(err.message);
+    }
+  }
+
+  testBankPixKey(pixKey, pixType, producerName) {
+    try {
+      const res = financialStore.testPixKey(pixKey, pixType);
+      this.showModal(`
+        <div class="modal-card" style="max-width: 560px;">
+          <div class="modal-header" style="background: #1e3a8a; color: white; border-bottom: 2px solid #3b82f6;">
+            <div>
+              <h4 class="mb-0 fw-bold" style="color: #f8fafc; font-size: 1.15rem;">
+                <i class="ph-shield-check" style="color: #60a5fa; margin-right: 6px;"></i>
+                Homologação DICT / Bacen (SPI)
+              </h4>
+              <div style="font-size: 0.78rem; color: #94a3b8; margin-top: 2px;">
+                Conferência cadastral oficial via Diretório de Identificadores de Contas Transacionais
+              </div>
+            </div>
+            <button class="modal-close-btn" style="color: #94a3b8;" onclick="window.app.closeModal()">&times;</button>
+          </div>
+          <div class="modal-body" style="padding: 24px;">
+            <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
+              <div style="font-size: 0.78rem; font-weight: 700; color: #166534; text-transform: uppercase;">Situação Cadastral no DICT</div>
+              <div style="font-size: 1.1rem; font-weight: 800; color: #15803d; margin-top: 2px;">
+                ✓ ${res.statusDict}
+              </div>
+              <div style="font-size: 0.82rem; color: #166534; margin-top: 4px;">
+                ${res.participantBacen}
+              </div>
+            </div>
+
+            <table class="table table-sm table-bordered" style="font-size: 0.88rem; margin-bottom: 20px;">
+              <tbody>
+                <tr><th style="width: 40%; background: #f8fafc;">Produtor Titular</th><td><b>${producerName || 'Produtor Homologado'}</b></td></tr>
+                <tr><th style="background: #f8fafc;">Chave Consultada</th><td><code style="color: #2563eb; font-weight: 700;">${res.pixKey}</code></td></tr>
+                <tr><th style="background: #f8fafc;">Tipo da Chave</th><td>${res.pixType}</td></tr>
+                <tr><th style="background: #f8fafc;">Consulta Realizada em</th><td>${res.queriedAt}</td></tr>
+                <tr><th style="background: #f8fafc;">Aptidão para Repasse</th><td><span class="badge badge-success">Apta para Liquidação SPI</span></td></tr>
+              </tbody>
+            </table>
+
+            <div style="font-size: 0.8rem; color: #64748b; line-height: 1.4; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px 14px; margin-bottom: 20px;">
+              <strong>Nota Técnica de Governança:</strong> A chave encontra-se ativa no DICT do Banco Central, vinculada ao CNPJ do produtor e apta para liquidação instantânea via API SPI (EFI / Safra / Itaú).
+            </div>
+
+            <div style="display: flex; justify-content: flex-end;">
+              <button class="btn btn-primary" onclick="window.app.closeModal()">Entendido</button>
+            </div>
+          </div>
+        </div>
+      `);
+    } catch (err) {
+      alert(err.message);
+    }
+  }
+
+  goToProducerDossier(producerId) {
+    this.selectProducerInDisk(producerId);
+    this.setDiskProdutoresTab('dossie');
+  }
+
+  attachBankDocumentModal(producerId, accountId) {
+    const docName = prompt('Informe o nome do arquivo a anexar (ex: comprovante_domicilio_bancario.pdf):', 'comprovante_titularidade.pdf');
+    if (!docName) return;
+    const docType = prompt('Informe o tipo de documento (Comprovante bancário, Contrato Social, etc.):', 'Comprovante bancário');
+    try {
+      financialStore.attachBankDocument(producerId, accountId, { name: docName, type: docType || 'Comprovante bancário' });
+      this.closeModal();
+      this.openViewBankDetails(producerId, accountId);
+    } catch (err) {
+      alert(err.message);
+    }
   }
 }
 

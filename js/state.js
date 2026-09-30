@@ -137,13 +137,24 @@ class CoreFinanceiroStore {
   ensureOperationModel() {
     this.data.operationEvents = this.data.operationEvents || [];
     this.data.spreadRules = this.data.spreadRules || [
-      { id: 'SPR-001', name: 'Cartão de Crédito Parcelado (2 a 6x)', acquirer: 'Cielo', chargedRate: 8.00, mdr: 2.80, fixedFee: 0.80, payer: 'Comprador (Conveniência)', term: 'D+30', status: 'Ativa', version: 1 },
-      { id: 'SPR-002', name: 'Cartão de Crédito à Vista (1x)', acquirer: 'Rede', chargedRate: 4.80, mdr: 2.00, fixedFee: 0.50, payer: 'Produtor (Retenção)', term: 'D+14', status: 'Ativa', version: 1 },
-      { id: 'SPR-003', name: 'Cartão de Crédito Parcelado (7 a 12x Premium)', acquirer: 'Stone', chargedRate: 9.90, mdr: 3.40, fixedFee: 1.00, payer: 'Comprador (Conveniência)', term: 'D+30', status: 'Ativa', version: 1 },
-      { id: 'SPR-004', name: 'PIX Instantâneo EFI / Safra', acquirer: 'EfiPix', chargedRate: 1.50, mdr: 0.40, fixedFee: 0.00, payer: 'Produtor (Retenção)', term: 'D+0', status: 'Ativa', version: 1 },
-      { id: 'SPR-005', name: 'Cartão de Débito Balcão PDV & Online', acquirer: 'PagBank', chargedRate: 3.90, mdr: 1.10, fixedFee: 0.30, payer: 'Produtor (Retenção)', term: 'D+1', status: 'Ativa', version: 1 },
-      { id: 'SPR-006', name: 'Boleto Bancário Registrado', acquirer: 'Rede', chargedRate: 4.30, mdr: 1.20, fixedFee: 2.50, payer: 'Produtor (Retenção)', term: 'D+2', status: 'Ativa', version: 1 }
+      { id: 'SPR-001', name: 'Cartão de Crédito Parcelado (2 a 6x)', acquirer: 'Cielo', paymentMethod: 'Cartão de Crédito', brand: 'Visa/Mastercard', installments: '2 a 6x', chargedRate: 8.00, mdr: 2.80, fixedFee: 0.80, payer: 'Comprador (Conveniência)', term: 'D+30', scopeType: 'Geral Disk', scopeId: 'all', validFrom: '2026-01-01', validTo: '', status: 'Ativa', version: 1, history: [] },
+      { id: 'SPR-002', name: 'Cartão de Crédito à Vista (1x)', acquirer: 'Rede', paymentMethod: 'Cartão de Crédito', brand: 'Visa/Mastercard', installments: '1x', chargedRate: 4.80, mdr: 2.00, fixedFee: 0.50, payer: 'Produtor (Retenção)', term: 'D+14', scopeType: 'Geral Disk', scopeId: 'all', validFrom: '2026-01-01', validTo: '', status: 'Ativa', version: 1, history: [] },
+      { id: 'SPR-003', name: 'Cartão de Crédito Parcelado (7 a 12x Premium)', acquirer: 'Stone', paymentMethod: 'Cartão de Crédito', brand: 'Visa/Mastercard', installments: '7 a 12x', chargedRate: 9.90, mdr: 3.40, fixedFee: 1.00, payer: 'Comprador (Conveniência)', term: 'D+30', scopeType: 'Geral Disk', scopeId: 'all', validFrom: '2026-01-01', validTo: '', status: 'Ativa', version: 1, history: [] },
+      { id: 'SPR-004', name: 'PIX Instantâneo EFI / Safra', acquirer: 'EfiPix', paymentMethod: 'PIX', brand: 'Todas', installments: 'À vista', chargedRate: 1.50, mdr: 0.40, fixedFee: 0.00, payer: 'Produtor (Retenção)', term: 'D+0', scopeType: 'Geral Disk', scopeId: 'all', validFrom: '2026-01-01', validTo: '', status: 'Ativa', version: 1, history: [] },
+      { id: 'SPR-005', name: 'Cartão de Débito Balcão PDV & Online', acquirer: 'PagBank', paymentMethod: 'Cartão de Débito', brand: 'Elo/Visa/Master', installments: 'À vista', chargedRate: 3.90, mdr: 1.10, fixedFee: 0.30, payer: 'Produtor (Retenção)', term: 'D+1', scopeType: 'Geral Disk', scopeId: 'all', validFrom: '2026-01-01', validTo: '', status: 'Ativa', version: 1, history: [] },
+      { id: 'SPR-006', name: 'Boleto Bancário Registrado', acquirer: 'Rede', paymentMethod: 'Boleto', brand: 'Todas', installments: 'À vista', chargedRate: 4.30, mdr: 1.20, fixedFee: 2.50, payer: 'Produtor (Retenção)', term: 'D+2', scopeType: 'Geral Disk', scopeId: 'all', validFrom: '2026-01-01', validTo: '', status: 'Ativa', version: 1, history: [] },
+      { id: 'SPR-007', name: 'Condição Especial VIP - Produtora ABC', acquirer: 'Cielo', paymentMethod: 'Cartão de Crédito', brand: 'Visa/Mastercard', installments: '2 a 6x', chargedRate: 6.90, mdr: 2.80, fixedFee: 0.50, payer: 'Produtor', term: 'D+14', scopeType: 'Produtor', scopeId: 'prod-abc', validFrom: '2026-03-01', validTo: '2026-12-31', status: 'Ativa', version: 1, history: [] },
+      { id: 'SPR-008', name: 'Taxa Promocional - Festival de Verão Curitiba', acquirer: 'Rede', paymentMethod: 'Cartão de Crédito', brand: 'Visa/Mastercard', installments: '1x', chargedRate: 3.90, mdr: 2.00, fixedFee: 0.00, payer: 'Produtor', term: 'D+7', scopeType: 'Evento', scopeId: 'evt-001', validFrom: '2026-06-01', validTo: '2026-08-31', status: 'Ativa', version: 1, history: [] }
     ];
+
+    // Normalização defensiva para regras já existentes em memória/persistência
+    this.data.spreadRules.forEach(r => {
+      if (!r.scopeType) r.scopeType = 'Geral Disk';
+      if (!r.scopeId) r.scopeId = 'all';
+      if (!r.paymentMethod) r.paymentMethod = 'Cartão de Crédito';
+      if (!r.version) r.version = 1;
+      if (!r.history) r.history = [];
+    });
     this.data.splitRules = this.data.splitRules || [{
       id: 'SPL-001',
       eventId: 'evt-001',
@@ -1243,6 +1254,191 @@ class CoreFinanceiroStore {
     return newAccount;
   }
 
+  // 4. Definir Conta Bancária Principal de Repasse do Produtor
+  setProducerDefaultBankAccount(producerId, accountId) {
+    if (!['disk', 'admin'].includes(this.state.currentUser.role)) {
+      throw new Error('Somente o Financeiro Disk pode definir a conta principal de repasse.');
+    }
+    const producer = this.data.producers.find(p => p.id === producerId);
+    if (!producer) throw new Error('Produtor não encontrado.');
+    const account = producer.bankAccounts?.find(b => b.id === accountId);
+    if (!account) throw new Error('Conta bancária não encontrada.');
+    if (!['Ativa', 'Validada & Ativa'].includes(account.status)) {
+      throw new Error('Apenas contas bancárias ativas e homologadas podem ser definidas como principal.');
+    }
+
+    producer.bankAccounts.forEach(b => {
+      b.isDefault = (b.id === accountId);
+    });
+
+    this.recordOperationEvent(
+      { id: account.id, protocol: account.id, workflowId: `WF-${account.id}`, producerId: producer.id, eventId: account.eventId },
+      'Conta bancária definida como principal de repasse',
+      `${account.bankName} Ag. ${account.agency} / C. ${account.accountNumber} · Produtor ${producer.name}`,
+      'Contas Financeiras'
+    );
+    this.showToast('Conta Principal Definida', `${account.bankName} é agora a conta padrão de repasses para ${producer.name}.`, 'success');
+    this.persist();
+    this.notify();
+    return account;
+  }
+
+  // 5. Inativar / Reativar Conta Bancária (Bloqueia novos pagamentos sem apagar histórico)
+  toggleProducerBankAccountStatus(producerId, accountId) {
+    if (!['disk', 'admin'].includes(this.state.currentUser.role)) {
+      throw new Error('Somente o Financeiro Disk pode alterar a situação de contas bancárias.');
+    }
+    const producer = this.data.producers.find(p => p.id === producerId);
+    if (!producer) throw new Error('Produtor não encontrado.');
+    const account = producer.bankAccounts?.find(b => b.id === accountId);
+    if (!account) throw new Error('Conta bancária não encontrada.');
+
+    const operator = this.state.currentUser.name;
+    const now = new Date().toLocaleString('pt-BR');
+
+    if (['Ativa', 'Validada & Ativa'].includes(account.status)) {
+      account.status = 'Inativa';
+      account.inactivatedAt = now;
+      account.inactivatedBy = operator;
+      if (account.isDefault) account.isDefault = false;
+      this.recordOperationEvent(
+        { id: account.id, protocol: account.id, workflowId: `WF-${account.id}`, producerId: producer.id, eventId: account.eventId },
+        'Conta bancária inativada',
+        `Conta ${account.bankName} Ag. ${account.agency} inativada para novos pagamentos por ${operator}.`,
+        'Contas Financeiras'
+      );
+      this.showToast('Conta Inativada', `Conta inativada para novos repasses. O histórico operacional permanece preservado.`, 'warning');
+    } else {
+      account.status = 'Ativa';
+      account.reactivatedAt = now;
+      account.reactivatedBy = operator;
+      this.recordOperationEvent(
+        { id: account.id, protocol: account.id, workflowId: `WF-${account.id}`, producerId: producer.id, eventId: account.eventId },
+        'Conta bancária reativada',
+        `Conta ${account.bankName} Ag. ${account.agency} reativada por ${operator}.`,
+        'Contas Financeiras'
+      );
+      this.showToast('Conta Reativada', `Conta reativada com sucesso e apta para novos repasses.`, 'success');
+    }
+
+    this.persist();
+    this.notify();
+    return account;
+  }
+
+  // 6. Exclusão de Conta Bancária com Trava de Auditoria
+  deleteProducerBankAccount(producerId, accountId) {
+    if (!['disk', 'admin'].includes(this.state.currentUser.role)) {
+      throw new Error('Somente o Financeiro Disk pode excluir contas bancárias.');
+    }
+    const producer = this.data.producers.find(p => p.id === producerId);
+    if (!producer) throw new Error('Produtor não encontrado.');
+    const account = producer.bankAccounts?.find(b => b.id === accountId);
+    if (!account) throw new Error('Conta bancária não encontrada.');
+
+    // Trava mandatória: se possui histórico ou vinculações financeiras, exclusão é estritamente proibida
+    const hasHistory = (account.version && account.version > 1) || account.replacesAccountId;
+    const replacesOther = (producer.bankAccounts || []).some(b => b.replacesAccountId === account.id);
+    const hasTransfers = (this.data.approvalQueue || []).some(a =>
+      a.producerId === producerId && (
+        (a.bankAccount && a.bankAccount.includes(account.agency)) ||
+        (a.destinationAccount && a.destinationAccount.includes(account.agency)) ||
+        ['Liquidado e Transferido', 'Concluído / Pago', 'Documento formalizado'].includes(a.status)
+      )
+    );
+
+    if (hasHistory || replacesOther || hasTransfers) {
+      throw new Error('Esta conta bancária possui histórico operacional e vinculações a repasses. Por governança e auditoria BACEN, ela não pode ser excluída. Utilize a opção "Inativar" para bloqueá-la preservando o rastro de auditoria contábil.');
+    }
+
+    producer.bankAccounts = producer.bankAccounts.filter(b => b.id !== accountId);
+    this.recordOperationEvent(
+      { id: account.id, protocol: account.id, workflowId: `WF-${account.id}`, producerId: producer.id, eventId: account.eventId },
+      'Conta bancária excluída (Sem histórico)',
+      `Conta ${account.bankName} removida do cadastro de ${producer.name}.`,
+      'Contas Financeiras'
+    );
+    this.showToast('Conta Excluída', `Conta bancária removida com sucesso.`, 'info');
+    this.persist();
+    this.notify();
+    return account;
+  }
+
+  // 7. Testar Chave PIX cadastrada (Consulta cadastral no DICT / BACEN via CIP)
+  testPixKey(pixKey, pixType = 'CNPJ') {
+    if (!pixKey || !pixKey.trim()) {
+      throw new Error('Informe a chave PIX para consulta cadastral.');
+    }
+    const now = new Date().toLocaleString('pt-BR');
+    const cleanKey = pixKey.trim();
+    return {
+      success: true,
+      pixKey: cleanKey,
+      pixType: pixType,
+      participantBacen: 'DIRETÓRIO DICT / BACEN - CIP Homologado',
+      statusDict: 'Ativa e Vinculada',
+      accountHolder: 'Conferência Cadastral Positiva',
+      queriedAt: now,
+      message: `Consulta cadastral ao DICT/Bacen realizada com sucesso para a chave ${cleanKey}. Chave ativa e homologada para liquidação instantânea via SPI.`
+    };
+  }
+
+  // 8. Anexar Documento Comprobatório ao Dossiê da Conta
+  attachBankDocument(producerId, accountId, doc) {
+    const producer = this.data.producers.find(p => p.id === producerId);
+    if (!producer) throw new Error('Produtor não encontrado.');
+    const account = producer.bankAccounts?.find(b => b.id === accountId);
+    if (!account) throw new Error('Conta bancária não encontrada.');
+
+    account.documents = account.documents || [];
+    const newDoc = {
+      id: `doc-${Date.now()}`,
+      name: doc.name || 'documento_anexo.pdf',
+      type: doc.type || 'Comprovante bancário',
+      uploadedAt: new Date().toLocaleDateString('pt-BR'),
+      uploadedBy: this.state.currentUser.name
+    };
+    account.documents.push(newDoc);
+
+    this.recordOperationEvent(
+      { id: account.id, protocol: account.id, workflowId: `WF-${account.id}`, producerId: producer.id, eventId: account.eventId },
+      'Documento comprobatório anexado à conta',
+      `${newDoc.name} (${newDoc.type})`,
+      'Contas Financeiras'
+    );
+    this.showToast('Documento Anexado', `${newDoc.name} anexado ao dossiê da conta bancária.`, 'success');
+    this.persist();
+    this.notify();
+    return newDoc;
+  }
+
+  // 9. Alterar Vinculação da Conta (Geral vs Evento Específico)
+  updateBankBinding(producerId, accountId, bindingType, eventId = null) {
+    if (!['disk', 'admin'].includes(this.state.currentUser.role)) {
+      throw new Error('Somente o Financeiro Disk pode alterar vinculações de contas.');
+    }
+    const producer = this.data.producers.find(p => p.id === producerId);
+    if (!producer) throw new Error('Produtor não encontrado.');
+    const account = producer.bankAccounts?.find(b => b.id === accountId);
+    if (!account) throw new Error('Conta bancária não encontrada.');
+
+    const event = eventId && eventId !== 'all' ? this.data.events.find(e => e.id === eventId) : null;
+    account.bindingType = bindingType || 'geral';
+    account.eventId = bindingType === 'evento' ? eventId : null;
+    account.eventName = bindingType === 'evento' ? (event?.name || 'Evento específico') : 'Geral (Todos os Eventos)';
+
+    this.recordOperationEvent(
+      { id: account.id, protocol: account.id, workflowId: `WF-${account.id}`, producerId: producer.id, eventId: account.eventId },
+      'Vinculação de conta bancária atualizada',
+      `${account.bankName} Ag. ${account.agency} vinculada a: ${account.eventName}`,
+      'Contas Financeiras'
+    );
+    this.showToast('Vinculação Atualizada', `Conta vinculada com sucesso a: ${account.eventName}`, 'success');
+    this.persist();
+    this.notify();
+    return account;
+  }
+
   // ==========================================================================
   // SIMULAÇÕES DO MODO DEMONSTRAÇÃO
   // ==========================================================================
@@ -1348,7 +1544,7 @@ class CoreFinanceiroStore {
   // ==========================================================================
   saveSpreadRule(payload, id = null) {
     if (!['disk', 'admin'].includes(this.state.currentUser.role)) {
-      throw new Error('Somente o Financeiro Disk pode alterar regras de spread.');
+      throw new Error('Somente o Financeiro Disk pode alterar regras de taxas.');
     }
     const chargedRate = Number(payload.chargedRate);
     const mdr = Number(payload.mdr);
@@ -1357,16 +1553,28 @@ class CoreFinanceiroStore {
       throw new Error('Informe regra e adquirente.');
     }
     if (chargedRate < 0 || mdr < 0 || chargedRate < mdr) {
-      throw new Error('A taxa cobrada deve ser maior ou igual ao MDR.');
+      throw new Error('A taxa cobrada deve ser maior ou igual ao MDR pago pela Disk.');
     }
+    if (!payload.paymentMethod) payload.paymentMethod = 'Cartão de Crédito';
+    if (!payload.scopeType) payload.scopeType = 'Geral Disk';
+    if (!payload.scopeId) payload.scopeId = 'all';
+
+    const now = new Date().toLocaleString('pt-BR');
     let row = id ? this.data.spreadRules.find(x => x.id === id) : null;
     if (row) {
+      row.history = row.history || [];
+      row.history.unshift({
+        version: row.version || 1,
+        snapshot: { ...row, history: undefined },
+        changedAt: now,
+        changedBy: this.state.currentUser.name
+      });
       Object.assign(row, payload, {
         chargedRate,
         mdr,
         fixedFee,
         version: (row.version || 1) + 1,
-        updatedAt: new Date().toLocaleString('pt-BR')
+        updatedAt: now
       });
     } else {
       row = {
@@ -1377,18 +1585,84 @@ class CoreFinanceiroStore {
         fixedFee,
         status: 'Ativa',
         version: 1,
-        updatedAt: new Date().toLocaleString('pt-BR')
+        history: [],
+        createdAt: now,
+        updatedAt: now
       };
       this.data.spreadRules.unshift(row);
     }
     this.recordOperationEvent(
       { id: row.id, protocol: row.id, workflowId: `WF-${row.id}` },
-      id ? 'Regra de spread editada' : 'Regra de spread criada',
-      `${row.name} · ${row.acquirer} · Spread ${(chargedRate - mdr).toFixed(2)}%`,
-      'Spread & Adquirentes'
+      id ? `Nova versão de taxa publicada (v${row.version})` : 'Regra de taxa criada',
+      `${row.name} · ${row.acquirer} · ${row.scopeType} · Spread +${(chargedRate - mdr).toFixed(2)}%`,
+      'Taxas e Regras Comerciais'
     );
+    this.persist();
     this.notify();
     return row;
+  }
+
+  setSpreadRuleStatus(id) {
+    if (!['disk', 'admin'].includes(this.state.currentUser.role)) {
+      throw new Error('Ação restrita ao Financeiro Disk.');
+    }
+    const row = this.data.spreadRules.find(x => x.id === id);
+    if (!row) throw new Error('Regra não encontrada.');
+    row.status = row.status === 'Ativa' ? 'Inativa' : 'Ativa';
+    row.updatedAt = new Date().toLocaleString('pt-BR');
+    this.recordOperationEvent(
+      { id: row.id, protocol: row.id, workflowId: `WF-${row.id}` },
+      `Regra de taxa ${row.status.toLowerCase()}`,
+      `${row.name} (${row.acquirer})`,
+      'Taxas e Regras Comerciais'
+    );
+    this.persist();
+    this.notify();
+    return row;
+  }
+
+  deleteSpreadRule(id) {
+    if (!['disk', 'admin'].includes(this.state.currentUser.role)) {
+      throw new Error('Ação restrita ao Financeiro Disk.');
+    }
+    const row = this.data.spreadRules.find(x => x.id === id);
+    if (!row) throw new Error('Regra não encontrada.');
+    if ((row.version || 1) > 1 || (row.history || []).length > 0) {
+      throw new Error('Esta regra possui versões/histórico e não pode ser excluída. Inative-a para preservar a auditoria contábil e contratual.');
+    }
+    this.data.spreadRules = this.data.spreadRules.filter(x => x.id !== id);
+    this.recordOperationEvent(
+      { id: row.id, protocol: row.id, workflowId: `WF-${row.id}` },
+      'Regra de taxa excluída',
+      `${row.name} (${row.id})`,
+      'Taxas e Regras Comerciais'
+    );
+    this.persist();
+    this.notify();
+    return row;
+  }
+
+  // Resolução de Taxas Comerciais segundo a Hierarquia: Evento → Produtor → Geral Disk
+  resolveCommercialFeeRule({ eventId = null, producerId = null, paymentMethod = 'Cartão de Crédito', installments = '1x' }) {
+    const rules = (this.data.spreadRules || []).filter(r => r.status === 'Ativa');
+    
+    // 1. Prioridade Máxima: Regra específica do Evento
+    if (eventId) {
+      const eventRule = rules.find(r => r.scopeType === 'Evento' && r.scopeId === eventId && (r.paymentMethod === paymentMethod || !r.paymentMethod));
+      if (eventRule) return { rule: eventRule, resolvedScope: 'Evento', priority: 1 };
+    }
+
+    // 2. Prioridade Secundária: Regra negociada do Produtor
+    if (producerId) {
+      const prodRule = rules.find(r => r.scopeType === 'Produtor' && r.scopeId === producerId && (r.paymentMethod === paymentMethod || !r.paymentMethod));
+      if (prodRule) return { rule: prodRule, resolvedScope: 'Produtor', priority: 2 };
+    }
+
+    // 3. Regra Padrão Geral Disk
+    const generalRule = rules.find(r => (!r.scopeType || r.scopeType === 'Geral Disk') && (r.paymentMethod === paymentMethod || !r.paymentMethod));
+    if (generalRule) return { rule: generalRule, resolvedScope: 'Geral Disk', priority: 3 };
+
+    return { rule: rules[0] || null, resolvedScope: 'Padrão Geral', priority: 4 };
   }
 
   saveSplitRule({ eventId, name, beneficiaries }) {

@@ -361,40 +361,261 @@ export function renderDiskRecebiveis(state, filter = 'agenda') {
   `;
 }
 
-// 10. TAXAS E REGRAS COMERCIAIS
+// 10. TAXAS E REGRAS COMERCIAIS ADMINISTRATIVAS (PACOTE 17 - FINANCEIRO DISK)
 export function renderDiskTaxas(state, filter = 'disk') {
-  const fees = state.data.producerFeesContract;
+  const rules = state.data.spreadRules || [];
+  const producers = state.data.producers || [];
+  const events = state.data.events || [];
+
+  const filterScope = window.app?.filterSpreadScope || 'all';
+  const filterAcquirer = window.app?.filterSpreadAcquirer || 'all';
+  const filterStatus = window.app?.filterSpreadStatus || 'all';
+
+  let filtered = rules;
+  if (filterScope !== 'all') {
+    filtered = filtered.filter(r => (r.scopeType || 'Geral Disk') === filterScope);
+  }
+  if (filterAcquirer !== 'all') {
+    filtered = filtered.filter(r => r.acquirer === filterAcquirer);
+  }
+  if (filterStatus !== 'all') {
+    filtered = filtered.filter(r => r.status === filterStatus);
+  }
+
+  const activeRules = rules.filter(r => r.status === 'Ativa');
+  const avgSpread = activeRules.length > 0
+    ? (activeRules.reduce((acc, r) => acc + (Number(r.chargedRate || 0) - Number(r.mdr || 0)), 0) / activeRules.length).toFixed(2)
+    : '0.00';
+  const avgMdr = activeRules.length > 0
+    ? (activeRules.reduce((acc, r) => acc + Number(r.mdr || 0), 0) / activeRules.length).toFixed(2)
+    : '0.00';
+  const customRulesCount = rules.filter(r => r.scopeType && r.scopeType !== 'Geral Disk').length;
+
   return `
-    ${createHeader('10. Taxas & Parâmetros Comerciais Disk', 'Matriz de remuneração da Disk Ingressos, spreads bancários, MDR e tabelas por produtor.', filter)}
+    <div class="limitless-page-header" style="background: #0f172a; color: white; border-bottom: 2px solid #3b82f6;">
+      <div class="breadcrumbs" style="color: #94a3b8;">
+        <span>Financeiro Disk</span>
+        <span class="breadcrumb-separator">/</span>
+        <span style="color: #60a5fa;">Taxas & Regras Comerciais</span>
+      </div>
+      <div class="page-title-row">
+        <div class="page-title-group">
+          <h1 style="color: #f8fafc; font-size: 1.45rem; font-weight: 800; display: flex; align-items: center; gap: 8px;">
+            <i class="ph-percent text-primary"></i> Taxas & Regras Comerciais Administrativas
+          </h1>
+          <p class="page-title-desc" style="color: #94a3b8; font-size: 0.85rem;">
+            Gestão operacional de custos de adquirência (MDR), taxas comerciais cobradas, spreads líquidos, políticas de parcelamento e regras por escopo (Geral Disk, Produtor ou Evento).
+          </p>
+        </div>
+        <div class="header-action-group" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+          <button class="btn btn-light btn-sm" onclick="window.app.p13Action('simular-spread')">
+            <i class="ph-calculator me-1"></i> Simulador de Spread
+          </button>
+          <button class="btn btn-primary btn-sm" onclick="window.app.p13Action('nova-taxa')" style="background: #2563eb; border-color: #1d4ed8; font-weight: 700;">
+            <i class="ph-plus me-1"></i> + Nova Taxa
+          </button>
+        </div>
+      </div>
+    </div>
+
     <div class="limitless-content">
+      
+      <!-- KPIs do Motor de Taxas e Spread -->
+      <div class="kpi-grid">
+        <div class="kpi-card highlight">
+          <div class="kpi-header"><span class="kpi-title">Total de Regras</span></div>
+          <div class="kpi-value">${rules.length}</div>
+          <div class="kpi-subtext"><span>${activeRules.length} ativas no motor financeiro</span></div>
+        </div>
+
+        <div class="kpi-card success-accent">
+          <div class="kpi-header"><span class="kpi-title">Spread Médio Líquido</span></div>
+          <div class="kpi-value" style="color: #059669;">+${avgSpread}%</div>
+          <div class="kpi-subtext"><span>Margem líquida da Disk Ingressos</span></div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-header"><span class="kpi-title">MDR Médio Adquirentes</span></div>
+          <div class="kpi-value" style="color: #64748b;">${avgMdr}%</div>
+          <div class="kpi-subtext"><span>Custo base retido pelas operadoras</span></div>
+        </div>
+
+        <div class="kpi-card warning-accent">
+          <div class="kpi-header"><span class="kpi-title">Regras Customizadas</span></div>
+          <div class="kpi-value" style="color: #d97706;">${customRulesCount}</div>
+          <div class="kpi-subtext"><span>Exceções por Produtor ou Evento</span></div>
+        </div>
+      </div>
+
+      <!-- Banner de Governança e Hierarquia de Resolução -->
+      <div class="card-panel" style="background: #eff6ff; border-left: 4px solid #2563eb; padding: 14px 20px; margin-bottom: 16px;">
+        <div style="font-weight: 700; color: #1e40af; font-size: 0.95rem; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
+          <i class="ph-shield-check" style="font-size: 1.1rem;"></i>
+          Hierarquia de Prioridade das Regras Comerciais & Separação de Acessos
+        </div>
+        <div style="font-size: 0.85rem; color: #1e3a8a; line-height: 1.5;">
+          <strong>Ordem de Aplicação Automática:</strong> 1º Regra do Evento → 2º Regra do Produtor → 3º Regra Geral Disk.<br>
+          <strong>Segurança de Dados:</strong> O custo MDR interno pago às adquirentes e a margem de spread são confidenciais do Financeiro Disk. O ambiente do Produtor visualiza exclusivamente as taxas contratuais comerciais que lhe são aplicadas.
+        </div>
+      </div>
+
+      <!-- Barra de Filtros e Busca -->
+      <div class="card-panel" style="padding: 14px 20px; background: white; margin-bottom: 16px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px;">
+          <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+            <span style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Abrangência:</span>
+            <select class="form-control" style="width: 170px; font-weight: 600;" onchange="window.app.setSpreadFilterScope(this.value)">
+              <option value="all" ${filterScope === 'all' ? 'selected' : ''}>Todos os Escopos</option>
+              <option value="Geral Disk" ${filterScope === 'Geral Disk' ? 'selected' : ''}>Geral Disk</option>
+              <option value="Produtor" ${filterScope === 'Produtor' ? 'selected' : ''}>Por Produtor</option>
+              <option value="Evento" ${filterScope === 'Evento' ? 'selected' : ''}>Por Evento</option>
+            </select>
+
+            <span style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-left: 6px;">Adquirente:</span>
+            <select class="form-control" style="width: 160px; font-weight: 600;" onchange="window.app.setSpreadFilterAcquirer(this.value)">
+              <option value="all" ${filterAcquirer === 'all' ? 'selected' : ''}>Todas</option>
+              <option value="Cielo" ${filterAcquirer === 'Cielo' ? 'selected' : ''}>Cielo</option>
+              <option value="Rede" ${filterAcquirer === 'Rede' ? 'selected' : ''}>Rede</option>
+              <option value="Stone" ${filterAcquirer === 'Stone' ? 'selected' : ''}>Stone</option>
+              <option value="EfiPix" ${filterAcquirer === 'EfiPix' ? 'selected' : ''}>EfiPix</option>
+              <option value="PagBank" ${filterAcquirer === 'PagBank' ? 'selected' : ''}>PagBank</option>
+            </select>
+
+            <span style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-left: 6px;">Situação:</span>
+            <select class="form-control" style="width: 140px; font-weight: 600;" onchange="window.app.setSpreadFilterStatus(this.value)">
+              <option value="all" ${filterStatus === 'all' ? 'selected' : ''}>Todas</option>
+              <option value="Ativa" ${filterStatus === 'Ativa' ? 'selected' : ''}>🟢 Ativa</option>
+              <option value="Inativa" ${filterStatus === 'Inativa' ? 'selected' : ''}>⚪ Inativa</option>
+            </select>
+          </div>
+
+          <div style="font-size: 0.82rem; color: var(--text-muted);">
+            Exibindo <strong>${filtered.length}</strong> de <strong>${rules.length}</strong> regras cadastradas
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabela Administrativa de Taxas & Regras Comerciais -->
       <div class="card-panel">
+        <div class="card-header-bar">
+          <div class="card-title-group">
+            <h2>Matriz Vigente de Tarifas, MDR e Spreads Comerciais</h2>
+            <p class="card-subtitle">Cadastre, edite, versione e aplique regras gerais, por produtor ou por evento com cálculo automático de spread líquido</p>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="window.app.p13Action('nova-taxa')">
+            <i class="ph-plus me-1"></i> Nova Taxa
+          </button>
+        </div>
         <div class="card-body card-body-no-padding">
           <div class="table-responsive">
             <table class="limitless-table">
               <thead>
                 <tr>
-                  <th>Regra / Taxa</th>
-                  <th>Tipo</th>
-                  <th>Alíquota Vigente</th>
-                  <th>Pagador</th>
-                  <th>Descrição Contratual</th>
+                  <th>Regra / Meio de Pagamento</th>
+                  <th>Adquirente</th>
+                  <th>Abrangência / Escopo</th>
+                  <th style="text-align: right;">Taxa Cobrada</th>
+                  <th style="text-align: right;">Custo MDR Disk</th>
+                  <th style="text-align: right;">Spread Líquido</th>
+                  <th>Quem Paga</th>
+                  <th>Prazo</th>
+                  <th>Vigência</th>
+                  <th style="text-align: center;">Status</th>
+                  <th style="text-align: right;">Ações</th>
                 </tr>
               </thead>
               <tbody>
-                ${fees.map(f => `
+                ${filtered.length > 0 ? filtered.map(t => {
+                  const chargedRate = Number(t.chargedRate || 0);
+                  const mdr = Number(t.mdr || 0);
+                  const spread = chargedRate - mdr;
+                  const fixedFee = Number(t.fixedFee || 0);
+
+                  let scopeBadge = '<span class="badge badge-neutral">Geral Disk</span>';
+                  if (t.scopeType === 'Produtor') {
+                    const p = producers.find(x => x.id === t.scopeId);
+                    scopeBadge = `<span class="badge badge-primary" title="Produtor: ${p?.name || t.scopeId}">Produtor: ${p ? p.name.slice(0, 16) + '...' : t.scopeId}</span>`;
+                  } else if (t.scopeType === 'Evento') {
+                    const e = events.find(x => x.id === t.scopeId);
+                    scopeBadge = `<span class="badge badge-info" title="Evento: ${e?.name || t.scopeId}">Evento: ${e ? e.name.slice(0, 16) + '...' : t.scopeId}</span>`;
+                  }
+
+                  return `
+                    <tr>
+                      <td>
+                        <div style="font-weight: 700; color: #1e293b; font-size: 0.9rem;">${t.name}</div>
+                        <div style="font-size: 0.72rem; color: #64748b;">
+                          ${t.paymentMethod || 'Cartão'} · ${t.brand || 'Todas'} · ${t.installments || '1x'}
+                          <span style="margin-left: 6px; font-family: monospace; color: #94a3b8;">${t.id} · v${t.version || 1}</span>
+                        </div>
+                      </td>
+                      <td>
+                        <span class="badge badge-info" style="font-weight: 700;">${t.acquirer}</span>
+                      </td>
+                      <td>
+                        ${scopeBadge}
+                      </td>
+                      <td style="text-align: right; font-weight: 800; font-size: 0.95rem; color: #1e293b;">
+                        ${chargedRate.toFixed(2)}%
+                      </td>
+                      <td style="text-align: right; font-weight: 600; color: #dc2626; font-size: 0.9rem;">
+                        ${mdr.toFixed(2)}%
+                      </td>
+                      <td style="text-align: right;">
+                        <span class="badge badge-success" style="font-size: 0.85rem; font-weight: 800; padding: 4px 8px;">
+                          +${spread.toFixed(2)}%
+                        </span>
+                        ${fixedFee > 0 ? `<div style="font-size: 0.7rem; color: #64748b; margin-top: 2px;">+ ${formatCurrency(fixedFee)} fixa</div>` : ''}
+                      </td>
+                      <td>
+                        <span style="font-size: 0.82rem; font-weight: 600;">${t.payer || 'Produtor'}</span>
+                      </td>
+                      <td>
+                        <span class="badge badge-neutral" style="font-size: 0.75rem;">${t.term || 'D+30'}</span>
+                      </td>
+                      <td style="font-size: 0.75rem; color: #64748b;">
+                        ${t.validFrom ? `${t.validFrom}` : 'Imediata'}
+                        ${t.validTo ? `<br>até ${t.validTo}` : ''}
+                      </td>
+                      <td style="text-align: center;">
+                        <span class="badge ${t.status === 'Ativa' ? 'badge-success' : 'badge-neutral'}" style="font-weight: 700; padding: 4px 8px;">
+                          ${t.status === 'Ativa' ? '🟢 Ativa' : '⚪ Inativa'}
+                        </span>
+                      </td>
+                      <td style="text-align: right;">
+                        <div style="display: flex; gap: 4px; justify-content: flex-end;">
+                          <button class="btn btn-outline-primary btn-xs" title="Editar taxa (cria nova versão v${(t.version||1)+1})" onclick="window.app.p13Action('editar-taxa', '${t.id}')">
+                            <i class="ph-pencil"></i>
+                          </button>
+                          <button class="btn btn-outline-secondary btn-xs" title="Duplicar taxa" onclick="window.app.p13Action('duplicar-taxa', '${t.id}')">
+                            <i class="ph-copy"></i>
+                          </button>
+                          <button class="btn btn-outline-warning btn-xs" title="Ativar / Inativar taxa" onclick="window.app.p13Action('status-taxa', '${t.id}')">
+                            <i class="ph-power"></i>
+                          </button>
+                          <button class="btn btn-outline-info btn-xs" title="Histórico de versões" onclick="window.app.p13Action('historico-taxa', '${t.id}')">
+                            <i class="ph-clock-counter-clockwise"></i>
+                          </button>
+                          <button class="btn btn-outline-danger btn-xs" title="Excluir taxa (somente se não tiver versões)" onclick="window.app.p13Action('excluir-taxa', '${t.id}')">
+                            <i class="ph-trash"></i>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  `;
+                }).join('') : `
                   <tr>
-                    <td class="fw-bold text-dark">${f.name}</td>
-                    <td><span class="badge bg-light text-muted">${f.type}</span></td>
-                    <td class="fw-bold text-primary fs-sm">${f.rate}</td>
-                    <td><strong>${f.payer}</strong></td>
-                    <td class="text-muted fs-xs">${f.description}</td>
+                    <td colspan="11" style="text-align: center; padding: 32px; color: var(--text-muted);">
+                      Nenhuma regra de taxa encontrada para os filtros selecionados.
+                    </td>
                   </tr>
-                `).join('')}
+                `}
               </tbody>
             </table>
           </div>
         </div>
       </div>
+
     </div>
   `;
 }

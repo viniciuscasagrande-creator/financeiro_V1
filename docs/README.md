@@ -30,6 +30,7 @@ docs/
     ├── PACOTE_14_CONSOLIDACAO_FUNCIONAL_PERSISTENCIA.md
     ├── PACOTE_15_CORRECOES_REGRESSAO.md
     ├── PACOTE_16_VISAO_GERAL_FUNCIONAL.md
+    ├── PACOTE_17_TAXAS_REGRAS_COMERCIAIS_FUNCIONAIS.md
     └── PACOTE_AJUSTE_FINANCEIRO_DISK.md
 ```
 
@@ -54,7 +55,8 @@ docs/
 | [Pacote 14](pacotes/PACOTE_14_CONSOLIDACAO_FUNCIONAL_PERSISTENCIA.md) | Consolidação Funcional & Persistência | Persistência reativa, rastreabilidade ponta a ponta e auditoria |
 | [Pacote 15](pacotes/PACOTE_15_CORRECOES_REGRESSAO.md) | Correções de Regressão & Estabilidade | Estabilização dos fluxos de aprovação e governança Maker/Checker |
 | [Pacote 16](pacotes/PACOTE_16_VISAO_GERAL_FUNCIONAL.md) | Visão Geral Funcional | Submenus especializados: Dashboard Executivo, Posição Geral, Indicadores e Inteligência |
-| [Pacote 17 — Contas Financeiras](pacotes/PACOTE_AJUSTE_FINANCEIRO_DISK.md) | Contas Financeiras & Bancárias | Cadastro de contas pelo Financeiro Disk, homologação Bacen/CIP, máscaras e bloqueio de repasses |
+| [Pacote 17 — Taxas e Regras Comerciais](pacotes/PACOTE_17_TAXAS_REGRAS_COMERCIAIS_FUNCIONAIS.md) | Taxas & Regras Comerciais Administrativas | Gestão de MDR, taxas cobradas, spread automático, hierarquia Evento → Produtor → Geral Disk, versionamento e simulador |
+| [Pacote Ajuste — Contas Financeiras](pacotes/PACOTE_AJUSTE_FINANCEIRO_DISK.md) | Contas Financeiras & Bancárias | Cadastro de contas pelo Financeiro Disk, homologação Bacen/CIP, máscaras e bloqueio de repasses |
 
 ---
 
