@@ -130,8 +130,25 @@ disk-financeiro/
 │   ├── schema.prisma                # Modelos relacionais completos
 │   └── seed.ts                      # 3 produtores, 8 eventos, adquirentes e usuários
 │
+├── docs/                            # Documentação Completa e Histórico de Pacotes
+│   ├── README.md                    # Índice central da documentação técnica
+│   ├── pacotes/                     # Documentação detalhada dos Pacotes 2 ao 17
+│   └── screenshots/                 # Capturas de tela e mockups da interface
+│
+├── js/                              # Core Runtime Vanilla JS (Padrão Limitless Oficial)
+│   ├── app.js                       # Controlador principal e roteador
+│   ├── state.js                     # Gerenciador de estado reativo e persistência
+│   ├── menuConfig.js                # Menus canônicos por perfil (Produtor vs Financeiro)
+│   ├── mockData.js                  # Base de dados em memória e sementes
+│   ├── formatters.js                # Formatadores BRL, datas e status
+│   └── views/                       # Telas do Produtor e do Financeiro Disk (disk/)
+│
+├── css/                             # Folhas de estilo corporativas (Limitless Theme)
+├── img/                             # Assets e logotipo oficial Disk Ingressos
+├── dist/                            # Build estático otimizado para deploy em produção
 ├── index.html                       # Aplicação Web ao vivo estilo Limitless
 ├── server.js                        # Servidor HTTP estático nativo Node.js
+├── build.js                         # Script de compilação estática para Vercel
 ├── tsconfig.json                    # Configuração TypeScript ES2022 + JSX
 ├── package.json
 └── README.md
