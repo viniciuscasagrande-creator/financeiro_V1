@@ -21,8 +21,8 @@ export function renderSaldos(state) {
         diskFees: 60000.00,
         netRevenue: 915000.00,
         payoutsDone: 400000.00,
-        reservedBalance: 80000.00,
-        retentionsBalance: 35000.00,
+        reservedBalance: 70000.00,
+        retentionsBalance: 45000.00,
         availableBalance: 400000.00
       };
 
@@ -341,9 +341,14 @@ export function renderSaldos(state) {
               </thead>
               <tbody>
                 ${events.map(evt => {
-                  const retained = evt.blockedBalance || 0;
-                  const reserved = evt.reservedBalance || 0;
-                  const transferable = Math.max(0, (evt.availableBalance || 0) - reserved);
+                  const restrictions = typeof financialStore.getEventRestrictions === 'function'
+                    ? financialStore.getEventRestrictions(evt)
+                    : { reserved: evt.reservedBalance || 0, retained: evt.retainedBalance || evt.blockedBalance || 0, blocked: evt.blockedBalance || 0 };
+                  const retained = restrictions.retained;
+                  const reserved = restrictions.reserved;
+                  const transferable = typeof financialStore.getTransferableAmount === 'function'
+                    ? financialStore.getTransferableAmount(evt)
+                    : Math.max(0, (evt.availableBalance || 0) - reserved - retained - restrictions.blocked);
 
                   return `
                   <tr>

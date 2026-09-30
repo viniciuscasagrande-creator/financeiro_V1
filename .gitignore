@@ -45,3 +45,6 @@ scratch/
 
 .vercel
 .env*
+
+*.zip
+*.bundle

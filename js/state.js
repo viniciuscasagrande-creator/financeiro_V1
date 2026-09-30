@@ -4,7 +4,7 @@
  */
 import { getFreshDatabase } from './mockData.js';
 
-class CoreFinanceiroStore {
+export class CoreFinanceiroStore {
   constructor() {
     this.storageKey = 'disk-financeiro-v1-p12';
     this.data = this.loadPersistedData() || getFreshDatabase();
@@ -355,8 +355,8 @@ class CoreFinanceiroStore {
       {
         id: 'RET-003',
         producerId: 'prod-abc',
-        eventId: 'evt-001',
-        eventName: 'Festival Curitiba 2026',
+        eventId: 'evt-002',
+        eventName: 'Show Artista A - Turnê Especial',
         category: 'Estornos pendentes',
         origin: 'Protocolo #EST-2026-0089',
         reason: 'Estornos solicitados por compradores em fase de processamento bancário',
@@ -368,8 +368,8 @@ class CoreFinanceiroStore {
       {
         id: 'RET-004',
         producerId: 'prod-abc',
-        eventId: 'evt-001',
-        eventName: 'Festival Curitiba 2026',
+        eventId: 'evt-002',
+        eventName: 'Show Artista A - Turnê Especial',
         category: 'Regra contratual',
         origin: 'Contrato DISK-CTR-2025-089 (Cláusula 8.2)',
         reason: 'Retenção cautelar de 5% sobre faturamento bruto até emissão do borderô final',
@@ -414,6 +414,17 @@ class CoreFinanceiroStore {
         bankName: 'Itaú Unibanco (341)',
         bankAccount: 'Ag 0432 • C/C 48291-0',
         pixKey: '14.829.301/0001-92 (CNPJ)',
+        createdByUserId: 'usr-prod-01',
+        createdBy: 'João Silva (Produtor)',
+        documentId: 'DOC-2026-00128',
+        checklist: {
+          balanceSufficient: true,
+          bankDataValidated: true,
+          eventRegular: true,
+          noActiveBlocks: true,
+          limitPermitted: true,
+          chargebackWarning: 'Sem pendências'
+        },
         reservation: {
           type: 'SALDO_DISPONIVEL',
           amount: 50000.00,
@@ -436,6 +447,17 @@ class CoreFinanceiroStore {
       ...item,
       protocol: item.protocol || item.id,
       workflowId: item.workflowId || `WF-${item.id}`,
+      documentId: item.documentId || `DOC-${item.id}`,
+      createdByUserId: item.createdByUserId || 'usr-prod-01',
+      createdBy: item.createdBy || 'Produtor',
+      checklist: item.checklist || {
+        balanceSufficient: true,
+        bankDataValidated: true,
+        eventRegular: true,
+        noActiveBlocks: true,
+        limitPermitted: true,
+        chargebackWarning: 'Sem pendências'
+      },
       updatedAt: item.updatedAt || item.requestDate || new Date().toLocaleString('pt-BR')
     }));
 
@@ -751,12 +773,14 @@ class CoreFinanceiroStore {
       bankName: bank.bankName,
       bankAccount: `${bank.agency} • ${bank.accountNumber}`,
       pixKey: bank.pixKey,
+      createdByUserId: this.state.currentUser.id,
+      createdBy: `${this.state.currentUser.name} (Produtor)`,
       checklist: {
         balanceSufficient: numericAmount <= event.availableBalance,
-        bankDataValidated: true,
-        eventRegular: true,
-        noActiveBlocks: !producer.hasBlock,
-        limitPermitted: true,
+        bankDataValidated: Boolean(bank && ['Ativa', 'Validada & Ativa'].includes(bank.status)),
+        eventRegular: Boolean(event && event.status !== 'Suspenso' && event.status !== 'Bloqueado'),
+        noActiveBlocks: !producer.hasBlock && Number(event.blockedBalance || 0) === 0,
+        limitPermitted: numericAmount <= this.getTransferableAmount(event),
         chargebackWarning: event.chargebackCases > 0 ? `${event.chargebackCases} chargeback(s) sob monitoramento` : 'Sem pendências'
       },
       auditPosition: {
@@ -800,14 +824,62 @@ class CoreFinanceiroStore {
     return newApprovalItem;
   }
 
+  // ==========================================================================
+  // REGRAS DE INTEGRIDADE, GOVERNANÇA E SEGREGAÇÃO DE FUNÇÕES (SoD)
+  // ==========================================================================
+  getEventRestrictions(event) {
+    return {
+      reserved: Number(event?.reservedBalance || 0),
+      retained: Number(event?.retainedBalance || 0),
+      blocked: Number(event?.blockedBalance || 0)
+    };
+  }
+
+  getTransferableAmount(event) {
+    const base = Number(event?.financialBalance ?? event?.availableBalance ?? 0);
+    const { reserved, retained, blocked } = this.getEventRestrictions(event);
+    return Math.max(0, base - reserved - retained - blocked);
+  }
+
+  isChecklistValid(checklist = {}) {
+    return checklist.balanceSufficient === true &&
+      checklist.bankDataValidated === true &&
+      checklist.eventRegular === true &&
+      checklist.noActiveBlocks === true &&
+      checklist.limitPermitted === true;
+  }
+
+  assertSegregation(item, action) {
+    const userId = this.state.currentUser?.id;
+    if (!userId) throw new Error('Usuário autenticado inválido.');
+    
+    // Regra SoD 1: O criador da operação não pode aprovar ou rejeitar a própria operação
+    if (item.createdByUserId && item.createdByUserId === userId && ['APROVAR', 'REJEITAR'].includes(action)) {
+      throw new Error('Segregação de funções: o criador da operação não pode decidir a própria operação.');
+    }
+    // Regra SoD 2: Quem aprovou a operação não pode liquidá-la
+    if (item.approvedByUserId && item.approvedByUserId === userId && action === 'LIQUIDAR') {
+      throw new Error('Segregação de funções: quem aprova não pode liquidar a mesma operação.');
+    }
+  }
+
   // 2. Financeiro Disk: Aprova a Operação (Gera Documento e Aguarda Assinatura do Produtor)
   approveOperationByDisk(requestId) {
     if (!['disk', 'admin'].includes(this.state.currentUser.role)) {
-      alert("Aprovação permitida somente ao Financeiro Disk.");
-      return;
+      throw new Error("Aprovação permitida somente ao Financeiro Disk.");
     }
     const item = this.data.approvalQueue.find(a => a.id === requestId);
-    if (!item) return;
+    if (!item) throw new Error("Solicitação não encontrada.");
+
+    if (!['Aguardando análise', 'Em análise'].includes(item.status)) {
+      throw new Error(`Operação ${item.id} não pode ser aprovada no status ${item.status}.`);
+    }
+
+    this.assertSegregation(item, 'APROVAR');
+
+    if (!this.isChecklistValid(item.checklist)) {
+      throw new Error('Aprovação bloqueada: checklist financeiro possui validações pendentes.');
+    }
 
     const operator = this.state.currentUser.name;
     const nowTime = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
@@ -815,6 +887,7 @@ class CoreFinanceiroStore {
     item.status = "Aguardando assinatura do Produtor";
     item.stepIndex = 3;
     item.approvedBy = operator;
+    item.approvedByUserId = this.state.currentUser.id;
     item.approvedAt = `${new Date().toLocaleDateString('pt-BR')} ${nowTime}`;
 
     // Regra central de segurança: O Financeiro Disk NUNCA assina antes do Produtor
@@ -834,26 +907,32 @@ class CoreFinanceiroStore {
     );
 
     this.notify();
+    return item;
   }
 
   // 3. Financeiro Disk: Rejeita a Operação Formalmente (com motivo obrigatório e devolução automática da reserva)
-  rejectOperationByDisk(requestId, { reasonCategory, observation }) {
+  rejectOperationByDisk(requestId, { reasonCategory, observation } = {}) {
     if (!['disk', 'admin'].includes(this.state.currentUser.role)) {
-      alert("Rejeição permitida somente ao Financeiro Disk.");
-      return;
+      throw new Error("Rejeição permitida somente ao Financeiro Disk.");
     }
     if (!reasonCategory || !observation?.trim()) {
-      alert("Informe o motivo e a observação para rejeitar a operação.");
-      return;
+      throw new Error("Informe o motivo e a observação para rejeitar a operação.");
     }
     const item = this.data.approvalQueue.find(a => a.id === requestId);
-    if (!item) return;
+    if (!item) throw new Error("Solicitação não encontrada.");
+
+    if (!['Aguardando análise', 'Em análise'].includes(item.status)) {
+      throw new Error(`Operação ${item.id} não pode ser rejeitada no status ${item.status}.`);
+    }
+
+    this.assertSegregation(item, 'REJEITAR');
 
     const operator = this.state.currentUser.name;
     const nowTime = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
     item.status = "Rejeitado";
     item.stepIndex = 0;
+    item.rejectedByUserId = this.state.currentUser.id;
     item.rejection = {
       rejectedBy: operator,
       rejectedAt: `${new Date().toLocaleDateString('pt-BR')} ${nowTime}`,
@@ -911,15 +990,17 @@ class CoreFinanceiroStore {
   // 4. Produtor Assina Digitalmente em Primeiro Lugar
   signByProducer(requestId) {
     if (this.state.currentUser.role !== 'producer') {
-      alert("A assinatura do Produtor deve ocorrer no ambiente do Produtor.");
-      return;
+      throw new Error("A assinatura do Produtor deve ocorrer no ambiente do Produtor.");
     }
     const item = this.data.approvalQueue.find(a => a.id === requestId);
-    if (!item) return;
+    if (!item) throw new Error("Solicitação não encontrada.");
 
     if (item.status !== "Aguardando assinatura do Produtor" && item.status !== "Aprovado") {
-      alert("Este documento ainda não foi aprovado pelo Financeiro Disk para assinatura.");
-      return;
+      throw new Error(`Este documento não pode ser assinado pelo Produtor no status atual: ${item.status}.`);
+    }
+
+    if (item.signatures?.producer?.signed) {
+      throw new Error("Documento já assinado pelo Produtor.");
     }
 
     const signer = this.state.currentUser.name;
@@ -949,6 +1030,7 @@ class CoreFinanceiroStore {
     );
 
     this.notify();
+    return item;
   }
 
   signDocumentAsProducer(requestId) {
@@ -958,17 +1040,25 @@ class CoreFinanceiroStore {
   // 5. Financeiro Disk Assina (SEMPRE POR ÚLTIMO) e Formaliza
   signByDisk(requestId) {
     if (!['disk', 'admin'].includes(this.state.currentUser.role)) {
-      alert("Assinatura final permitida somente ao Financeiro Disk.");
-      return;
+      throw new Error("Assinatura final permitida somente ao Financeiro Disk.");
     }
     const item = this.data.approvalQueue.find(a => a.id === requestId);
-    if (!item) return;
+    if (!item) throw new Error("Solicitação não encontrada.");
 
     // TRAVA OBRIGATÓRIA DO SISTEMA: O Financeiro NUNCA assina antes do Produtor
-    if (!item.signatures.producer.signed) {
-      alert("BLOQUEIO DE SEGURANÇA: O Financeiro Disk é sempre o último signatário. O documento deve ser assinado primeiramente pelo Produtor.");
-      return;
+    if (!item.signatures?.producer?.signed) {
+      throw new Error("BLOQUEIO DE SEGURANÇA: O Financeiro Disk é sempre o último signatário. O documento deve ser assinado primeiramente pelo Produtor.");
     }
+
+    if (item.signatures?.disk?.signed) {
+      throw new Error("Documento já assinado pelo Financeiro Disk.");
+    }
+
+    if (item.status !== 'Aguardando assinatura do Financeiro') {
+      throw new Error(`Status inválido para assinatura final: ${item.status}.`);
+    }
+
+    this.assertSegregation(item, 'ASSINAR_DISK');
 
     const operator = this.state.currentUser.name;
     const nowTime = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
@@ -995,6 +1085,7 @@ class CoreFinanceiroStore {
     );
 
     this.notify();
+    return item;
   }
 
   signDocumentAsDisk(requestId) {
@@ -1004,30 +1095,35 @@ class CoreFinanceiroStore {
   // 6. Liberação Financeira / Transferência (PIX / TED / CNAB) → Ledger → Conciliação → Concluído / Pago
   executeFinalTransfer(requestId) {
     if (!['disk', 'admin'].includes(this.state.currentUser.role)) {
-      alert("Liquidação permitida somente ao Financeiro Disk.");
-      return;
+      throw new Error("Liquidação permitida somente ao Financeiro Disk.");
     }
     const item = this.data.approvalQueue.find(a => a.id === requestId);
-    if (!item) return;
+    if (!item) throw new Error("Solicitação não encontrada.");
 
-    if (!item.signatures.disk.signed || !item.signatures.producer.signed) {
-      alert("BLOQUEIO: Transferências só podem ser executadas após a formalização completa de ambas as assinaturas.");
-      return;
+    if (item.status === 'Pago' || item.paidDate || item.liquidationId) {
+      throw new Error(`Liquidação duplicada bloqueada para ${item.id}.`);
+    }
+
+    if (!item.signatures?.disk?.signed || !item.signatures?.producer?.signed || item.status !== 'Documento assinado') {
+      throw new Error("BLOQUEIO: a liquidação exige aprovação e ambas as assinaturas concluídas.");
     }
 
     const prodCheck = this.data.producers.find(p => p.id === item.producerId);
     const activeBank = prodCheck?.bankAccounts?.find(b => ['Ativa', 'Validada & Ativa'].includes(b.status));
     if (!activeBank) {
-      alert("Pagamento bloqueado — Produtor sem conta bancária validada.");
-      return;
+      throw new Error("Pagamento bloqueado — Produtor sem conta bancária validada.");
     }
+
+    this.assertSegregation(item, 'LIQUIDAR');
 
     const nowTime = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
     const nowDate = new Date().toLocaleDateString('pt-BR');
 
+    item.liquidationId = `LIQ-${Math.floor(100000 + Math.random() * 900000)}`;
     item.status = "Pago";
     item.stepIndex = 5;
     item.paidDate = `${nowDate} ${nowTime}`;
+    item.liquidatedByUserId = this.state.currentUser.id;
     item.authCode = `DISK-PIX-TED-${Math.floor(1000000000 + Math.random() * 9000000000)}`;
 
     const event = this.data.events.find(e => e.id === item.eventId);
@@ -1069,7 +1165,7 @@ class CoreFinanceiroStore {
       if (event) event.status = "Encerrado & Conciliado";
     }
 
-    // Registra débito oficial no Ledger em partidas dobradas
+    // Registra débito oficial no Ledger em partidas dobradas (pendente de conciliação bancária externa)
     const ledgerId = `LEDG-${Math.floor(10000 + Math.random() * 90000)}`;
     const eventTypeLedger = item.type === "Antecipação" ? "ANTECIPACAO_RECEBIVEIS_PAGA" : (item.type === "Borderô" ? "FECHAMENTO_BORDERO_LIQUIDADO" : "REPASSE_LIQUIDADO_PAGO");
 
@@ -1078,26 +1174,27 @@ class CoreFinanceiroStore {
       timestamp: `${nowDate} ${nowTime}`,
       eventType: eventTypeLedger,
       producerId: item.producerId,
-      eventId: item.eventId,
+      eventId: event ? event.id : null,
       debitAccount: `Passivo: Saldo Produtor ${item.producerName}`,
       creditAccount: `Ativo: Conta Corrente Banco do Brasil (001) Disk`,
       amount: finalAmount,
       netProducer: finalAmount,
       feeDisk: item.discountFee || 0.00,
       refOrder: item.id,
-      conciliated: true
+      conciliated: false,
+      reconciliationStatus: 'Pendente de conciliação bancária externa'
     });
 
     item.auditTrail.push(
-      { timestamp: `${nowTime}`, actor: "Tesouraria Disk", action: "Pagamento processado via PIX/TED", details: `Autenticação: ${item.authCode}` },
-      { timestamp: `${nowTime}`, actor: "Motor Contábil", action: `Ledger atualizado (${ledgerId})`, details: "Partidas dobradas conciliadas" },
-      { timestamp: `${nowTime}`, actor: "Conciliação Bancária", action: "Conciliação confirmada em D-0", details: "Status: PAGO / CONCLUÍDO" }
+      { timestamp: `${nowTime}`, actor: "Tesouraria Disk", action: "Pagamento liquidado via PIX/TED", details: `Autenticação: ${item.authCode}` },
+      { timestamp: `${nowTime}`, actor: "Motor Contábil", action: `Ledger atualizado (${ledgerId})`, details: "Partidas dobradas registradas" },
+      { timestamp: `${nowTime}`, actor: "Conciliação Bancária", action: "Pendente de retorno bancário/extrato", details: "Aguardando confirmação do banco/gateway" }
     );
 
     this.recordOperationEvent(
       item,
-      'Pagamento liquidado e conciliado',
-      `Autenticação bancária: ${item.authCode} | Ledger: ${ledgerId} | Valor: R$ ${finalAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+      'Pagamento liquidado',
+      `Autenticação: ${item.authCode} | Ledger: ${ledgerId} | Valor: R$ ${finalAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} (Conciliação externa pendente)`,
       'Tesouraria / Conciliação'
     );
 
@@ -1698,7 +1795,22 @@ class CoreFinanceiroStore {
   }
 
   // 6. Transferência Segregada entre Eventos do Produtor (Regra Endurecida)
-  transferBetweenEvents({ fromEventId, toEventId, amount, reason = '' }) {
+  transferBetweenEvents(arg1, arg2, arg3, arg4) {
+    let fromEventId, toEventId, amount, reason, transferId;
+    if (typeof arg1 === 'object' && arg1 !== null) {
+      fromEventId = arg1.fromEventId;
+      toEventId = arg1.toEventId;
+      amount = arg1.amount;
+      reason = arg1.reason || '';
+      transferId = arg1.transferId || null;
+    } else {
+      fromEventId = arg1;
+      toEventId = arg2;
+      amount = arg3;
+      transferId = arg4 || null;
+      reason = '';
+    }
+
     const numAmount = Number(amount);
     if (!numAmount || numAmount <= 0) {
       throw new Error('Informe um valor válido e positivo para a transferência.');
@@ -1712,29 +1824,34 @@ class CoreFinanceiroStore {
       throw new Error('Evento de origem ou destino não localizado.');
     }
 
-    // Regra rígida de cálculo especificada pelo usuário:
+    const trfId = transferId || `TRF-2026-${Math.floor(1000 + Math.random() * 9000)}`;
+    this.data.eventTransfers = this.data.eventTransfers || [];
+
+    // Idempotência: impede reexecução da mesma transferência
+    if (this.data.eventTransfers.some(t => t.id === trfId)) {
+      throw new Error(`Transferência ${trfId} já executada anteriormente. Operação duplicada bloqueada.`);
+    }
+
+    // Regra rígida e canônica de cálculo:
     // Saldo financeiro              R$ 200.000
     // (-) Retido                     R$ 30.000
     // (-) Reservado para repasses    R$ 50.000
     // (-) Bloqueios                  R$ 10.000
     // ────────────────────────────────────────
     // Transferível                  R$ 110.000
-    const financialBalance = fromEvent.availableBalance || fromEvent.totalBalance || 0;
-    const retained = fromEvent.blockedBalance || 0;
-    const reserved = fromEvent.reservedBalance || 0;
-    const blocks = fromEvent.cautelarBlocks || 0;
-    const transferable = Math.max(0, financialBalance - reserved);
+    const financialBalance = Number(fromEvent.financialBalance ?? fromEvent.availableBalance ?? fromEvent.totalBalance ?? 0);
+    const { reserved, retained, blocked } = this.getEventRestrictions(fromEvent);
+    const transferable = this.getTransferableAmount(fromEvent);
 
     if (numAmount > transferable) {
       const br = v => Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
       throw new Error(
         `Saldo insuficiente para transferência no evento ${fromEvent.name}.\n` +
-        `Saldo financeiro: ${br(financialBalance)} | (-) Retido: ${br(retained)} | (-) Reservado: ${br(reserved)} | (-) Bloqueios: ${br(blocks)}.\n` +
+        `Saldo financeiro: ${br(financialBalance)} | (-) Retido: ${br(retained)} | (-) Reservado: ${br(reserved)} | (-) Bloqueios: ${br(blocked)}.\n` +
         `Valor máximo transferível permitido: ${br(transferable)}.`
       );
     }
 
-    const trfId = `TRF-2026-${Math.floor(1000 + Math.random() * 9000)}`;
     const now = new Date();
     const nowStr = `${now.toLocaleDateString('pt-BR')} ${now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
     const operator = this.state.currentUser.name;
@@ -1742,39 +1859,31 @@ class CoreFinanceiroStore {
     // Atualização dos saldos dos eventos
     fromEvent.availableBalance = Math.max(0, (fromEvent.availableBalance || 0) - numAmount);
     fromEvent.totalBalance = Math.max(0, (fromEvent.totalBalance || 0) - numAmount);
+    if (fromEvent.financialBalance !== undefined) {
+      fromEvent.financialBalance = Math.max(0, fromEvent.financialBalance - numAmount);
+    }
     toEvent.availableBalance = (toEvent.availableBalance || 0) + numAmount;
     toEvent.totalBalance = (toEvent.totalBalance || 0) + numAmount;
+    if (toEvent.financialBalance !== undefined) {
+      toEvent.financialBalance += numAmount;
+    }
 
-    // Geração de 2 lançamentos vinculados no Ledger (Partida Dobrada Conforme Especificação)
+    // Partida Dobrada Balanceada no Ledger (uma única operação balanceada com débito no destino e crédito na origem)
     this.data.ledgerEntries = this.data.ledgerEntries || [];
     this.data.ledgerEntries.unshift({
       id: `LEDG-${Math.floor(10000 + Math.random() * 90000)}`,
       timestamp: nowStr,
-      eventType: 'TRANSFERENCIA_EVENTOS_DEBITO',
+      eventType: 'TRANSFERENCIA_EVENTOS',
       producerId: fromEvent.producerId,
       eventId: fromEvent.id,
       protocol: trfId,
-      debitAccount: `Subconta Evento: ${toEvent.name} [${toEvent.id}]`,
-      creditAccount: `Subconta Evento: ${fromEvent.name} [${fromEvent.id}]`,
+      debitAccount: `Subconta Evento Destino: ${toEvent.name} [${toEvent.id}]`,
+      creditAccount: `Subconta Evento Origem: ${fromEvent.name} [${fromEvent.id}]`,
       amount: numAmount,
-      description: `Transferência entre eventos [${trfId}]: Débito de ${fromEvent.name} (-R$ ${numAmount.toFixed(2)})`,
+      description: `Transferência entre eventos [${trfId}]: Débito ${toEvent.name} / Crédito ${fromEvent.name} (R$ ${numAmount.toFixed(2)})`,
       refOrder: trfId,
-      conciliated: true
-    });
-
-    this.data.ledgerEntries.unshift({
-      id: `LEDG-${Math.floor(10000 + Math.random() * 90000)}`,
-      timestamp: nowStr,
-      eventType: 'TRANSFERENCIA_EVENTOS_CREDITO',
-      producerId: toEvent.producerId,
-      eventId: toEvent.id,
-      protocol: trfId,
-      debitAccount: `Subconta Evento: ${toEvent.name} [${toEvent.id}]`,
-      creditAccount: `Subconta Evento: ${fromEvent.name} [${fromEvent.id}]`,
-      amount: numAmount,
-      description: `Transferência entre eventos [${trfId}]: Crédito em ${toEvent.name} (+R$ ${numAmount.toFixed(2)})`,
-      refOrder: trfId,
-      conciliated: true
+      conciliated: false,
+      reconciliationStatus: 'Pendente de conciliação bancária'
     });
 
     // Registra no extrato segregado
@@ -1836,18 +1945,28 @@ class CoreFinanceiroStore {
   // 7. Composição do Saldo Oficial do Produtor ("De onde veio meu saldo?")
   getProducerBalanceComposition(producerId = 'prod-abc', eventId = 'all') {
     const isAll = eventId === 'all';
+    const totalRetained = this.calculateRetentions(eventId, producerId);
+
     if (isAll) {
-      // Números canônicos da especificação do usuário
+      const gross = 1000000.00;
+      const refunds = 20000.00;
+      const cb = 5000.00;
+      const fees = 60000.00;
+      const net = gross - refunds - cb - fees; // 915.000,00
+      const payouts = 400000.00;
+      const reserved = 70000.00;
+      const retentions = totalRetained; // R$ 45.000,00 calculado da fonte única
+      const available = Math.max(0, net - payouts - reserved - retentions); // R$ 400.000,00
       return {
-        grossSales: 1000000.00,
-        refunds: 20000.00,
-        chargebacks: 5000.00,
-        diskFees: 60000.00,
-        netRevenue: 915000.00,
-        payoutsDone: 400000.00,
-        reservedBalance: 80000.00,
-        retentionsBalance: 35000.00,
-        availableBalance: 400000.00
+        grossSales: gross,
+        refunds: refunds,
+        chargebacks: cb,
+        diskFees: fees,
+        netRevenue: net,
+        payoutsDone: payouts,
+        reservedBalance: reserved,
+        retentionsBalance: retentions,
+        availableBalance: available
       };
     }
     const evt = this.data.events.find(e => e.id === eventId);
@@ -1860,7 +1979,7 @@ class CoreFinanceiroStore {
     const net = gross - refunds - cb - fees;
     const payouts = evt.payoutsDone || 150000;
     const reserved = evt.reservedBalance || 0;
-    const retentions = evt.blockedBalance || 20000;
+    const retentions = totalRetained; // R$ 30.000,00 para evt-001 (da fonte única)
     const available = Math.max(0, net - payouts - reserved - retentions);
 
     return {
@@ -1876,10 +1995,20 @@ class CoreFinanceiroStore {
     };
   }
 
+  // Única Fonte de Verdade para cálculo de retenções (evita divergência entre views)
+  calculateRetentions(eventId = 'all', producerId = 'prod-abc') {
+    const list = (this.data.retentions || []).filter(r => 
+      (producerId === 'all' || r.producerId === producerId) &&
+      (eventId === 'all' || r.eventId === eventId) &&
+      r.status !== 'Liberada' && r.status !== 'Cancelada'
+    );
+    return list.reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
+  }
+
   // 8. Consulta de Retenções Detalhadas
   getProducerRetentions(producerId = 'prod-abc', eventId = 'all') {
     const retentions = this.data.retentions || [];
-    return retentions.filter(r => r.producerId === producerId && (eventId === 'all' || r.eventId === eventId));
+    return retentions.filter(r => (producerId === 'all' || r.producerId === producerId) && (eventId === 'all' || r.eventId === eventId));
   }
 
   // ==========================================================================

@@ -103,9 +103,9 @@ model Produtor {
   motivoBloqueio  String?
   
   // Regras Comerciais Contratuais
-  taxaDiskPercent         Float   @default(10.0)
-  taxaProcessamentoMdr    Float   @default(2.9)
-  taxaAntecipacaoMensal   Float   @default(2.0)
+  taxaDiskPercent         Decimal   @default(10.0)
+  taxaProcessamentoMdr    Decimal   @default(2.9)
+  taxaAntecipacaoMensal   Decimal   @default(2.0)
   regraLiquidacaoDias     String  @default("D+2 após o evento")
 
   // Relacionamentos
@@ -174,15 +174,15 @@ model SaldoEvento {
   evento                Evento    @relation(fields: [eventoId], references: [id])
   
   // Fechamento exato conforme regras de negócio
-  vendasBrutas          Float     @default(0.0)
-  cancelamentos         Float     @default(0.0)
-  taxasDisk             Float     @default(0.0)
-  chargebacks           Float     @default(0.0)
-  liquidoApurado        Float     @default(0.0)
-  repassadoAcumulado    Float     @default(0.0)
-  recebiveisFuturos     Float     @default(0.0) // D+X
-  bloqueadoReserva      Float     @default(0.0)
-  disponivelImediato    Float     @default(0.0)
+  vendasBrutas          Decimal     @default(0.0)
+  cancelamentos         Decimal     @default(0.0)
+  taxasDisk             Decimal     @default(0.0)
+  chargebacks           Decimal     @default(0.0)
+  liquidoApurado        Decimal     @default(0.0)
+  repassadoAcumulado    Decimal     @default(0.0)
+  recebiveisFuturos     Decimal     @default(0.0) // D+X
+  bloqueadoReserva      Decimal     @default(0.0)
+  disponivelImediato    Decimal     @default(0.0)
 
   updatedAt             DateTime  @updatedAt
 }
@@ -195,10 +195,10 @@ model Venda {
   compradorNome   String
   compradorCpf    String
   quantidade      Int
-  valorBruto      Float
-  taxaDisk        Float
-  taxaGateway     Float
-  valorLiquido    Float
+  valorBruto      Decimal
+  taxaDisk        Decimal
+  taxaGateway     Decimal
+  valorLiquido    Decimal
   metodo          MetodoPagamento
   gateway         String          @default("Cielo")
   status          String          @default("Aprovado")
@@ -211,10 +211,10 @@ model Recebivel {
   eventoId        String
   evento          Evento    @relation(fields: [eventoId], references: [id])
   adquirente      String    // Cielo, Rede, Stone, PagBank
-  valorBruto      Float
-  taxaMdr         Float
-  taxaSpreadDisk  Float     @default(1.22) // 1.22% de spread comercial Disk
-  valorLiquido    Float
+  valorBruto      Decimal
+  taxaMdr         Decimal
+  taxaSpreadDisk  Decimal     @default(1.22) // 1.22% de spread comercial Disk
+  valorLiquido    Decimal
   dataVencimento  DateTime
   antecipado      Boolean   @default(false)
   status          String    @default("A Vencer")
@@ -237,9 +237,9 @@ model SolicitacaoFinanceira {
   evento          Evento?           @relation(fields: [eventoId], references: [id])
   
   // Valores da Operação
-  valorSolicitado Float
-  taxaOperacao    Float             @default(0.0)
-  valorLiquido    Float
+  valorSolicitado Decimal
+  taxaOperacao    Decimal             @default(0.0)
+  valorLiquido    Decimal
   
   // Conta bancária de destino
   contaBancariaId String?
@@ -308,7 +308,7 @@ model LedgerEntry {
   descricao       String
   contaDebito     String                // Ex: "Passivo Produtor: Produtora ABC"
   contaCredito    String                // Ex: "Banco Itaú - Conta Movimento Disk"
-  valor           Float
+  valor           Decimal
   documentoRef    String
   conciliado      Boolean               @default(false)
   dataConciliacao DateTime?
@@ -330,10 +330,10 @@ model AuditLog {
 model GatewayConfig {
   id              String    @id @default(uuid())
   nome            String    // Cielo, Rede, Stone, PagBank
-  mdrDebito       Float     @default(1.18)
-  mdrCreditoVista Float     @default(2.28)
-  mdrParcelado    Float     @default(3.88)
-  spreadDisk      Float     @default(1.22) // 1.22% retido para o Disk
+  mdrDebito       Decimal     @default(1.18)
+  mdrCreditoVista Decimal     @default(2.28)
+  mdrParcelado    Decimal     @default(3.88)
+  spreadDisk      Decimal     @default(1.22) // 1.22% retido para o Disk
   prazoLiquidacao String    @default("D+1 útil")
   status          String    @default("Operacional 100%")
   chaveApi        String?

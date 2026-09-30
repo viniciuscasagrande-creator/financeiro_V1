@@ -127,6 +127,9 @@ export class WorkflowEngine {
       throw new Error(`Operação inválida para o status atual: ${solicitacao.status}`);
     }
 
+    if (solicitacao.solicitadoPorId === contexto.usuarioId) {
+      throw new Error('Segregação de funções: o solicitante não pode aprovar a própria operação.');
+    }
     const agora = new Date().toISOString();
     solicitacao.status = "AGUARDANDO_ASSINATURA_PRODUTOR";
     solicitacao.decisao = "APROVADO";
@@ -196,7 +199,7 @@ export class WorkflowEngine {
       assinadoPor: `Produtor (${contexto.usuarioId})`,
       assinadoEm: agora,
       ip: ip,
-      certificado: "ICP-BRASIL-A1-CERT"
+      certificado: "DEMO-SEM-CERTIFICADO-REAL"
     };
 
     // Libera a trava do Financeiro Disk!
@@ -238,7 +241,7 @@ export class WorkflowEngine {
       assinadoPor: `Mesa Financeira Disk (${contexto.usuarioId})`,
       assinadoEm: agora,
       ip: ip,
-      certificado: "DISK-AUTH-E-CNPJ-4410",
+      certificado: "DEMO-SEM-CERTIFICADO-REAL",
       bloqueadoAguardandoProdutor: false
     };
 
@@ -261,8 +264,17 @@ export class WorkflowEngine {
   ): void {
     AuthMiddleware.exigirPerfil(contexto, ["FINANCEIRO", "ADMINISTRADOR"]);
 
+    if (solicitacao.status === "PAGO" || solicitacao.pagoEm) {
+      throw new Error('Liquidação duplicada bloqueada.');
+    }
     if (solicitacao.status !== "ASSINADO" && solicitacao.status !== "PROGRAMADO") {
       throw new Error("A liquidação financeira exige que o documento esteja formalizado com ambas as assinaturas.");
+    }
+    if (!solicitacao.assinaturas.produtor.assinado || !solicitacao.assinaturas.financeiro.assinado) {
+      throw new Error('Liquidação bloqueada: assinaturas incompletas.');
+    }
+    if (solicitacao.analisadoPorId === contexto.usuarioId) {
+      throw new Error('Segregação de funções: quem aprovou não pode liquidar a mesma operação.');
     }
 
     const agora = new Date().toISOString();
@@ -275,8 +287,8 @@ export class WorkflowEngine {
     solicitacao.trilhaAuditoria.push({
       dataHora: agora,
       autor: "Tesouraria Disk",
-      acao: `Transferência PIX/TED liquidada com sucesso (Autenticação: ${authCode})`,
-      detalhes: "Lançamento no Ledger de partidas dobradas e conciliação bancária homologados."
+      acao: `Liquidação registrada em ambiente de homologação (${authCode})`,
+      detalhes: "Sem transmissão bancária real; conciliação depende de retorno/API homologada."
     });
   }
 }

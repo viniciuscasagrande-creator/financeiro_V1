@@ -9,6 +9,22 @@ export function renderOverview(state) {
   const totals = producer.totals;
   const events = state.data.events.filter(e => e.producerId === producer.id);
   const recentStatements = state.data.statementEntries || [];
+  const comp = typeof financialStore.getProducerBalanceComposition === 'function'
+    ? financialStore.getProducerBalanceComposition(producer.id, 'all')
+    : {
+        grossSales: 1000000.00,
+        refunds: 20000.00,
+        chargebacks: 5000.00,
+        diskFees: 60000.00,
+        netRevenue: 915000.00,
+        payoutsDone: 400000.00,
+        reservedBalance: 70000.00,
+        retentionsBalance: 45000.00,
+        availableBalance: 400000.00
+      };
+  const totalRetentionsVal = typeof financialStore.calculateRetentions === 'function'
+    ? financialStore.calculateRetentions('all', producer.id)
+    : 45000.00;
 
   return `
     <!-- Limitless Page Header -->
@@ -151,7 +167,7 @@ export function renderOverview(state) {
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
             </div>
           </div>
-          <div class="kpi-value" style="color: #b45309;">${formatCurrency(45000.00)}</div>
+          <div class="kpi-value" style="color: #b45309;">${formatCurrency(totalRetentionsVal)}</div>
           <div class="kpi-subtext">
             <span class="text-danger fw-bold">4 retenções ativas ↗</span>
           </div>
@@ -181,12 +197,12 @@ export function renderOverview(state) {
               <strong style="font-size: 0.95rem; color: #1e293b;">De onde veio meu saldo disponível?</strong>
             </div>
             <div style="font-size: 0.82rem; color: #64748b; margin-top: 4px;">
-              Receita Líquida (R$ 915.000) (-) Repasses Pagos (R$ 400.000) (-) Reservas (R$ 80.000) (-) Retenções (R$ 35.000) = <strong>Saldo Disponível: R$ 400.000,00</strong>
+              Receita Líquida (${formatCurrency(comp.netRevenue)}) (-) Repasses Pagos (${formatCurrency(comp.payoutsDone)}) (-) Reservas (${formatCurrency(comp.reservedBalance)}) (-) Retenções (${formatCurrency(comp.retentionsBalance)}) = <strong>Saldo Disponível: ${formatCurrency(comp.availableBalance)}</strong>
             </div>
           </div>
           <div style="display: flex; gap: 10px;">
             <button class="btn btn-outline-secondary btn-sm" onclick="window.app.openRetentionsModal('all')">
-              Ver Retenções (R$ 45.000)
+              Ver Retenções (${formatCurrency(totalRetentionsVal)})
             </button>
             <button class="btn btn-outline-primary btn-sm" onclick="window.app.openBalanceCompositionModal()">
               Ver Composição Completa →

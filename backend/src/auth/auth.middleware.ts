@@ -1,33 +1,30 @@
-/**
- * Middleware de Segurança & Isolamento Estrito de Tenant
- * Regra: Um Produtor NUNCA tem permissão para consultar dados de outro Produtor.
- */
-
+/** Segurança de rota e isolamento de tenant. Backend ainda é de homologação. */
+import { Request, Response, NextFunction } from 'express';
 import { ContextoRequisicao, PerfilUsuario } from '../types';
 
+const DEMO_TOKENS: Record<string, ContextoRequisicao> = {
+  'jwt_demo_produtor': { usuarioId:'usr-prod-01', perfil:'PRODUTOR', produtorId:'prod-abc', permissoes:[] },
+  'jwt_demo_financeiro': { usuarioId:'usr-fin-01', perfil:'FINANCEIRO', produtorId:null, permissoes:[] },
+  'jwt_demo_admin': { usuarioId:'usr-adm-01', perfil:'ADMINISTRADOR', produtorId:null, permissoes:[] }
+};
+
+export function authMiddleware(req: Request, res: Response, next: NextFunction) {
+  const token = String(req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+  const contexto = DEMO_TOKENS[token];
+  if (!contexto) return res.status(401).json({ erro: 'Não autenticado. Backend de homologação: use um token demo emitido pelo login.' });
+  (req as any).user = contexto;
+  next();
+}
+
 export class AuthMiddleware {
-  /**
-   * Garante o isolamento estrito entre produtores (Multi-tenant)
-   * Se o Produtor A (id: prod-abc) tentar acessar dados do Produtor B (id: prod-xyz), retorna 403.
-   */
   static validarIsolamentoTenant(contexto: ContextoRequisicao, produtorAlvoId: string): void {
-    if (contexto.perfil === "PRODUTOR") {
-      if (!contexto.produtorId || contexto.produtorId !== produtorAlvoId) {
-        throw new Error(
-          `403 — Acesso não autorizado: O usuário ${contexto.usuarioId} (Produtor: ${contexto.produtorId}) não possui permissão para acessar os dados do Produtor ${produtorAlvoId}.`
-        );
-      }
+    if (contexto.perfil === 'PRODUTOR' && (!contexto.produtorId || contexto.produtorId !== produtorAlvoId)) {
+      throw new Error(`403 — Acesso não autorizado ao Produtor ${produtorAlvoId}.`);
     }
   }
-
-  /**
-   * Exige perfil mínimo para execução de rotas administrativas ou de tesouraria
-   */
   static exigirPerfil(contexto: ContextoRequisicao, perfisAutorizados: PerfilUsuario[]): void {
-    if (!perfisAutorizados.includes(contexto.perfil) && contexto.perfil !== "ADMINISTRADOR") {
-      throw new Error(
-        `403 — Acesso proibido: Ação restrita aos perfis: [${perfisAutorizados.join(', ')}]. Perfil atual: ${contexto.perfil}.`
-      );
+    if (!perfisAutorizados.includes(contexto.perfil)) {
+      throw new Error(`403 — Ação restrita aos perfis: [${perfisAutorizados.join(', ')}]. Perfil atual: ${contexto.perfil}.`);
     }
   }
 }

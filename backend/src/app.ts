@@ -1,170 +1,57 @@
-import express, { Request, Response, NextFunction } from 'express';
+import express, { Request, Response } from 'express';
 import cors from 'cors';
 import { authMiddleware } from './auth/auth.middleware';
-import { WorkflowEngine } from './workflow/workflow.engine';
-import { PerfilUsuario } from './types';
+import { WorkflowEngine, SolicitacaoWorkflow } from './workflow/workflow.engine';
+import { ContextoRequisicao } from './types';
 
 export const app = express();
-
-app.use(cors());
+app.use(cors({ origin: false })); // produção deve declarar origens explicitamente
 app.use(express.json());
+const solicitacoes = new Map<string, SolicitacaoWorkflow>();
+const ctx = (req: Request) => (req as any).user as ContextoRequisicao;
 
-// Instância única do Core de Workflow Financeiro
-export const workflowEngine = new WorkflowEngine();
-
-// --- 1. AUTENTICAÇÃO ---
 app.post('/api/auth/login', (req: Request, res: Response) => {
-  const { email } = req.body;
-  if (email === 'produtor@demo.disk') {
-    return res.json({
-      id: 'usr-prod-01',
-      email: 'produtor@demo.disk',
-      nome: 'João Silva',
-      perfil: 'PRODUTOR',
-      produtorId: 'prod-abc',
-      token: 'jwt_mock_produtor'
-    });
-  }
-  if (email === 'admin@demo.disk') {
-    return res.json({
-      id: 'usr-adm-01',
-      email: 'admin@demo.disk',
-      nome: 'Vinicius Master',
-      perfil: 'ADMINISTRADOR',
-      token: 'jwt_mock_admin'
-    });
-  }
-  return res.json({
-    id: 'usr-fin-01',
-    email: 'karine@diskingressos.com.br',
-    nome: 'Karine',
-    perfil: 'FINANCEIRO',
-    token: 'jwt_mock_financeiro'
-  });
+  const { email, senha } = req.body || {};
+  if (senha !== 'demo') return res.status(401).json({ erro:'Credenciais inválidas. Ambiente de homologação.' });
+  const users: Record<string, any> = {
+    'produtor@demo.disk': { id:'usr-prod-01', nome:'João Silva', perfil:'PRODUTOR', produtorId:'prod-abc', token:'jwt_demo_produtor' },
+    'financeiro@demo.disk': { id:'usr-fin-01', nome:'Maria Valente', perfil:'FINANCEIRO', token:'jwt_demo_financeiro' },
+    'admin@demo.disk': { id:'usr-adm-01', nome:'Vinicius Master', perfil:'ADMINISTRADOR', token:'jwt_demo_admin' }
+  };
+  const user = users[String(email || '').toLowerCase()];
+  if (!user) return res.status(401).json({ erro:'Credenciais inválidas.' });
+  res.json({ ...user, email });
 });
 
-// --- 2. SALDOS & ISOLAMENTO MULTI-TENANT ---
-app.get('/api/produtores/:produtorId/saldos', authMiddleware, (req: Request, res: Response) => {
-  const user = (req as any).user;
-  // Segurança estrita: Produtor não pode ler dados de outro produtor
-  if (user?.perfil === 'PRODUTOR' && user?.produtorId !== req.params.produtorId) {
-    return res.status(403).json({ erro: '403 Forbidden: Acesso cruzado entre produtores é proibido.' });
-  }
-
-  res.json([
-    {
-      eventoId: 'evt-curitiba-2026',
-      eventoNome: 'Festival Curitiba 2026',
-      vendasBrutas: 500000,
-      taxasDeducoes: 50000,
-      saldoDisponivel: 200000,
-      aReceber: 80000,
-      bloqueadoReserva: 20000
-    },
-    {
-      eventoId: 'evt-artista-a',
-      eventoNome: 'Show Artista A - Turnê Especial',
-      vendasBrutas: 280000,
-      taxasDeducoes: 30000,
-      saldoDisponivel: 95000,
-      aReceber: 60000,
-      bloqueadoReserva: 0
-    }
-  ]);
-});
-
-// --- 3. MOTOR DE SOLICITAÇÕES (REPASSE / ANTECIPAÇÃO / BORDERÔ) ---
 app.post('/api/solicitacoes/repasse', authMiddleware, (req: Request, res: Response) => {
-  const { produtorId, eventoId, valor, dadosBancarios } = req.body;
-  const user = (req as any).user;
-
   try {
-    const solicitacao = workflowEngine.criarSolicitacaoRepasse(
-      produtorId,
-      eventoId,
-      valor,
-      dadosBancarios,
-      user?.nome || 'Produtor Demo'
-    );
-    res.status(201).json(solicitacao);
-  } catch (err: any) {
-    res.status(400).json({ erro: err.message });
-  }
+    const c=ctx(req); const { produtorId, eventoId, valor, nomeEvento='Evento' }=req.body;
+    if (c.perfil !== 'PRODUTOR') return res.status(403).json({erro:'Somente Produtor cria repasse neste fluxo.'});
+    const sol=WorkflowEngine.criarSolicitacao(c,{tipo:'REPASSE',produtorId,eventoId,valor:Number(valor),nomeEvento});
+    solicitacoes.set(sol.id,sol); res.status(201).json(sol);
+  } catch(e:any){ res.status(400).json({erro:e.message}); }
 });
 
-// --- 4. APROVAÇÃO E REJEIÇÃO OPERACIONAL ---
-app.post('/api/solicitacoes/:id/aprovar', authMiddleware, (req: Request, res: Response) => {
-  const user = (req as any).user;
-  if (user?.perfil === 'PRODUTOR') {
-    return res.status(403).json({ erro: 'Produtores não possuem permissão para aprovar operações.' });
-  }
-
-  try {
-    const atualizada = workflowEngine.aprovarOperacao(req.params.id, user?.nome || 'Mesa Tesouraria');
-    res.json(atualizada);
-  } catch (err: any) {
-    res.status(400).json({ erro: err.message });
-  }
+app.post('/api/solicitacoes/:id/aprovar', authMiddleware, (req,res)=>{
+  try { const sol=solicitacoes.get(req.params.id); if(!sol) return res.status(404).json({erro:'Não encontrada'}); WorkflowEngine.aprovarSolicitacao(ctx(req),sol); res.json(sol); }
+  catch(e:any){res.status(400).json({erro:e.message});}
 });
-
-app.post('/api/solicitacoes/:id/rejeitar', authMiddleware, (req: Request, res: Response) => {
-  const { motivo, observacao } = req.body;
-  const user = (req as any).user;
-  if (user?.perfil === 'PRODUTOR') {
-    return res.status(403).json({ erro: 'Produtores não possuem permissão para rejeitar operações.' });
-  }
-
-  try {
-    const atualizada = workflowEngine.rejeitarOperacao(
-      req.params.id,
-      motivo,
-      observacao,
-      user?.nome || 'Mesa Tesouraria'
-    );
-    res.json(atualizada);
-  } catch (err: any) {
-    res.status(400).json({ erro: err.message });
-  }
+app.post('/api/solicitacoes/:id/rejeitar', authMiddleware, (req,res)=>{
+  try { const sol=solicitacoes.get(req.params.id); if(!sol) return res.status(404).json({erro:'Não encontrada'}); WorkflowEngine.rejeitarSolicitacao(ctx(req),sol,req.body.motivo,req.body.observacao); res.json(sol); }
+  catch(e:any){res.status(400).json({erro:e.message});}
 });
-
-// --- 5. ESTEIRA DE ASSINATURAS SEQUENCIAIS ---
-// Produtor assina PRIMEIRO
-app.post('/api/assinaturas/:id/produtor', authMiddleware, (req: Request, res: Response) => {
-  const user = (req as any).user;
-  try {
-    const doc = workflowEngine.assinarComoProdutor(req.params.id, user?.nome || 'João Silva', '127.0.0.1');
-    res.json(doc);
-  } catch (err: any) {
-    res.status(400).json({ erro: err.message });
-  }
+app.post('/api/assinaturas/:id/produtor', authMiddleware, (req,res)=>{
+  try { const sol=solicitacoes.get(req.params.id); if(!sol) return res.status(404).json({erro:'Não encontrada'}); WorkflowEngine.assinarComoProdutor(ctx(req),sol,req.ip); res.json(sol); }
+  catch(e:any){res.status(400).json({erro:e.message});}
 });
-
-// Financeiro Disk assina SEMPRE POR ÚLTIMO (bloqueado se produtor não tiver assinado)
-app.post('/api/assinaturas/:id/financeiro', authMiddleware, (req: Request, res: Response) => {
-  const user = (req as any).user;
-  try {
-    const doc = workflowEngine.assinarComoDisk(req.params.id, user?.nome || 'Karine', '127.0.0.1');
-    res.json(doc);
-  } catch (err: any) {
-    // Retorna erro se a ordem sequencial for violada
-    res.status(400).json({ erro: err.message });
-  }
+app.post('/api/assinaturas/:id/financeiro', authMiddleware, (req,res)=>{
+  try { const sol=solicitacoes.get(req.params.id); if(!sol) return res.status(404).json({erro:'Não encontrada'}); WorkflowEngine.assinarComoFinanceiro(ctx(req),sol,req.ip); res.json(sol); }
+  catch(e:any){res.status(400).json({erro:e.message});}
 });
-
-// --- 6. LIQUIDAÇÃO BANCÁRIA PIX E LEDGER ---
-app.post('/api/solicitacoes/:id/liquidar-pix', authMiddleware, (req: Request, res: Response) => {
-  const user = (req as any).user;
-  try {
-    const resultado = workflowEngine.liquidarRepassePIX(req.params.id, user?.nome || 'Tesouraria Disk');
-    res.json(resultado);
-  } catch (err: any) {
-    res.status(400).json({ erro: err.message });
-  }
+app.post('/api/solicitacoes/:id/liquidar-pix', authMiddleware, (req,res)=>{
+  try { const sol=solicitacoes.get(req.params.id); if(!sol) return res.status(404).json({erro:'Não encontrada'}); WorkflowEngine.liquidarPagamento(ctx(req),sol); res.json({ ...sol, aviso:'Homologação: não houve transmissão bancária real.' }); }
+  catch(e:any){res.status(400).json({erro:e.message});}
 });
-
-// --- 7. LEDGER DE PARTIDAS DOBRADAS ---
-app.get('/api/financeiro/ledger', authMiddleware, (_req: Request, res: Response) => {
-  res.json(workflowEngine.obterLedger());
-});
+app.get('/api/solicitacoes/:id', authMiddleware, (req,res)=>{ const sol=solicitacoes.get(req.params.id); if(!sol) return res.status(404).json({erro:'Não encontrada'}); res.json(sol); });
 
 export default app;
