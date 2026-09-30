@@ -12,6 +12,9 @@
  */
 
 import { financialStore } from './state.js';
+if (typeof window !== 'undefined') {
+  window.financialStore = financialStore;
+}
 import { formatCurrency, formatNumber, createStatusBadge } from './formatters.js';
 
 // Import Views do Produtor
@@ -73,6 +76,7 @@ import {
   renderDiskFornecedores
 } from './views/disk/enterpriseViews.js';
 import { initScrollSpy } from './components/scrollSpy.js';
+import { renderOperationHeader } from './components/operationHeader.js';
 
 class LimitlessFinancialApp {
   constructor() {
@@ -81,6 +85,7 @@ class LimitlessFinancialApp {
     this.modalOverlay = document.getElementById('modal-overlay');
     this.modalContent = document.getElementById('modal-dynamic-content');
     this.activeScrollSpy = null;
+    this.openedSubmenus = new Set();
 
     // Subscribe to state changes
     financialStore.subscribe((state) => {
@@ -393,6 +398,32 @@ class LimitlessFinancialApp {
               <div class="fs-xxs text-uppercase text-muted fw-bold">Evento Vinculado</div>
               <div class="fs-base fw-bold text-primary mt-1">${item.eventName || 'Conta Geral'}</div>
               <div class="fs-xs text-muted">Solicitado em: ${item.requestDate}</div>
+            </div>
+          </div>
+
+          <!-- Barra Transversal de Rastreabilidade (Pacote 21) -->
+          <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 p-2 px-3 rounded mb-3" style="background: #eff6ff; border: 1px solid #bfdbfe;">
+            <div class="d-flex align-items-center gap-1">
+              <span class="badge bg-primary text-white fs-xxs">Protocolo</span>
+              <strong class="font-monospace text-dark fs-xs">${item.id}</strong>
+            </div>
+            <div class="d-flex flex-wrap gap-1">
+              <button type="button" class="btn btn-xs btn-outline-primary py-1 px-2 fs-xxs d-inline-flex align-items-center gap-1"
+                      onclick="window.app && window.app.setOperationalContext('${item.id}'); window.app && window.app.closeModal();" title="Fixar contexto">
+                <i class="ph-push-pin"></i> Fixar Contexto
+              </button>
+              <button type="button" class="btn btn-xs btn-outline-secondary py-1 px-2 fs-xxs d-inline-flex align-items-center gap-1"
+                      onclick="window.app && window.app.navigateToOperationalStage('diskTesouraria', '${item.id}'); window.app && window.app.closeModal();" title="Ver lote/pagamento na tesouraria">
+                <i class="ph-vault"></i> Ver Tesouraria
+              </button>
+              <button type="button" class="btn btn-xs btn-outline-secondary py-1 px-2 fs-xxs d-inline-flex align-items-center gap-1"
+                      onclick="window.app && window.app.navigateToOperationalStage('diskLedger', '${item.id}'); window.app && window.app.closeModal();" title="Rastrear lançamento contábil no Ledger">
+                <i class="ph-book-bookmark"></i> Ver Ledger
+              </button>
+              <button type="button" class="btn btn-xs btn-outline-secondary py-1 px-2 fs-xxs d-inline-flex align-items-center gap-1"
+                      onclick="window.app && window.app.navigateToOperationalStage('diskConciliacao', '${item.id}'); window.app && window.app.closeModal();" title="Auditar na conciliação contábil">
+                <i class="ph-arrows-left-right"></i> Ver Conciliação
+              </button>
             </div>
           </div>
 
@@ -1809,8 +1840,27 @@ class LimitlessFinancialApp {
       }
     }
 
-    this.mainContainer.innerHTML = viewHtml;
+    let opHeaderHtml = '';
+    if (state.currentOperationalContext) {
+      opHeaderHtml = renderOperationHeader(state.currentOperationalContext, state.currentView);
+    }
+    this.mainContainer.innerHTML = opHeaderHtml + viewHtml;
     this.setupViewScrollSpy();
+  }
+
+  navigateToOperationalStage(route, protocol = null) {
+    if (protocol) {
+      financialStore.setOperationalContext(protocol);
+    }
+    this.navigate(route);
+  }
+
+  setOperationalContext(protocol) {
+    return financialStore.setOperationalContext(protocol);
+  }
+
+  clearOperationalContext() {
+    return financialStore.clearOperationalContext();
   }
 
   setupViewScrollSpy() {
@@ -2225,6 +2275,35 @@ class LimitlessFinancialApp {
     }
   }
 
+  toggleSubmenu(event, element) {
+    if (event) {
+      if (typeof event.preventDefault === 'function') event.preventDefault();
+      if (typeof event.stopPropagation === 'function') event.stopPropagation();
+    }
+    const li = element ? element.closest('.nav-item-submenu') : null;
+    if (!li) return;
+
+    this.openedSubmenus = this.openedSubmenus || new Set();
+    const submenuId = li.getAttribute('data-submenu-id');
+
+    const willOpen = !li.classList.contains('is-open');
+    li.classList.toggle('is-open', willOpen);
+    li.classList.toggle('nav-item-open', willOpen);
+
+    if (submenuId) {
+      if (willOpen) {
+        this.openedSubmenus.add(submenuId);
+      } else {
+        this.openedSubmenus.delete(submenuId);
+      }
+    }
+
+    const sub = li.querySelector('.nav-group-sub');
+    if (sub) {
+      sub.style.display = willOpen ? 'flex' : 'none';
+    }
+  }
+
   // ==========================================================================
   // RENDERIZADOR DA SIDEBAR (ACCORDION & CANONICAL SUBMENUS POR PERFIL)
   // REGRA: Nunca renderizar menus duplicados. Uma única sidebar muda seus itens por perfil.
@@ -2255,11 +2334,12 @@ class LimitlessFinancialApp {
 
       if (hasSubs) {
         const isChildActive = item.subItems.some(sub => sub.id === currentView);
-        const isOpen = isParentActive || isChildActive;
+        this.openedSubmenus = this.openedSubmenus || new Set();
+        const isOpen = isParentActive || isChildActive || this.openedSubmenus.has(item.id);
 
         return `
-          <li class="nav-item nav-item-submenu ${isOpen ? 'is-open' : ''}">
-            <a class="nav-link" onclick="this.parentElement.classList.toggle('is-open')">
+          <li class="nav-item nav-item-submenu ${isOpen ? 'is-open nav-item-open' : ''}" data-submenu-id="${item.id}">
+            <a class="nav-link" href="javascript:void(0)" onclick="window.app && window.app.toggleSubmenu(event, this)">
               <div class="nav-item-left">
                 <i class="${item.icon} nav-item-icon"></i>
                 <span class="nav-item-title">${item.label}</span>
@@ -2269,13 +2349,23 @@ class LimitlessFinancialApp {
                 <i class="ph-caret-right nav-arrow"></i>
               </div>
             </a>
-            <ul class="nav-group-sub">
+            <ul class="nav-group-sub" style="${isOpen ? 'display: flex;' : 'display: none;'}">
               ${item.subItems.map(sub => {
                 if (sub.action === 'openPayoutModal') {
                   return `
                     <li class="nav-item">
-                      <a class="nav-link" onclick="window.app.openPayoutModal()">
+                      <a class="nav-link" href="javascript:void(0)" onclick="window.app && window.app.openPayoutModal()">
                         <i class="ph-plus-circle"></i>
+                        <span>${sub.label}</span>
+                      </a>
+                    </li>
+                  `;
+                }
+                if (sub.action === 'openTransferModal') {
+                  return `
+                    <li class="nav-item">
+                      <a class="nav-link" href="javascript:void(0)" onclick="window.app && window.app.openTransferModal()">
+                        <i class="ph-arrows-left-right"></i>
                         <span>${sub.label}</span>
                       </a>
                     </li>
@@ -2284,7 +2374,7 @@ class LimitlessFinancialApp {
                 const isSubActive = currentView === sub.id && (!this.currentFilterArg || this.currentFilterArg === sub.filterArg);
                 return `
                   <li class="nav-item">
-                    <a class="nav-link ${isSubActive ? 'active' : ''}" onclick="window.app.navigate('${sub.id}', '${sub.filterArg || 'all'}')">
+                    <a class="nav-link ${isSubActive ? 'active' : ''}" href="javascript:void(0)" onclick="window.app && window.app.navigate('${sub.id}', '${sub.filterArg || 'all'}')">
                       <i class="ph-caret-right"></i>
                       <span>${sub.label}</span>
                     </a>
@@ -2298,7 +2388,7 @@ class LimitlessFinancialApp {
 
       return `
         <li class="nav-item">
-          <a class="nav-link ${isParentActive ? 'active' : ''}" onclick="window.app.navigate('${item.id}')">
+          <a class="nav-link ${isParentActive ? 'active' : ''}" href="javascript:void(0)" onclick="window.app && window.app.navigate('${item.id}')">
             <div class="nav-item-left">
               <i class="${item.icon} nav-item-icon"></i>
               <span class="nav-item-title">${item.label}</span>
@@ -6298,6 +6388,30 @@ window.openBankAccountHistoryModal = function(accountId) {
 window.setAccountAsDefault = function(accountId) {
   if (window.app && typeof window.app.setAccountAsDefault === 'function') {
     return window.app.setAccountAsDefault(accountId);
+  }
+};
+
+window.navigateToOperationalStage = function(route, protocol) {
+  if (window.app && typeof window.app.navigateToOperationalStage === 'function') {
+    return window.app.navigateToOperationalStage(route, protocol);
+  }
+};
+
+window.setOperationalContext = function(protocol) {
+  if (window.app && typeof window.app.setOperationalContext === 'function') {
+    return window.app.setOperationalContext(protocol);
+  }
+};
+
+window.clearOperationalContext = function() {
+  if (window.app && typeof window.app.clearOperationalContext === 'function') {
+    return window.app.clearOperationalContext();
+  }
+};
+
+window.toggleSubmenu = function(event, element) {
+  if (window.app && typeof window.app.toggleSubmenu === 'function') {
+    return window.app.toggleSubmenu(event, element);
   }
 };
 

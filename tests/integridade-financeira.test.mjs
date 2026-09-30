@@ -183,6 +183,75 @@ test('views com ScrollSpy geram seções correspondentes aos pills', async () =>
   assert.ok(concHtml.includes('id="sec-conc-divergencias"'));
 });
 
+// 15. Pacote 21: Registro Central de Operações Unificado
+test('registro de operações unificado mapeia protocolo às etapas do ciclo de vida', () => {
+  const s = fresh();
+  const op = s.getOperation('REP-2026-00128');
+  assert.ok(op != null, 'Operação REP-2026-00128 deve existir no registro');
+  assert.equal(op.tipo, 'REPASSE');
+  assert.equal(op.valor, 50000.00);
+  assert.equal(op.produtorId, 'prod-abc');
+  assert.equal(op.eventoId, 'evt-001');
+  assert.ok(Array.isArray(op.etapas) && op.etapas.length === 7);
+  assert.equal(op.solicitacaoId, 'REP-00128');
+  assert.equal(op.aprovacaoId, 'APV-2026-00128');
+  assert.equal(op.ledgerId, 'LEDG-89104');
+  assert.equal(op.conciliacaoId, 'CON-006');
+});
+
+// 16. Pacote 21: Sincronização Automática de Contexto Operacional
+test('contexto operacional sincroniza produtor e evento automaticamente', () => {
+  const s = fresh();
+  s.login('disk');
+  s.state.selectedProducerId = 'all';
+  s.state.selectedEventId = 'all';
+
+  const ctx = s.setOperationalContext('REP-2026-00128');
+  assert.ok(ctx != null);
+  assert.equal(ctx.protocolo, 'REP-2026-00128');
+  assert.equal(s.state.selectedProducerId, 'prod-abc', 'Produtor deve ser sincronizado com a operação');
+  assert.equal(s.state.selectedEventId, 'evt-001', 'Evento deve ser sincronizado com a operação');
+
+  s.clearOperationalContext();
+  assert.equal(s.getOperationalContext(), null, 'Contexto deve ser limpo');
+});
+
+// 17. Pacote 21: Registro de Evento Financeiro e Avanço de Etapa
+test('registro de evento financeiro avança etapa da operação e mantém trilha de auditoria', () => {
+  const s = fresh();
+  s.login('disk');
+  const evt = s.registerFinancialEvent('REPASSE_LIQUIDADO_PIX', {
+    operacaoId: 'OP-00128',
+    protocolo: 'REP-2026-00128',
+    novaEtapa: 'LEDGER',
+    status: 'Liquidado na Tesouraria'
+  });
+
+  assert.ok(evt != null);
+  assert.equal(evt.type, 'REPASSE_LIQUIDADO_PIX');
+  const op = s.getOperation('OP-00128');
+  assert.equal(op.etapaAtual, 'LEDGER');
+  assert.equal(op.status, 'Liquidado na Tesouraria');
+  assert.ok(s.data.operationEvents.some(e => e.type === 'REPASSE_LIQUIDADO_PIX'));
+});
+
+// 18. Pacote 21: Persistent Operation Header Rendering
+test('persistent operation header renderiza stepper e reverse links para os módulos', async () => {
+  const { renderOperationHeader } = await import('../js/components/operationHeader.js');
+  const s = fresh();
+  const ctx = s.setOperationalContext('REP-2026-00128');
+  const html = renderOperationHeader(ctx, 'diskTesouraria');
+
+  assert.ok(html.includes('REP-2026-00128'));
+  assert.ok(html.includes('Produtora ABC Ltda.'));
+  assert.ok(html.includes('Festival Curitiba 2026'));
+  assert.ok(html.includes('limitless-operation-header'));
+  assert.ok(html.includes('operation-stepper-container'));
+  assert.ok(html.includes('diskTesouraria'));
+  assert.ok(html.includes('diskLedger'));
+  assert.ok(html.includes('diskConciliacao'));
+});
+
 for (const run of queue) {
   await run();
 }

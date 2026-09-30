@@ -2,6 +2,7 @@
  * Visão Geral - Dashboard Executivo Financeiro do Produtor
  * Responde de imediato: "Como está meu dinheiro?"
  */
+import { financialStore } from '../state.js';
 import { formatCurrency, formatNumber, createStatusBadge } from '../formatters.js';
 
 export function renderOverview(state) {

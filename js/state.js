@@ -13,6 +13,7 @@ export class CoreFinanceiroStore {
       this.data.__p12Enriched = true;
     }
     this.ensureOperationModel();
+    this.ensureOperationsRegistry();
 
     this.state = {
       isLoggedIn: true,
@@ -30,7 +31,8 @@ export class CoreFinanceiroStore {
       selectedEventId: 'all',
       statementFilter: 'all',
       activeToast: null,
-      searchTerm: ''
+      searchTerm: '',
+      currentOperationalContext: null // Pacote 21: Contexto Operacional Global Transversal
     };
 
     if (typeof window !== 'undefined' && window.location && window.location.search) {
@@ -530,6 +532,224 @@ export class CoreFinanceiroStore {
   findOperation(protocol) {
     return this.data.approvalQueue.find(i => i.id === protocol || i.protocol === protocol || i.workflowId === protocol);
   }
+
+  // ==========================================================================
+  // REGISTRO CENTRAL DE OPERAÇÕES & CONTEXTO OPERACIONAL GLOBAL (PACOTE 21)
+  // Operação como fonte única da verdade transversal a todos os módulos
+  // ==========================================================================
+  ensureOperationsRegistry() {
+    this.data.operationsRegistry = this.data.operationsRegistry || [
+      {
+        operacaoId: 'OP-00128',
+        protocolo: 'REP-2026-00128',
+        tipo: 'REPASSE',
+        origem: 'REPASSES',
+        produtorId: 'prod-abc',
+        produtorNome: 'Produtora ABC Ltda.',
+        eventoId: 'evt-001',
+        eventoNome: 'Festival Curitiba 2026',
+        valor: 50000.00,
+        solicitacaoId: 'REP-00128',
+        aprovacaoId: 'APV-2026-00128',
+        assinaturaId: 'DOC-8921',
+        pagamentoId: 'PGT-2026-00128',
+        ledgerId: 'LEDG-89104',
+        conciliacaoId: 'CON-006',
+        status: 'Aprovado / Em Liquidação',
+        etapaAtual: 'PAGAMENTO',
+        etapas: [
+          { id: 'SOLICITACAO', label: 'Solicitação', status: 'concluida', route: 'diskSolicitacoes', date: '28/09/2026 09:14' },
+          { id: 'APROVACAO', label: 'Aprovação', status: 'concluida', route: 'diskAprovacoes', date: '28/09/2026 14:15' },
+          { id: 'ASSINATURA', label: 'Assinaturas', status: 'concluida', route: 'diskAssinaturas', date: '28/09/2026 16:30' },
+          { id: 'PAGAMENTO', label: 'Tesouraria', status: 'em_andamento', route: 'diskTesouraria', date: '29/09/2026 08:00' },
+          { id: 'LEDGER', label: 'Ledger', status: 'pendente', route: 'diskLedger', date: null },
+          { id: 'CONCILIACAO', label: 'Conciliação', status: 'pendente', route: 'diskConciliacao', date: null },
+          { id: 'DOSSIE', label: 'Dossiê', status: 'pendente', route: 'diskFechamentos', date: null }
+        ],
+        banco: 'Itaú Unibanco (341) • Ag 0432 • C/C 48291-0',
+        pixChave: '14.829.301/0001-92 (CNPJ)'
+      },
+      {
+        operacaoId: 'OP-00291',
+        protocolo: 'REP-2026-00291',
+        tipo: 'REPASSE',
+        origem: 'REPASSES',
+        produtorId: 'prod-abc',
+        produtorNome: 'Produtora ABC Ltda.',
+        eventoId: 'evt-001',
+        eventoNome: 'Festival Curitiba 2026',
+        valor: 80000.00,
+        solicitacaoId: 'REP-00291',
+        aprovacaoId: 'APV-2026-00291',
+        assinaturaId: 'DOC-4412',
+        pagamentoId: null,
+        ledgerId: null,
+        conciliacaoId: null,
+        status: 'Aguardando Análise',
+        etapaAtual: 'APROVACAO',
+        etapas: [
+          { id: 'SOLICITACAO', label: 'Solicitação', status: 'concluida', route: 'diskSolicitacoes', date: '29/09/2026 09:15' },
+          { id: 'APROVACAO', label: 'Aprovação', status: 'em_andamento', route: 'diskAprovacoes', date: null },
+          { id: 'ASSINATURA', label: 'Assinaturas', status: 'pendente', route: 'diskAssinaturas', date: null },
+          { id: 'PAGAMENTO', label: 'Tesouraria', status: 'pendente', route: 'diskTesouraria', date: null },
+          { id: 'LEDGER', label: 'Ledger', status: 'pendente', route: 'diskLedger', date: null },
+          { id: 'CONCILIACAO', label: 'Conciliação', status: 'pendente', route: 'diskConciliacao', date: null },
+          { id: 'DOSSIE', label: 'Dossiê', status: 'pendente', route: 'diskFechamentos', date: null }
+        ],
+        banco: 'Itaú Unibanco (341) • Ag 0432 • C/C 48291-0',
+        pixChave: '14.829.301/0001-92 (CNPJ)'
+      },
+      {
+        operacaoId: 'OP-00142',
+        protocolo: 'TRF-2026-00142',
+        tipo: 'TRANSFERENCIA',
+        origem: 'TRANSFERENCIAS',
+        produtorId: 'prod-abc',
+        produtorNome: 'Produtora ABC Ltda.',
+        eventoId: 'evt-001',
+        eventoNome: 'Festival Curitiba 2026',
+        destinoEventoId: 'evt-002',
+        destinoEventoNome: 'Show Artista A - Turnê Especial',
+        valor: 110000.00,
+        solicitacaoId: 'TRF-2026-00142',
+        aprovacaoId: 'APV-TRF-00142',
+        assinaturaId: null,
+        pagamentoId: null,
+        ledgerId: 'LEDG-TRF-00142',
+        conciliacaoId: 'CON-TRF-00142',
+        status: 'Transferência Executada & Conciliada',
+        etapaAtual: 'CONCILIACAO',
+        etapas: [
+          { id: 'SOLICITACAO', label: 'Solicitação', status: 'concluida', route: 'diskSolicitacoes', date: '29/09/2026 10:00' },
+          { id: 'APROVACAO', label: 'Aprovação', status: 'concluida', route: 'diskAprovacoes', date: '29/09/2026 10:05' },
+          { id: 'ASSINATURA', label: 'Assinaturas', status: 'dispensada', route: 'diskAssinaturas', date: null },
+          { id: 'PAGAMENTO', label: 'Transferência', status: 'concluida', route: 'diskTransferencias', date: '29/09/2026 10:10' },
+          { id: 'LEDGER', label: 'Ledger', status: 'concluida', route: 'diskLedger', date: '29/09/2026 10:10' },
+          { id: 'CONCILIACAO', label: 'Conciliação', status: 'concluida', route: 'diskConciliacao', date: '29/09/2026 10:15' },
+          { id: 'DOSSIE', label: 'Dossiê', status: 'concluida', route: 'diskFechamentos', date: '29/09/2026 10:15' }
+        ]
+      },
+      {
+        operacaoId: 'OP-00105',
+        protocolo: 'ANT-2026-00105',
+        tipo: 'ANTECIPACAO',
+        origem: 'ANTECIPACOES',
+        produtorId: 'prod-abc',
+        produtorNome: 'Produtora ABC Ltda.',
+        eventoId: 'evt-001',
+        eventoNome: 'Festival Curitiba 2026',
+        valor: 50000.00,
+        solicitacaoId: 'ANT-00105',
+        aprovacaoId: 'APV-ANT-00105',
+        assinaturaId: 'DOC-ANT-00105',
+        pagamentoId: null,
+        ledgerId: null,
+        conciliacaoId: null,
+        status: 'Em Análise de Risco',
+        etapaAtual: 'APROVACAO',
+        etapas: [
+          { id: 'SOLICITACAO', label: 'Solicitação', status: 'concluida', route: 'antecipacoes', date: '29/09/2026 09:20' },
+          { id: 'APROVACAO', label: 'Aprovação', status: 'em_andamento', route: 'diskAprovacoes', date: null },
+          { id: 'ASSINATURA', label: 'Assinaturas', status: 'pendente', route: 'diskAssinaturas', date: null },
+          { id: 'PAGAMENTO', label: 'Tesouraria', status: 'pendente', route: 'diskTesouraria', date: null },
+          { id: 'LEDGER', label: 'Ledger', status: 'pendente', route: 'diskLedger', date: null },
+          { id: 'CONCILIACAO', label: 'Conciliação', status: 'pendente', route: 'diskConciliacao', date: null },
+          { id: 'DOSSIE', label: 'Dossiê', status: 'pendente', route: 'diskFechamentos', date: null }
+        ]
+      }
+    ];
+  }
+
+  getOperationsRegistry() {
+    this.ensureOperationsRegistry();
+    return this.data.operationsRegistry;
+  }
+
+  getOperation(idOrProtocol) {
+    this.ensureOperationsRegistry();
+    if (!idOrProtocol) return null;
+    const term = String(idOrProtocol).trim().toLowerCase();
+    return this.data.operationsRegistry.find(op => 
+      (op.operacaoId && op.operacaoId.toLowerCase() === term) ||
+      (op.protocolo && op.protocolo.toLowerCase() === term) ||
+      (op.solicitacaoId && op.solicitacaoId.toLowerCase() === term) ||
+      (op.aprovacaoId && op.aprovacaoId.toLowerCase() === term) ||
+      (op.ledgerId && op.ledgerId.toLowerCase() === term) ||
+      (op.conciliacaoId && op.conciliacaoId.toLowerCase() === term)
+    ) || null;
+  }
+
+  setOperationalContext(idOrProtocol) {
+    const op = this.getOperation(idOrProtocol);
+    if (!op) {
+      this.state.currentOperationalContext = null;
+      this.notify();
+      return null;
+    }
+
+    this.state.currentOperationalContext = {
+      ...op,
+      ambiente: this.state.viewMode === 'disk' ? 'FINANCEIRO_DISK' : 'FINANCEIRO_PRODUTOR'
+    };
+
+    if (op.produtorId && this.state.selectedProducerId !== op.produtorId) {
+      if (this.state.viewMode === 'disk' || this.state.currentUser.role === 'admin') {
+        this.state.selectedProducerId = op.produtorId;
+      }
+    }
+    if (op.eventoId) {
+      this.state.selectedEventId = op.eventoId;
+    }
+
+    this.showToast('Contexto Operacional', `Operação ${op.protocolo} vinculada ao contexto transversal.`, 'info');
+    this.notify();
+    return this.state.currentOperationalContext;
+  }
+
+  clearOperationalContext() {
+    this.state.currentOperationalContext = null;
+    this.showToast('Contexto Operacional', 'Visualização de operação desvinculada.', 'info');
+    this.notify();
+  }
+
+  getOperationalContext() {
+    return this.state.currentOperationalContext;
+  }
+
+  registerFinancialEvent(eventType, payload = {}) {
+    const eventRecord = {
+      id: `EVT-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`,
+      timestamp: new Date().toLocaleString('pt-BR'),
+      type: eventType,
+      actor: this.state?.currentUser?.name || 'Sistema Disk',
+      actorRole: this.state?.currentUser?.role || 'disk',
+      ...payload
+    };
+
+    this.data.operationEvents = this.data.operationEvents || [];
+    this.data.operationEvents.unshift(eventRecord);
+
+    const targetOpId = payload.operacaoId || payload.protocolo;
+    if (targetOpId) {
+      const op = this.getOperation(targetOpId);
+      if (op) {
+        if (payload.novaEtapa) {
+          op.etapaAtual = payload.novaEtapa;
+          const st = op.etapas.find(e => e.id === payload.novaEtapa);
+          if (st) {
+            st.status = 'em_andamento';
+            st.date = eventRecord.timestamp;
+          }
+        }
+        if (payload.status) op.status = payload.status;
+      }
+    }
+
+    this.persist();
+    this.notify();
+    return eventRecord;
+  }
+
 
   getState() {
     const isAllProducers = this.state.selectedProducerId === 'all' || !this.state.selectedProducerId;

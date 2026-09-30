@@ -2,6 +2,7 @@
  * Saldos - Gestão de Saldos do Produtor por Evento & Composição do Saldo
  * Padrão Limitless: Segregação por Evento, Transferência com Regra Rígida e Composição Transparente
  */
+import { financialStore } from '../state.js';
 import { formatCurrency, formatNumber } from '../formatters.js';
 
 export function renderSaldos(state) {

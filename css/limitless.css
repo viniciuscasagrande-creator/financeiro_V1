@@ -1837,3 +1837,44 @@ body.theme-dark .scrollspy-pill.active,
   color: #ffffff;
 }
 
+/* ==========================================================================
+   Limitless Operation Header & Cross-Module Stepper (Pacote 21)
+   ========================================================================== */
+.limitless-operation-header {
+  border-radius: 8px !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04) !important;
+  transition: all 0.2s ease !important;
+}
+
+.limitless-operation-header .operation-step-pill:hover {
+  background: #f1f5f9;
+}
+
+.limitless-operation-header .operation-step-pill.active-step-border {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe !important;
+}
+
+.stepper-step-active {
+  font-weight: 700;
+  color: #1d4ed8 !important;
+}
+
+.stepper-step-done {
+  color: #0f172a !important;
+}
+
+/* Dual-class support for Limitless submenus */
+.nav-sidebar .nav-item-submenu.nav-item-open > .nav-group-sub,
+.nav-sidebar .nav-item-submenu.is-open > .nav-group-sub {
+  display: flex !important;
+}
+
+.nav-sidebar .nav-item-submenu.nav-item-open > .nav-link .nav-arrow,
+.nav-sidebar .nav-item-submenu.is-open > .nav-link .nav-arrow {
+  transform: rotate(90deg) !important;
+  opacity: 0.9 !important;
+  color: #60a5fa !important;
+}
+
+
