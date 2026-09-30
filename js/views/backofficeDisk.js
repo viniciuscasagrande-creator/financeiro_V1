@@ -188,7 +188,7 @@ export function renderBackofficeDisk(state) {
             <div>Banco Emissor: <strong>${disk.cnabBatch.bank}</strong></div>
             <div>Pagamentos Agendados: <strong>${disk.cnabBatch.scheduledPaymentCount} repasses (${formatCurrency(disk.cnabBatch.totalAmount)})</strong></div>
           </div>
-          <button class="btn btn-secondary btn-sm" style="margin-top: 12px;" onclick="alert('Arquivo CNAB 240 gerado e pronto para envio via VAN bancária.')">
+          <button class="btn btn-secondary btn-sm" style="margin-top: 12px;" onclick="window.app.integratedAction('gerar-cnab')">
             Transmitir Remessa CNAB
           </button>
         </div>

@@ -98,11 +98,11 @@ export const LoginPage: React.FC<{ onLoginSuccess?: () => void }> = ({ onLoginSu
               <button
                 type="button"
                 className="btn btn-xs btn-outline-light text-start p-2 d-flex align-items-center justify-content-between border-opacity-25"
-                onClick={() => selecionarUsuarioDemo('karine@diskingressos.com.br', 'FINANCEIRO')}
+                onClick={() => selecionarUsuarioDemo('financeiro@demo.disk', 'FINANCEIRO')}
               >
                 <div>
-                  <strong className="d-block text-white fs-xs">Financeiro Disk (Karine)</strong>
-                  <span className="fs-xxs text-muted">karine@diskingressos.com.br &bull; Adm do Financeiro</span>
+                  <strong className="d-block text-white fs-xs">Financeiro Disk (Maria Valente)</strong>
+                  <span className="fs-xxs text-muted">financeiro@demo.disk &bull; Acesso Backoffice Total</span>
                 </div>
                 <span className="badge bg-primary fs-xxs">FINANCEIRO</span>
               </button>

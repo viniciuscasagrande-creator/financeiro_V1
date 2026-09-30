@@ -24,18 +24,18 @@ export const authService = {
       } else if (email.includes('admin')) {
         mockUser = {
           id: 'usr-adm-01',
-          email: 'karine@diskingressos.com.br',
-          nome: 'Karine',
+          email: 'admin@demo.disk',
+          nome: 'Vinicius Master',
           perfil: 'ADMINISTRADOR',
-          cargo: 'Administradora do Financeiro'
+          cargo: 'Administrador Master'
         };
       } else {
         mockUser = {
           id: 'usr-fin-01',
-          email: 'karine@diskingressos.com.br',
-          nome: 'Karine',
+          email: 'financeiro@demo.disk',
+          nome: 'Maria Valente',
           perfil: 'FINANCEIRO',
-          cargo: 'Administradora do Financeiro'
+          cargo: 'Supervisora Tesouraria Disk'
         };
       }
       localStorage.setItem('disk_token', `demo_token_${mockUser.perfil}`);

@@ -108,10 +108,10 @@ export const HeaderFinanceiro: React.FC = () => {
                 <i className="ph-user text-primary me-2"></i> Produtora ABC (João Silva)
               </a>
               <a href="#" className="dropdown-item py-2 fs-xs" onClick={() => loginAs("FINANCEIRO")}>
-                <i className="ph-shield-check text-success me-2"></i> Financeiro Disk (Karine)
+                <i className="ph-shield-check text-success me-2"></i> Financeiro Disk (Maria Valente)
               </a>
               <a href="#" className="dropdown-item py-2 fs-xs" onClick={() => loginAs("ADMINISTRADOR")}>
-                <i className="ph-crown text-warning me-2"></i> Adm Financeiro (Karine)
+                <i className="ph-crown text-warning me-2"></i> Admin Master (Vinicius)
               </a>
             </div>
           </div>
