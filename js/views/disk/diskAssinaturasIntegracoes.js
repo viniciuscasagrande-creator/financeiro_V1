@@ -19,18 +19,25 @@ function body(section,state){
   if(section==='sincronizacoes') return sincronizacoes();
   if(section==='logs') return logs();
   if(section==='documentos') return documentos();
-  return assinaturas();
+  return assinaturas(state);
 }
 
 function kpi(title,value,sub,icon){return `<div class="col-sm-6 col-xl-3"><div class="card"><div class="card-body"><div class="d-flex align-items-center"><i class="${icon} fs-2 me-3"></i><div><div class="text-muted fs-sm">${title}</div><div class="fs-3 fw-semibold">${value}</div><div class="text-muted fs-sm">${sub}</div></div></div></div></div></div>`}
 
-function assinaturas(){return `
+function assinaturas(state){
+  const queue = state?.data?.approvalQueue || [];
+  const aguardProd = queue.filter(i => i.approvedBy && !i.signatures?.producer?.signed && i.status !== 'Rejeitado');
+  const aguardDisk = queue.filter(i => i.signatures?.producer?.signed && !i.signatures?.disk?.signed && i.status !== 'Rejeitado');
+  const concluidos = queue.filter(i => i.signatures?.producer?.signed && i.signatures?.disk?.signed);
+  const ocorrencias = queue.filter(i => i.status === 'Rejeitado');
+  const focusId = typeof window !== 'undefined' ? window.app?.activeOperationId : null;
+  const rows = focusId ? queue.filter(i => i.id === focusId) : queue;
+  return `
 <div class="mb-3"><h4 class="mb-1">Central de Assinaturas</h4><div class="text-muted">Documentos financeiros com ordem obrigatória: Produtor primeiro e Financeiro Disk por último.</div></div>
-<div class="row">${kpi('Aguardando Produtor','8','assinaturas pendentes','ph-user-circle')}${kpi('Aguardando Financeiro Disk','6','liberadas após produtor','ph-bank')}${kpi('Concluídos','96','documentos assinados','ph-check-circle')}${kpi('Com ocorrência','5','recusados, expirados ou erro','ph-warning-circle')}</div>
-<div class="card"><div class="card-header d-flex align-items-center"><h5 class="mb-0">Esteira de assinaturas</h5><span class="badge bg-primary ms-auto">Autentique</span></div><div class="table-responsive"><table class="table table-hover mb-0"><thead><tr><th>Documento</th><th>Tipo</th><th>Produtor</th><th>Evento</th><th>Valor</th><th>Status</th><th>Próxima ação</th></tr></thead><tbody>
-<tr><td>REP-00281</td><td>Repasse</td><td>ABC Eventos</td><td>Festival X</td><td>${money(180000)}</td><td><span class="badge bg-warning text-dark">Aguardando Produtor</span></td><td>Produtor assinar</td></tr>
-<tr><td>BOR-00128</td><td>Borderô</td><td>XYZ Produções</td><td>Evento Y</td><td>${money(428500)}</td><td><span class="badge bg-info">Aguardando Disk</span></td><td>Assinatura final Disk</td></tr>
-<tr><td>ANT-00042</td><td>Antecipação</td><td>ABC Eventos</td><td>Festival X</td><td>${money(95000)}</td><td><span class="badge bg-success">Concluído</span></td><td>Documento arquivado</td></tr>
+${focusId ? `<div class="alert alert-primary d-flex justify-content-between align-items-center flex-wrap gap-2"><div><strong>Operação em foco:</strong> ${focusId} · contexto preservado entre os módulos.</div><button class="btn btn-sm btn-outline-primary" onclick="window.app.clearOperationFocus()">Limpar foco</button></div>` : ''}
+<div class="row">${kpi('Aguardando Produtor',String(aguardProd.length),'assinaturas pendentes','ph-user-circle')}${kpi('Aguardando Financeiro Disk',String(aguardDisk.length),'liberadas após produtor','ph-bank')}${kpi('Concluídos',String(concluidos.length),'documentos assinados','ph-check-circle')}${kpi('Com ocorrência',String(ocorrencias.length),'rejeitados ou com bloqueio','ph-warning-circle')}</div>
+<div class="card"><div class="card-header d-flex align-items-center"><h5 class="mb-0">Esteira de assinaturas</h5><span class="badge bg-primary ms-auto">Dados da operação</span></div><div class="table-responsive"><table class="table table-hover mb-0"><thead><tr><th>Documento</th><th>Tipo</th><th>Produtor</th><th>Evento</th><th>Valor</th><th>Status</th><th>Ações</th></tr></thead><tbody>
+${rows.length ? rows.map(i=>`<tr><td>${i.documentId || i.id}</td><td>${i.type}</td><td>${i.producerName}</td><td>${i.eventName || 'Conta geral'}</td><td>${money(i.requestedAmount || i.netAmount || 0)}</td><td>${i.status}</td><td><div class="d-flex gap-1 flex-wrap"><button class="btn btn-sm btn-light" onclick="window.app.focusOperation('${i.id}','diskAprovacoes'); setTimeout(()=>window.app.openApprovalSheet('${i.id}'),60)">Ver operação</button>${i.signatures?.disk?.signed ? `<button class="btn btn-sm btn-outline-primary" onclick="window.app.focusOperation('${i.id}','diskTesouraria')">Tesouraria</button>` : ''}</div></td></tr>`).join('') : '<tr><td colspan="7" class="text-center text-muted py-4">Nenhuma operação encontrada para o contexto atual.</td></tr>'}
 </tbody></table></div></div>
 <div class="alert alert-info"><strong>Regra de governança:</strong> a assinatura do Financeiro Disk permanece bloqueada até a confirmação da assinatura do Produtor. A conclusão do documento libera a próxima etapa do workflow financeiro.</div>`}
 

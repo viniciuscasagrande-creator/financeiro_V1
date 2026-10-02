@@ -6,7 +6,7 @@ import { getFreshDatabase } from './mockData.js';
 
 export class CoreFinanceiroStore {
   constructor() {
-    this.storageKey = 'disk-financeiro-v1-p20-restored';
+    this.storageKey = 'disk-financeiro-v1-p22';
     this.data = this.loadPersistedData() || getFreshDatabase();
     if (!this.data.__p12Enriched) {
       this.enrichApprovalQueueWithAuditAndSignatures();
@@ -695,6 +695,25 @@ export class CoreFinanceiroStore {
 
   setSelectedEvent(eventId) {
     this.state.selectedEventId = eventId;
+    this.notify();
+  }
+
+  // Pacote 22: atualiza contexto operacional em uma única notificação, evitando
+  // renders intermediários ao atravessar módulos da mesma operação.
+  setOperationalContext({ producerId = null, eventId = null, viewName = null } = {}) {
+    if (this.state.currentUser.role === 'producer') {
+      this.state.selectedProducerId = this.state.currentUser.producerId;
+    } else if (producerId) {
+      this.state.selectedProducerId = producerId;
+    }
+
+    if (eventId) {
+      this.state.selectedEventId = eventId;
+    } else if (producerId) {
+      this.state.selectedEventId = 'all';
+    }
+
+    if (viewName) this.state.currentView = viewName;
     this.notify();
   }
 

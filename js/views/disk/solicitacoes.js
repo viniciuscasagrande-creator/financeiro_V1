@@ -159,7 +159,7 @@ export function renderDiskSolicitacoes(state, filterType = 'all') {
                         ${createStatusBadge(i.status)}
                       </td>
                       <td style="text-align: right;">
-                        <button class="btn btn-sm btn-primary d-inline-flex align-items-center gap-1" onclick="window.app.navigate('diskAprovacoes'); setTimeout(() => window.app.openApprovalSheet('${i.id}'), 60)">
+                        <button class="btn btn-sm btn-primary d-inline-flex align-items-center gap-1" onclick="window.app.focusOperation('${i.id}', 'diskAprovacoes'); setTimeout(() => window.app.openApprovalSheet('${i.id}'), 60)">
                           <span>Analisar</span> <i class="ph-arrow-right fs-xxs"></i>
                         </button>
                       </td>

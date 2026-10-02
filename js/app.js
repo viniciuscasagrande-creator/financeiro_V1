@@ -147,6 +147,33 @@ class LimitlessFinancialApp {
     financialStore.showToast("Filtro Temporal", `Visão consolidada atualizada para: ${labels[period] || period}`, "info");
   }
 
+  // Pacote 22 — ligação incremental entre módulos sem substituir as views existentes.
+  // Mantém protocolo, produtor e evento enquanto o usuário percorre a cadeia financeira.
+  focusOperation(requestId, targetView = 'diskAprovacoes') {
+    const state = financialStore.getState();
+    const item = state.data.approvalQueue.find(a => a.id === requestId);
+    if (!item) {
+      financialStore.showToast('Operação não encontrada', `Não foi possível localizar ${requestId}.`, 'warning');
+      return;
+    }
+
+    this.activeOperationId = requestId;
+    this.currentFilterArg = requestId;
+    this.closeModal();
+    financialStore.setOperationalContext({
+      producerId: item.producerId,
+      eventId: item.eventId || 'all',
+      viewName: targetView
+    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  clearOperationFocus() {
+    this.activeOperationId = null;
+    this.currentFilterArg = null;
+    this.render(financialStore.getState());
+  }
+
   navigate(viewName, filterArg = null) {
     this.currentFilterArg = filterArg;
 
@@ -549,6 +576,14 @@ class LimitlessFinancialApp {
               <button class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1" onclick="window.app.openAuditTrailModal('${item.id}')">
                 <i class="ph-scroll"></i> <span>Ver Trilha de Auditoria</span>
               </button>
+            </div>
+
+            <div class="d-flex gap-2 flex-wrap align-items-center">
+              <button class="btn btn-outline-primary btn-sm" onclick="window.app.focusOperation('${item.id}', 'diskAprovacoes')"><i class="ph-check-square me-1"></i>Aprovação</button>
+              <button class="btn btn-outline-primary btn-sm" onclick="window.app.focusOperation('${item.id}', 'diskAssinaturas')"><i class="ph-signature me-1"></i>Assinaturas</button>
+              <button class="btn btn-outline-primary btn-sm" onclick="window.app.focusOperation('${item.id}', 'diskTesouraria')"><i class="ph-bank me-1"></i>Tesouraria</button>
+              <button class="btn btn-outline-primary btn-sm" onclick="window.app.focusOperation('${item.id}', 'diskLedger')"><i class="ph-book-open me-1"></i>Ledger</button>
+              <button class="btn btn-outline-primary btn-sm" onclick="window.app.focusOperation('${item.id}', 'diskConciliacao')"><i class="ph-arrows-left-right me-1"></i>Conciliação</button>
             </div>
 
             <div class="d-flex gap-2 align-items-center" id="actionDecisionGroup">

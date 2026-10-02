@@ -34,6 +34,7 @@ docs/
 │   ├── PACOTE_18_CENTRAL_GATEWAYS_ADQUIRENTES.md
 │   ├── PACOTE_19_CONSOLIDACAO_TAXAS_TESOURARIA_CONCILIACAO.md
 │   ├── PACOTE_20_CONSOLIDACAO_AMBIENTE_PRODUTOR.md
+│   ├── PACOTE_22_LIGACAO_INCREMENTAL_ENTRE_MODULOS.md
 │   └── PACOTE_AJUSTE_FINANCEIRO_DISK.md
 ```
 
@@ -62,6 +63,7 @@ docs/
 | [Pacote 18 — Gateways e Adquirentes](pacotes/PACOTE_18_CENTRAL_GATEWAYS_ADQUIRENTES.md) | Central Operacional de Gateways & Adquirentes | 12 abas operacionais (Credenciais seguras, Bandeiras, PIX, Boleto, Parcelamento, Antifraude, Webhooks, Logs, Relatórios), teste de conexão verídico e pipeline com Taxas e Conciliação |
 | [Pacote 19 — Taxas, Tesouraria & Conciliação](pacotes/PACOTE_19_CONSOLIDACAO_TAXAS_TESOURARIA_CONCILIACAO.md) | Consolidação Operacional do Circuito Financeiro | Circuito fechado: simulador de spread, tesouraria operacional (contas corporativas BB/Itaú), CNAB em homologação sem transmissão fictícia, conciliação em 7 camadas e tratamento auditável de ocorrências/divergências |
 | [Pacote 20 — Ambiente Produtor](pacotes/PACOTE_20_CONSOLIDACAO_AMBIENTE_PRODUTOR.md) | Consolidação do Ambiente do Produtor | Composição do Saldo transparente, transferência entre eventos com trava de transferível e partidas dobradas no Ledger, versionamento de dados bancários (v2 pendente sem apagar v1 ativa), detalhamento de retenções (R$ 45.000) e timeline de 8 etapas do repasse |
+| [Pacote 22 — Ligação Incremental](pacotes/PACOTE_22_LIGACAO_INCREMENTAL_ENTRE_MODULOS.md) | Ligação Incremental entre Módulos | Circuito conectado Solicitação → Aprovação → Assinaturas → Tesouraria → Ledger → Conciliação preservando protocolo + produtor + evento, atalhos contextuais e esteira de assinaturas dinâmica |
 | [Pacote Ajuste — Contas Financeiras](pacotes/PACOTE_AJUSTE_FINANCEIRO_DISK.md) | Contas Financeiras & Bancárias | Cadastro de contas pelo Financeiro Disk, homologação Bacen/CIP, máscaras e bloqueio de repasses |
 
 ---
