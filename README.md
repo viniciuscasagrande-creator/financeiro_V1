@@ -228,3 +228,7 @@ Inclui matriz administrativa de MDR e regras comerciais, Spread bruto, custos ad
 
 ## V0.6.2 — Spread, Rentabilidade e DRE
 A matriz de Taxas/MDR/Spread passa a alimentar a apuração gerencial por evento e o DRE de taxas/adquirência. Consulte `docs/V0.6.2_SPREAD_LEDGER_DRE.md`.
+
+## V0.6.2.1 — Correção Produtores, Saldos e Repasse por Evento
+Abertura padrão no Dossiê Financeiro do Produtor, segregação patrimonial e contábil por evento (`Saldo do Evento → Limite da Política → Deduções do Evento → Elegível para Repasse`), eliminação da simulação indevida de repasse pelo Financeiro Disk e atuação administrativa via Autorização Excepcional. Consulte `docs/V0.6.2.1_CORRECAO_PRODUTORES_REPASSE_EVENTO.md`.
+

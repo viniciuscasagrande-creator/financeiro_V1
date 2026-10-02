@@ -233,4 +233,57 @@ test('Solicitação de valor acima do disponível calculado pelo motor é bloque
   assert.equal(exactPayout.requestedAmount, 54000, 'Valor solicitado gravado deve ser 54000');
 });
 
+// 8. V0.6.2.1: Deduções e elegibilidade de repasse são estritamente individuais por evento
+test('V0.6.2.1: Deduções e elegibilidade de repasse são estritamente individuais por evento e não contaminam outros eventos do produtor', () => {
+  const store = new CoreFinanceiroStore();
+  store.data.exceptionalAuthorizations = [];
+
+  // Produtor prod-abc possui múltiplos eventos: evt-001, evt-002, evt-003, evt-inverno
+  const eligInverno = store.calculatePayoutEligibility('evt-inverno');
+  assert.equal(eligInverno.ruleMet, true, 'evt-inverno deve estar habilitado (52% vendas)');
+  assert.equal(eligInverno.totalDeductions, 50000, 'Deduções de evt-inverno devem ser 50.000 (40k repasses + 10k bloqueios deste evento)');
+  assert.equal(eligInverno.disponivelFinal, 54000, 'Disponível de evt-inverno deve ser 54.000');
+
+  // evt-002 possui vendas < 50%
+  const elig002 = store.calculatePayoutEligibility('evt-002');
+  assert.equal(elig002.ruleMet, false, 'evt-002 deve estar bloqueado (< 50% vendas)');
+  assert.equal(elig002.disponivelFinal, 0, 'Disponível de evt-002 bloqueado deve ser 0');
+
+  // Adicionar obrigação em evt-003 não pode alterar as deduções de evt-inverno
+  store.data.eventObligations = store.data.eventObligations || [];
+  store.data.eventObligations.push({
+    id: 'OB-TEST-SEGREGACAO',
+    eventId: 'evt-003',
+    producerId: 'prod-abc',
+    value: 75000,
+    status: 'RESERVADO'
+  });
+
+  const eligInvernoAfter = store.calculatePayoutEligibility('evt-inverno');
+  assert.equal(eligInvernoAfter.totalDeductions, 50000, 'Dedução em evt-003 não pode contaminar evt-inverno');
+  assert.equal(eligInvernoAfter.disponivelFinal, 54000, 'Disponível de evt-inverno deve permanecer inalterado');
+});
+
+// 9. V0.6.2.1: Dossiê do Produtor padrão e renderização com elegibilidade segregada
+test('V0.6.2.1: Visualização do Dossiê no Financeiro Disk exibe elegibilidade segregada por evento e ação exclusiva de autorização excepcional', async () => {
+  const store = new CoreFinanceiroStore();
+  const state = store.getState();
+  state.calculatePayoutEligibility = store.calculatePayoutEligibility.bind(store);
+  const { renderDiskProdutores } = await import('../js/views/disk/produtores.js');
+
+  // Chama renderDiskProdutores por padrão (sem passar tab bancarias)
+  const html = renderDiskProdutores(state, 'all');
+
+  // Valida que a aba ativa é o Dossiê do Produtor
+  assert.ok(html.includes('Dossiê do Produtor'), 'Deve renderizar aba Dossiê do Produtor');
+  assert.ok(html.includes('sec-dossie-eventos'), 'Deve renderizar seção de eventos do produtor');
+  assert.ok(html.includes('Limite da Política'), 'Tabela de eventos deve exibir coluna Limite da Política');
+  assert.ok(html.includes('Deduções do Evento'), 'Tabela de eventos deve exibir coluna Deduções do Evento');
+  assert.ok(html.includes('Elegível p/ Repasse'), 'Tabela de eventos deve exibir coluna Elegível p/ Repasse');
+  assert.ok(html.includes('Ação Financeiro Disk'), 'Tabela de eventos deve exibir coluna Ação Financeiro Disk');
+  assert.ok(html.includes('openExceptionalPayoutAuthorization'), 'Botão de ação do Financeiro Disk deve ser autorizar exceção');
+  assert.ok(!html.includes('onclick="window.app.openPayoutModal'), 'Financeiro Disk não deve conter botão de solicitar repasse operacional em nome do produtor');
+});
+
 console.log(`\nTodos os ${passed} testes do Motor de Elegibilidade de Repasses passaram com sucesso!`);
+

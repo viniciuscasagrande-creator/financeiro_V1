@@ -158,7 +158,7 @@ export function renderDiskSaldos(state, activeTab = 'consolidado') {
                     <td style="text-align:right">
                       ${r.type === 'producer' 
                         ? `<button class="btn btn-primary btn-sm" onclick="window.app.openProducerDossier('${r.id}')">Ver Dossiê →</button>`
-                        : `<button class="btn btn-outline-primary btn-sm" onclick="window.app.openPayoutModal('${r.id}')">Operar →</button>`
+                        : `<button class="btn btn-outline-primary btn-sm" onclick="window.app.openExceptionalPayoutAuthorization('${r.id}')" title="Autorizar Exceção Administrativa (Mesa Disk)">Autorizar Exceção →</button>`
                       }
                     </td>
                   </tr>

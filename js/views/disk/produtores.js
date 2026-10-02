@@ -36,7 +36,7 @@ function maskPix(pix, type = '') {
 }
 
 export function renderDiskProdutores(state, filterArg = 'all') {
-  const currentTab = window.app?.diskProdutoresTab || (filterArg === 'contas' ? 'bancarias' : 'bancarias');
+  const currentTab = (typeof window !== 'undefined' && window.app?.diskProdutoresTab) || (filterArg === 'contas' ? 'bancarias' : 'dossie');
   const producers = state.data.producers || [];
   const selectedProducerId = state.selectedProducerId;
   const activeProducer = (selectedProducerId && selectedProducerId !== 'all')
@@ -450,6 +450,10 @@ function renderTabContasFinanceiras(state) {
 function renderTabDossieProdutor(state, activeProducer) {
   const producers = state.data.producers || [];
   const producerEvents = (state.data.events || []).filter(e => e.producerId === activeProducer.id);
+  const calculateEligibility = (typeof window !== 'undefined' && window.financialStore?.calculatePayoutEligibility) 
+    || (state.calculatePayoutEligibility ? state.calculatePayoutEligibility.bind(state) : null)
+    || (() => null);
+  const eventEligibility = Object.fromEntries(producerEvents.map(e => [e.id, calculateEligibility(e.id)]));
   const producerApprovals = (state.data.approvalQueue || []).filter(a => a.producerId === activeProducer.id);
   const bankAccounts = activeProducer.bankAccounts || [];
 
@@ -547,9 +551,11 @@ function renderTabDossieProdutor(state, activeProducer) {
                 <th style="text-align: right;">Vendas Brutas</th>
                 <th style="text-align: right;">Taxas Disk</th>
                 <th style="text-align: right;">Líquido Apurado</th>
-                <th style="text-align: right;">Saldo Disponível</th>
-                <th style="text-align: right;">A Receber</th>
-                <th style="text-align: right;">Já Repassado</th>
+                <th style="text-align: right;">Saldo do Evento</th>
+                <th style="text-align: right;">Limite da Política</th>
+                <th style="text-align: right;">Deduções do Evento</th>
+                <th style="text-align: right;">Elegível p/ Repasse</th>
+                <th style="text-align: right;">Ação Financeiro Disk</th>
               </tr>
             </thead>
             <tbody>
@@ -568,12 +574,24 @@ function renderTabDossieProdutor(state, activeProducer) {
                   <td style="text-align: right; font-weight: 700; color: #059669;">${formatCurrency(evt.netRevenue)}</td>
                   <td style="text-align: right; font-weight: 800; font-size: 0.95rem; color: #059669;">
                     ${formatCurrency(evt.availableBalance)}
+                    <div style="font-size:.68rem;color:var(--text-muted);">Conta exclusiva do evento</div>
                   </td>
-                  <td style="text-align: right; font-weight: 600; color: #d97706;">
-                    ${formatCurrency(evt.futureReceivables)}
+                  <td style="text-align: right; font-weight: 700;">
+                    ${formatCurrency(eventEligibility[evt.id]?.limiteBruto || 0)}
+                    <div style="font-size:.68rem;color:var(--text-muted);">${eventEligibility[evt.id]?.releasePercent || 20}% das vendas elegíveis</div>
                   </td>
-                  <td style="text-align: right; color: var(--text-muted); font-weight: 600;">
-                    ${formatCurrency(evt.payoutsDone)}
+                  <td style="text-align: right; font-weight: 700; color:#b45309;">
+                    -${formatCurrency(eventEligibility[evt.id]?.totalDeductions || 0)}
+                    <div style="font-size:.68rem;color:var(--text-muted);">Somente deste evento</div>
+                  </td>
+                  <td style="text-align: right; font-weight: 800; color:${(eventEligibility[evt.id]?.disponivelFinal || 0) > 0 ? '#059669' : '#dc2626'};">
+                    ${formatCurrency(eventEligibility[evt.id]?.disponivelFinal || 0)}
+                    <div style="font-size:.68rem;color:var(--text-muted);">${eventEligibility[evt.id]?.status || 'BLOQUEADO'}</div>
+                  </td>
+                  <td style="text-align:right;">
+                    <button class="btn btn-outline-primary btn-sm" onclick="window.app.openExceptionalPayoutAuthorization('${evt.id}')">
+                      Autorizar exceção
+                    </button>
                   </td>
                 </tr>
               `).join('')}

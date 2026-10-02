@@ -12,6 +12,7 @@
  */
 
 import { financialStore } from './state.js';
+window.financialStore = financialStore;
 import { formatCurrency, formatNumber, createStatusBadge } from './formatters.js';
 
 // Import Views do Produtor
@@ -310,61 +311,10 @@ class LimitlessFinancialApp {
     const state = financialStore.getState();
     const p = state.data.producers.find(x => x.id === producerId);
     if (!p) return financialStore.showToast('Dossiê', 'Produtor não encontrado.', 'danger');
-    const evts = state.data.events.filter(e => e.producerId === producerId);
-    const ops = state.data.approvalQueue.filter(a => a.producerId === producerId);
-    const pending = ops.filter(a => !['Pago', 'Rejeitado', 'Recusado'].includes(a.status));
-    const html = `
-      <div class="modal-card" style="max-width:780px">
-        <div class="modal-header d-flex justify-content-between align-items-center">
-          <div>
-            <div class="fs-xs text-muted">DOSSIÊ FINANCEIRO DO PRODUTOR</div>
-            <h4 class="mb-0 fw-bold">${p.name}</h4>
-          </div>
-          <button class="modal-close-btn" onclick="window.app.closeModal()">&times;</button>
-        </div>
-        <div class="modal-body p-4">
-          <div class="kpi-grid">
-            <div class="kpi-card">
-              <div class="kpi-title">Saldo Total</div>
-              <div class="kpi-value">${formatCurrency(p.totals.totalBalance)}</div>
-            </div>
-            <div class="kpi-card">
-              <div class="kpi-title">Disponível</div>
-              <div class="kpi-value text-success">${formatCurrency(p.totals.availableBalance)}</div>
-            </div>
-            <div class="kpi-card">
-              <div class="kpi-title">Eventos</div>
-              <div class="kpi-value">${evts.length}</div>
-            </div>
-            <div class="kpi-card">
-              <div class="kpi-title">Pendências</div>
-              <div class="kpi-value ${pending.length > 0 ? 'text-warning' : ''}">${pending.length}</div>
-            </div>
-          </div>
-          <hr class="my-3">
-          <div class="row g-2 mb-3">
-            <div class="col-md-6"><strong>CNPJ / Documento:</strong> ${p.cnpj}</div>
-            <div class="col-md-3"><strong>Rating:</strong> <span class="badge bg-light text-dark border">${p.rating}</span></div>
-            <div class="col-md-3"><strong>Status:</strong> <span class="badge bg-success">${p.status}</span></div>
-          </div>
-          <div class="mb-3">
-            <div class="fw-bold fs-sm mb-2">Eventos Vinculados (${evts.length}):</div>
-            <div class="d-flex flex-wrap gap-2">
-              ${evts.map(e => `<span class="badge bg-light text-dark border p-2">${e.name} &bull; Disp: ${formatCurrency(e.availableBalance)}</span>`).join('')}
-            </div>
-          </div>
-          <div class="d-flex gap-2 flex-wrap mt-4 pt-2 border-top">
-            <button class="btn btn-primary" onclick="window.app.closeModal();window.app.selectProducerInDisk('${p.id}');window.app.navigate('diskProdutores')">
-              <i class="ph-bank me-1"></i> Abrir Conta Financeira
-            </button>
-            <button class="btn btn-outline-primary" onclick="window.app.closeModal();window.app.selectProducerInDisk('${p.id}');window.app.navigate('diskAprovacoes')">
-              <i class="ph-scales me-1"></i> Ver Aprovações
-            </button>
-            <button class="btn btn-light ms-auto" onclick="window.app.closeModal()">Fechar</button>
-          </div>
-        </div>
-      </div>`;
-    this.showModal(html);
+    this.closeModal();
+    this.selectProducerInDisk(producerId);
+    this.setDiskProdutoresTab('dossie');
+    this.navigate('diskProdutores', 'dossie');
   }
 
   openModal(html) {
@@ -1243,6 +1193,9 @@ class LimitlessFinancialApp {
   // ==========================================================================
   openPayoutModal(defaultEventId = null) {
     const state = financialStore.getState();
+    if (state.viewMode === 'disk') {
+      return this.openExceptionalPayoutAuthorization(defaultEventId);
+    }
     let producer = state.activeProducer;
     let selectedEvent = null;
 
@@ -1466,6 +1419,10 @@ class LimitlessFinancialApp {
   onRepasseViewEventSelect(eventId) {
     financialStore.state.selectedEventId = eventId;
     this.navigate('repasses');
+  }
+
+  openExceptionalPayoutAuthorization(defaultEventId = null) {
+    return this.openExceptionalAuthorizationModal(defaultEventId);
   }
 
   openExceptionalAuthorizationModal(defaultEventId = null) {
