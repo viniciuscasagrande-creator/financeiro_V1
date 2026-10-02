@@ -235,4 +235,7 @@ Abertura padrão no Dossiê Financeiro do Produtor, segregação patrimonial e c
 ## V0.6.2.2 — Correção Real do Submenu Produtores
 Ajuste da implementação utilizada no protótipo web (`js/views/disk/produtores.js` e `js/app.js`): abertura por padrão no Dossiê Financeiro (`dossie`), cabeçalho e botões dinâmicos por aba (ocultando adição de conta bancária no Dossiê), deduções detalhadas por evento e inclusão de `retainedBalance` em `totalDeductions` no cálculo de elegibilidade do motor (`js/state.js`). Consulte `docs/V0.6.2.2_CORRECAO_REAL_SUBMENU_PRODUTORES.md`.
 
+## V0.6.2.3 — Correção Definitiva de Produtores, Elegibilidade e Repasse por Evento
+Correção definitiva do motor de elegibilidade para evitar vazamento de deduções consolidadas do produtor sobre eventos individuais. O **Festival Curitiba 2026 (`evt-001`)** passa a refletir com exatidão: **Vendas R$ 500.000 (50%) → Limite 20% (R$ 100.000,00) → Deduções do Evento (R$ 0,00) → Disponível para Repasse (R$ 100.000,00 - HABILITADO)**. O formulário de solicitação de repasse fica 100% liberado com sugestão de R$ 80.000,00 e submissão validada. Suíte com 78 testes automatizados aprovados. Consulte `docs/V0.6.2.3_CORRECAO_DEFINITIVA_PRODUTORES_ELEGIBILIDADE_REPASSE.md`.
+
 

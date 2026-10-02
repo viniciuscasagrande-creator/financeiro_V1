@@ -285,5 +285,32 @@ test('V0.6.2.1: Visualização do Dossiê no Financeiro Disk exibe elegibilidade
   assert.ok(!html.includes('onclick="window.app.openPayoutModal'), 'Financeiro Disk não deve conter botão de solicitar repasse operacional em nome do produtor');
 });
 
+// 10. V0.6.2.3: Festival Curitiba 2026 (evt-001) elegibilidade de R$ 100.000 e submissão canônica de R$ 80.000
+test('V0.6.2.3: Festival Curitiba 2026 possui elegibilidade líquida de R$ 100.000 e permite submissão de repasse de R$ 80.000', () => {
+  const store = new CoreFinanceiroStore();
+  const elig001 = store.calculatePayoutEligibility('evt-001');
+  assert.equal(elig001.ruleMet, true, 'evt-001 deve atingir 50% de vendas');
+  assert.equal(elig001.progressPercent, 50, 'Progresso deve ser 50%');
+  assert.equal(elig001.limiteBruto, 100000, 'Limite bruto deve ser R$ 100.000,00 (20% de 500k)');
+  assert.equal(elig001.totalDeductions, 0, 'Deduções anteriores de repasse deste evento devem ser 0');
+  assert.equal(elig001.disponivelFinal, 100000, 'Disponível para repasse deste evento deve ser R$ 100.000,00');
+  assert.equal(elig001.status, 'HABILITADO', 'Status deve ser HABILITADO');
+
+  // Submissão canônica de R$ 80.000 pelo produtor
+  store.login('producer', 'prod-abc');
+  const bank = store.data.producers.find(p => p.id === 'prod-abc').bankAccounts[0];
+  const payout = store.requestPayout({
+    eventId: 'evt-001',
+    amount: 80000,
+    bankAccountId: bank.id,
+    notes: 'Solicitação padrão para pagamento de fornecedores de sonorização e riders técnicos.'
+  });
+  assert(payout !== null, 'Solicitação de R$ 80.000 para Festival Curitiba deve ser aceita com sucesso');
+  assert.equal(payout.requestedAmount, 80000, 'Valor solicitado gravado deve ser 80000');
+  assert.equal(payout.status, 'Aguardando análise', 'Status inicial deve ser Aguardando análise');
+  assert.equal(payout.checklist.limitPermitted, true, 'Limite deve ser permitido');
+  assert.equal(payout.checklist.balanceSufficient, true, 'Saldo deve ser suficiente');
+});
+
 console.log(`\nTodos os ${passed} testes do Motor de Elegibilidade de Repasses passaram com sucesso!`);
 

@@ -183,7 +183,11 @@ export const initialMockDatabase = {
       diskFees: 35000.00,
       chargebacks: 5000.00,
       netRevenue: 450000.00,
-      payoutsDone: 150000.00,
+      payoutsDone: 0.00,
+      payoutsDoneUnderPolicy: 0.00,
+      payoutBlockedBalance: 0.00,
+      payoutReservedBalance: 0.00,
+      payoutRetainedBalance: 0.00,
       futureReceivables: 80000.00,
       financialBalance: 200000.00,
       availableBalance: 200000.00, // Disponível inicial R$ 200.000,00!

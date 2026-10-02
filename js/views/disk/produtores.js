@@ -92,15 +92,15 @@ export function renderDiskProdutores(state, filterArg = 'all') {
     <!-- Navegação de Abas Internas -->
     <div style="background: white; border-bottom: 1px solid #e2e8f0; padding: 0 24px;">
       <div style="display: flex; gap: 24px;">
+        <button class="btn" style="border: none; border-bottom: 3px solid ${currentTab === 'dossie' ? '#2563eb' : 'transparent'}; color: ${currentTab === 'dossie' ? '#2563eb' : '#64748b'}; font-weight: 700; border-radius: 0; padding: 14px 4px; background: none;" onclick="window.app.setDiskProdutoresTab('dossie')">
+          <i class="ph-folder-user"></i> Dossiê do Produtor (${activeProducer?.name || 'Selecione'})
+        </button>
         <button class="btn" style="border: none; border-bottom: 3px solid ${currentTab === 'bancarias' ? '#2563eb' : 'transparent'}; color: ${currentTab === 'bancarias' ? '#2563eb' : '#64748b'}; font-weight: 700; border-radius: 0; padding: 14px 4px; background: none;" onclick="window.app.setDiskProdutoresTab('bancarias')">
           <i class="ph-bank"></i> Contas Bancárias de Repasse (${totalBankAccounts})
           ${pendingBankAccounts > 0 ? `<span class="badge bg-warning text-dark" style="margin-left: 6px;">${pendingBankAccounts} pendente(s)</span>` : ''}
         </button>
         <button class="btn" style="border: none; border-bottom: 3px solid ${currentTab === 'financeiras' ? '#2563eb' : 'transparent'}; color: ${currentTab === 'financeiras' ? '#2563eb' : '#64748b'}; font-weight: 700; border-radius: 0; padding: 14px 4px; background: none;" onclick="window.app.setDiskProdutoresTab('financeiras')">
           <i class="ph-wallet"></i> Contas Financeiras Internas (Core)
-        </button>
-        <button class="btn" style="border: none; border-bottom: 3px solid ${currentTab === 'dossie' ? '#2563eb' : 'transparent'}; color: ${currentTab === 'dossie' ? '#2563eb' : '#64748b'}; font-weight: 700; border-radius: 0; padding: 14px 4px; background: none;" onclick="window.app.setDiskProdutoresTab('dossie')">
-          <i class="ph-folder-user"></i> Dossiê do Produtor (${activeProducer?.name || 'Selecione'})
         </button>
       </div>
     </div>

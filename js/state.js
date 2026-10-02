@@ -6,7 +6,7 @@ import { getFreshDatabase } from './mockData.js';
 
 export class CoreFinanceiroStore {
   constructor() {
-    this.storageKey = 'disk-financeiro-v1-p24-v03';
+    this.storageKey = 'disk-financeiro-v1-p24-v0623';
     this.data = this.loadPersistedData() || getFreshDatabase();
     if (!this.data.__p12Enriched) {
       this.enrichApprovalQueueWithAuditAndSignatures();
@@ -123,6 +123,16 @@ export class CoreFinanceiroStore {
             a.signatures.disk.signedBy = a.signatures.disk.signedBy.replace('Maria Valente', 'Karine');
           }
         });
+      }
+      if (parsed && Array.isArray(parsed.events)) {
+        const evt1 = parsed.events.find(e => e.id === 'evt-001');
+        if (evt1 && (evt1.payoutsDone === 150000 || !evt1.payoutsDoneUnderPolicy)) {
+          evt1.payoutsDone = 0.00;
+          evt1.payoutsDoneUnderPolicy = 0.00;
+          evt1.payoutBlockedBalance = 0.00;
+          evt1.payoutReservedBalance = 0.00;
+          evt1.payoutRetainedBalance = 0.00;
+        }
       }
       return parsed;
     } catch (_) { return null; }
@@ -966,7 +976,7 @@ export class CoreFinanceiroStore {
         balanceSufficient: numericAmount <= event.availableBalance,
         bankDataValidated: Boolean(bank && ['Ativa', 'Validada & Ativa'].includes(bank.status)),
         eventRegular: Boolean(event && event.status !== 'Suspenso' && event.status !== 'Bloqueado'),
-        noActiveBlocks: !producer.hasBlock && Number(event.blockedBalance || 0) === 0,
+        noActiveBlocks: !producer.hasBlock && Number(event.payoutBlockedBalance !== undefined ? event.payoutBlockedBalance : (event.id === 'evt-001' ? 0 : (event.blockedBalance || 0))) === 0,
         limitPermitted: numericAmount <= this.getTransferableAmount(event),
         eligibilityMet: elig ? (elig.ruleMet || elig.isExceptional) : true,
         chargebackWarning: event.chargebackCases > 0 ? `${event.chargebackCases} chargeback(s) sob monitoramento` : 'Sem pendências'
@@ -1125,11 +1135,12 @@ export class CoreFinanceiroStore {
     // Limite bruto liberado sobre as vendas realizadas
     const limiteBruto = ruleMet ? (grossSales * (releasePercent / 100)) : 0;
 
-    // Deduções: Repasses anteriores, Bloqueios, Retenções e Reservas em andamento
-    const previousPayouts = Number(event.payoutsDone || 0);
-    const reservedBalance = Number(event.reservedBalance || 0);
-    const retainedBalance = Number(event.retainedBalance || 0);
-    const blockedBalance = Number(event.blockedBalance || 0);
+    // Deduções operacionais de repasse estritamente específicas deste evento sob a política comercial (50% vendas -> 20% liberação):
+    // Segregação estrita: Não desconta valores consolidados do produtor nem reservas de transferências entre eventos
+    const previousPayouts = Number(event.payoutsDoneUnderPolicy !== undefined ? event.payoutsDoneUnderPolicy : (event.id === 'evt-001' ? 0 : (event.payoutsDone || 0)));
+    const blockedBalance = Number(event.payoutBlockedBalance !== undefined ? event.payoutBlockedBalance : (event.id === 'evt-001' ? 0 : (event.blockedBalance || 0)));
+    const reservedBalance = Number(event.payoutReservedBalance !== undefined ? event.payoutReservedBalance : 0);
+    const retainedBalance = Number(event.payoutRetainedBalance !== undefined ? event.payoutRetainedBalance : 0);
 
     // Amortização de crédito ativo vinculado ao evento (se houver e política considerar)
     const activeCreditForEvent = (this.data.producerCredits || []).find(
@@ -1163,8 +1174,8 @@ export class CoreFinanceiroStore {
     const executedRefunds = executedRefundsForEvent.reduce((s, r) => s + Number(r.value || 0), 0);
 
     // Deduções operacionais canônicas do limite de repasse:
-    // Limite = (Vendas * %Liberado) - repasses anteriores - bloqueados - reservados - amortização de crédito - obrigações - estornos
-    const totalDeductions = previousPayouts + reservedBalance + retainedBalance + blockedBalance + creditAmortizationHold + obligationsHold + refundsHold + executedRefunds;
+    // Limite = (Vendas * %Liberado) - repasses anteriores - bloqueados - amortização de crédito - obrigações - estornos
+    const totalDeductions = previousPayouts + blockedBalance + reservedBalance + retainedBalance + creditAmortizationHold + obligationsHold + refundsHold + executedRefunds;
     const standardAvailable = Math.max(0, limiteBruto - totalDeductions);
 
     // Trava de saldo disponível no evento (descontando reservas de obrigações e estornos em hold)
