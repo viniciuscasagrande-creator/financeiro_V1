@@ -6,7 +6,7 @@ import { getFreshDatabase } from './mockData.js';
 
 export class CoreFinanceiroStore {
   constructor() {
-    this.storageKey = 'disk-financeiro-v1-p23';
+    this.storageKey = 'disk-financeiro-v1-p24';
     this.data = this.loadPersistedData() || getFreshDatabase();
     if (!this.data.__p12Enriched) {
       this.enrichApprovalQueueWithAuditAndSignatures();
@@ -519,6 +519,42 @@ export class CoreFinanceiroStore {
         }
       });
     }
+
+    // Pacote 24: Créditos e Antecipações ao Produtor (vinculados ao CNPJ)
+    if (!this.data.producerCredits) {
+      this.data.producerCredits = [
+        {
+          id: "CR-2026-001",
+          protocol: "CR-2026-0001",
+          producerId: "prod-abc",
+          eventId: "evt-003",
+          eventName: "Arena Sertaneja 2026",
+          principal: 100000.00,
+          interestRate: 2.0,
+          installmentsCount: 5,
+          installmentValue: 22000.00,
+          amortizationModel: "PARCELAS_FIXAS",
+          receivablePercent: 15.0,
+          totalDebt: 110000.00,
+          outstandingDebt: 88000.00,
+          amortizedTotal: 22000.00,
+          status: "ATIVO",
+          grantedAt: "2026-09-20T10:00:00Z",
+          grantedBy: "Karine Mendes (Financeiro Disk)",
+          notes: "Adiantamento pré-evento para custeio de estrutura de palco e camarins",
+          amortizationHistory: [
+            {
+              id: "AM-1",
+              date: "30/09/2026 14:30",
+              value: 22000.00,
+              type: "PARCELA_FIXA",
+              balanceAfter: 88000.00,
+              actor: "Motor Financeiro Automático"
+            }
+          ]
+        }
+      ];
+    }
   }
 
   recordOperationEvent(item, action, details = '', module = 'Core Financeiro') {
@@ -1000,9 +1036,22 @@ export class CoreFinanceiroStore {
     const retainedBalance = Number(event.retainedBalance || 0);
     const blockedBalance = Number(event.blockedBalance || 0);
 
+    // Amortização de crédito ativo vinculado ao evento (se houver e política considerar)
+    const activeCreditForEvent = (this.data.producerCredits || []).find(
+      c => c.eventId === event.id && c.status === 'ATIVO'
+    );
+    let creditAmortizationHold = 0;
+    if (activeCreditForEvent && (policy.considerCreditAmortization ?? true)) {
+      if (activeCreditForEvent.amortizationModel === 'PARCELAS_FIXAS') {
+        creditAmortizationHold = Math.min(activeCreditForEvent.outstandingDebt, activeCreditForEvent.installmentValue || 0);
+      } else if (activeCreditForEvent.amortizationModel === 'PERCENTUAL_RECEBIVEIS') {
+        creditAmortizationHold = Math.min(activeCreditForEvent.outstandingDebt, grossSales * ((activeCreditForEvent.receivablePercent || 15) / 100));
+      }
+    }
+
     // Deduções operacionais canônicas do limite de repasse:
-    // Limite = (Vendas * %Liberado) - repasses anteriores - bloqueados - reservados
-    const totalDeductions = previousPayouts + reservedBalance + blockedBalance;
+    // Limite = (Vendas * %Liberado) - repasses anteriores - bloqueados - reservados - amortização de crédito
+    const totalDeductions = previousPayouts + reservedBalance + blockedBalance + creditAmortizationHold;
     const standardAvailable = Math.max(0, limiteBruto - totalDeductions);
 
     // Trava de saldo disponível no evento
@@ -1039,6 +1088,8 @@ export class CoreFinanceiroStore {
       reservedBalance,
       retainedBalance,
       blockedBalance,
+      creditAmortizationHold,
+      activeCredit: activeCreditForEvent || null,
       totalDeductions,
       eventAvailable,
       standardAvailable,
@@ -2935,6 +2986,307 @@ export class CoreFinanceiroStore {
     this.persist();
     this.notify();
     return row;
+  }
+
+  // ==========================================================================
+  // CONTA FINANCEIRA DO PRODUTOR (CNPJ), CRÉDITOS, RETENÇÕES & LEDGER INTERNO
+  // ==========================================================================
+
+  getProducerFinancialAccount(producerId = null) {
+    const targetProducerId = producerId || this.state.selectedProducerId || 'prod-abc';
+    const producer = this.data.producers.find(p => p.id === targetProducerId) || this.data.producers[0];
+    const events = (this.data.events || []).filter(e => e.producerId === producer.id);
+
+    const producerCredits = (this.data.producerCredits || []).filter(c => c.producerId === producer.id);
+    const activeCredits = producerCredits.filter(c => c.status === 'ATIVO');
+    const totalOutstandingCredits = activeCredits.reduce((acc, c) => acc + Number(c.outstandingDebt || 0), 0);
+
+    const eventsCalculated = events.map(ev => {
+      const elig = this.calculatePayoutEligibility(ev.id);
+      const eventCredits = activeCredits.filter(c => c.eventId === ev.id);
+      const eventDebt = eventCredits.reduce((acc, c) => acc + Number(c.outstandingDebt || 0), 0);
+
+      return {
+        ...ev,
+        eligibility: elig,
+        outstandingDebt: eventDebt
+      };
+    });
+
+    const totalGrossSales = eventsCalculated.reduce((acc, e) => acc + Number(e.grossSales || 0), 0);
+    const totalNetRevenue = eventsCalculated.reduce((acc, e) => acc + Number(e.netRevenue || 0), 0);
+    const totalPaid = eventsCalculated.reduce((acc, e) => acc + Number(e.payoutsDone || 0), 0);
+    const totalBlocked = eventsCalculated.reduce((acc, e) => acc + Number(e.blockedBalance || 0), 0);
+    const totalRetained = eventsCalculated.reduce((acc, e) => acc + Number(e.retainedBalance || 0), 0);
+
+    const totalAvailableForRepasse = eventsCalculated.reduce((acc, e) => {
+      return acc + (e.eligibility ? e.eligibility.disponivelFinal : 0);
+    }, 0);
+
+    const consolidatedBalance = Math.max(0, totalNetRevenue - totalPaid);
+    const futurePending = Math.max(0, consolidatedBalance - totalAvailableForRepasse - totalBlocked - totalRetained);
+
+    return {
+      producer,
+      summary: {
+        consolidatedBalance: Math.round(consolidatedBalance * 100) / 100,
+        availableForRepasse: Math.round(totalAvailableForRepasse * 100) / 100,
+        futurePending: Math.round(futurePending * 100) / 100,
+        blocked: Math.round(totalBlocked * 100) / 100,
+        retained: Math.round(totalRetained * 100) / 100,
+        outstandingCredits: Math.round(totalOutstandingCredits * 100) / 100,
+        totalSold: Math.round(totalGrossSales * 100) / 100,
+        totalPaid: Math.round(totalPaid * 100) / 100
+      },
+      events: eventsCalculated,
+      credits: producerCredits,
+      ledger: (this.data.operationAuditTrail || []).filter(l => l.producerId === producer.id || l.producerName === producer.name)
+    };
+  }
+
+  grantProducerCredit({ producerId, eventId, principal, interestRate = 2.0, installments = 5, amortizationModel = 'PARCELAS_FIXAS', receivablePercent = 15.0, notes = '' }) {
+    if (this.state.currentUser.role === 'producer') {
+      alert("Apenas a mesa do Financeiro Disk pode conceder créditos/antecipações.");
+      return null;
+    }
+    const numPrincipal = parseFloat(principal);
+    if (!numPrincipal || numPrincipal <= 0) {
+      alert("Informe um valor principal válido.");
+      return null;
+    }
+    if (!notes || notes.trim().length < 5) {
+      alert("Justificativa formal obrigatória com no mínimo 5 caracteres.");
+      return null;
+    }
+
+    const event = this.data.events.find(e => e.id === eventId);
+    if (!event) {
+      alert("Evento não encontrado.");
+      return null;
+    }
+    const targetProducerId = producerId || event.producerId;
+    const producer = this.data.producers.find(p => p.id === targetProducerId);
+
+    const numInterest = parseFloat(interestRate) || 0;
+    const numInstallments = Math.max(1, parseInt(installments) || 1);
+    const totalDebt = numPrincipal * (1 + (numInterest * numInstallments) / 100);
+    const installmentValue = totalDebt / numInstallments;
+
+    const creditId = `CR-${Date.now()}`;
+    const protocol = `CR-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+
+    const newCredit = {
+      id: creditId,
+      protocol,
+      producerId: producer ? producer.id : targetProducerId,
+      producerName: producer ? producer.name : event.producerName,
+      eventId: event.id,
+      eventName: event.name,
+      principal: numPrincipal,
+      interestRate: numInterest,
+      installmentsCount: numInstallments,
+      installmentValue: Math.round(installmentValue * 100) / 100,
+      amortizationModel,
+      receivablePercent: parseFloat(receivablePercent) || 0,
+      totalDebt: Math.round(totalDebt * 100) / 100,
+      outstandingDebt: Math.round(totalDebt * 100) / 100,
+      amortizedTotal: 0,
+      status: "ATIVO",
+      grantedAt: new Date().toISOString(),
+      grantedBy: `${this.state.currentUser.name} (Financeiro Disk)`,
+      notes: notes.trim(),
+      amortizationHistory: []
+    };
+
+    this.data.producerCredits = this.data.producerCredits || [];
+    this.data.producerCredits.unshift(newCredit);
+
+    this.recordOperationEvent(
+      { id: protocol, protocol, type: 'Crédito ao Produtor', producerName: producer?.name, eventName: event.name },
+      'Crédito Concedido',
+      `Contrato ${protocol}: R$ ${numPrincipal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} liberado. Total c/ juros: R$ ${totalDebt.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}. Justificativa: ${notes.trim()}`,
+      'Mesa Financeiro Disk'
+    );
+
+    this.showToast(
+      "💳 Crédito ao Produtor Concedido",
+      `Contrato ${protocol} emitido para ${event.name}: ${numPrincipal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}.`,
+      "success"
+    );
+
+    this.persist();
+    this.notify();
+    return newCredit;
+  }
+
+  amortizeProducerCredit({ creditId, amount, type = 'PARCELA_FIXA', notes = '' }) {
+    const credit = (this.data.producerCredits || []).find(c => c.id === creditId || c.protocol === creditId);
+    if (!credit) {
+      alert("Contrato de crédito não encontrado.");
+      return null;
+    }
+    if (credit.status !== 'ATIVO') {
+      alert("Este contrato de crédito já está liquidado.");
+      return null;
+    }
+
+    const numAmount = parseFloat(amount || credit.installmentValue || 0);
+    if (!numAmount || numAmount <= 0) {
+      alert("Informe um valor de amortização válido.");
+      return null;
+    }
+
+    const amortizedValue = Math.min(numAmount, credit.outstandingDebt);
+    credit.outstandingDebt = Math.round((credit.outstandingDebt - amortizedValue) * 100) / 100;
+    credit.amortizedTotal = Math.round((credit.amortizedTotal + amortizedValue) * 100) / 100;
+
+    if (credit.outstandingDebt <= 0) {
+      credit.status = 'LIQUIDADO';
+      credit.liquidatedAt = new Date().toISOString();
+    }
+
+    credit.amortizationHistory = credit.amortizationHistory || [];
+    credit.amortizationHistory.unshift({
+      id: `AM-${Date.now()}`,
+      date: new Date().toLocaleString('pt-BR'),
+      value: amortizedValue,
+      type,
+      balanceAfter: credit.outstandingDebt,
+      actor: `${this.state.currentUser.name} (${this.state.currentUser.role === 'producer' ? 'Produtor' : 'Financeiro Disk'})`
+    });
+
+    this.recordOperationEvent(
+      { id: credit.protocol, protocol: credit.protocol, type: 'Amortização de Crédito', eventName: credit.eventName },
+      'Amortização Registrada',
+      `Abatimento de R$ ${amortizedValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} no contrato ${credit.protocol}. Saldo devedor: R$ ${credit.outstandingDebt.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}.`,
+      'Motor Financeiro'
+    );
+
+    this.showToast(
+      "✓ Amortização Registrada",
+      `Abatido ${amortizedValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} no contrato ${credit.protocol}.`,
+      "success"
+    );
+
+    this.persist();
+    this.notify();
+    return credit;
+  }
+
+  blockAccountBalance({ producerId, eventId, amount, type = 'BLOQUEIO', reason, actor = null }) {
+    if (this.state.currentUser.role === 'producer') {
+      alert("Apenas a mesa do Financeiro Disk pode bloquear ou reter saldos.");
+      return null;
+    }
+    const numAmount = parseFloat(amount);
+    if (!numAmount || numAmount <= 0) {
+      alert("Informe um valor válido para o bloqueio/retenção.");
+      return null;
+    }
+    if (!reason || reason.trim().length < 5) {
+      alert("Justificativa formal obrigatória com no mínimo 5 caracteres.");
+      return null;
+    }
+
+    const event = this.data.events.find(e => e.id === eventId);
+    if (!event) {
+      alert("Evento não encontrado.");
+      return null;
+    }
+
+    if (numAmount > event.availableBalance) {
+      alert(`O valor solicitado (${numAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}) excede o saldo disponível do evento (${event.availableBalance.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}).`);
+      return null;
+    }
+
+    if (type === 'RETENCAO') {
+      event.retainedBalance = (event.retainedBalance || 0) + numAmount;
+    } else {
+      event.blockedBalance = (event.blockedBalance || 0) + numAmount;
+    }
+    event.availableBalance = Math.max(0, event.availableBalance - numAmount);
+
+    const protocol = `BLQ-${Date.now()}`;
+    const operator = actor || `${this.state.currentUser.name} (Financeiro Disk)`;
+
+    this.recordOperationEvent(
+      { id: protocol, protocol, type: type === 'RETENCAO' ? 'Retenção Administrativa' : 'Bloqueio Cautelar', eventName: event.name },
+      `${type === 'RETENCAO' ? 'Retenção' : 'Bloqueio'} Aplicado`,
+      `Valor de R$ ${numAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} travado. Justificativa: ${reason.trim()}`,
+      operator
+    );
+
+    this.showToast(
+      `🔒 ${type === 'RETENCAO' ? 'Retenção' : 'Bloqueio'} Registrado`,
+      `${numAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} travado no evento ${event.name}.`,
+      "info"
+    );
+
+    this.persist();
+    this.notify();
+    return event;
+  }
+
+  releaseAccountBalance({ producerId, eventId, amount, reason, actor = null }) {
+    if (this.state.currentUser.role === 'producer') {
+      alert("Apenas a mesa do Financeiro Disk pode liberar saldos bloqueados.");
+      return null;
+    }
+    const numAmount = parseFloat(amount);
+    if (!numAmount || numAmount <= 0) {
+      alert("Informe um valor válido para a liberação.");
+      return null;
+    }
+    if (!reason || reason.trim().length < 5) {
+      alert("Justificativa formal de liberação com no mínimo 5 caracteres é obrigatória.");
+      return null;
+    }
+
+    const event = this.data.events.find(e => e.id === eventId);
+    if (!event) {
+      alert("Evento não encontrado.");
+      return null;
+    }
+
+    const currentBlocked = (event.blockedBalance || 0) + (event.retainedBalance || 0);
+    if (numAmount > currentBlocked) {
+      alert(`Valor de liberação excede o total atualmente bloqueado/retido (${currentBlocked.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}).`);
+      return null;
+    }
+
+    let remaining = numAmount;
+    if (event.blockedBalance > 0) {
+      const deduct = Math.min(event.blockedBalance, remaining);
+      event.blockedBalance -= deduct;
+      remaining -= deduct;
+    }
+    if (remaining > 0 && event.retainedBalance > 0) {
+      const deduct = Math.min(event.retainedBalance, remaining);
+      event.retainedBalance -= deduct;
+      remaining -= deduct;
+    }
+
+    event.availableBalance = (event.availableBalance || 0) + numAmount;
+
+    const protocol = `LIB-${Date.now()}`;
+    const operator = actor || `${this.state.currentUser.name} (Financeiro Disk)`;
+
+    this.recordOperationEvent(
+      { id: protocol, protocol, type: 'Liberação de Saldo', eventName: event.name },
+      'Saldo Liberado',
+      `R$ ${numAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} devolvido ao disponível. Justificativa: ${reason.trim()}`,
+      operator
+    );
+
+    this.showToast(
+      "🔓 Saldo Liberado com Sucesso",
+      `${numAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} liberado no evento ${event.name}.`,
+      "success"
+    );
+
+    this.persist();
+    this.notify();
+    return event;
   }
 
   resetDemoData() {

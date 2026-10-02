@@ -60,6 +60,7 @@ import { renderDiskCentralTrabalho } from './views/disk/diskCentralTrabalho.js';
 import { renderDiskFinanceiroAvancado } from './views/disk/diskFinanceiroAvancado.js';
 import { renderDiskSaldos } from './views/disk/diskSaldos.js';
 import { renderDiskPoliticaRepasse } from './views/disk/diskPoliticaRepasse.js';
+import { renderDiskContaFinanceira } from './views/disk/diskContaFinanceira.js';
 import {
   renderDiskEventos,
   renderDiskRepasses,
@@ -207,7 +208,9 @@ class LimitlessFinancialApp {
       'accounting-disk': 'diskLedger',
       'reports-sales': isDisk ? 'diskRelatorios' : 'relatorios',
       'procure-to-pay': isDisk ? 'diskContasPagar' : 'diskTesouraria',
-      'fin-my-requests': 'repasses'
+      'fin-my-requests': 'repasses',
+      'financial-conta-financeira': 'diskContaFinanceira',
+      'conta-financeira': 'diskContaFinanceira'
     };
 
     if (aliasMap[viewName]) {
@@ -1874,6 +1877,9 @@ class LimitlessFinancialApp {
         case 'diskPoliticaRepasse':
           viewHtml = renderDiskPoliticaRepasse(state, this.currentFilterArg);
           break;
+        case 'diskContaFinanceira':
+          viewHtml = renderDiskContaFinanceira(state, this.currentFilterArg);
+          break;
         case 'diskRepasses':
           viewHtml = (this.currentFilterArg === 'politica'
             ? renderDiskPoliticaRepasse(state, this.currentFilterArg)
@@ -2356,6 +2362,7 @@ class LimitlessFinancialApp {
       'diskSaldos': { title: 'Saldos por Produtor & por Evento', subtitle: 'Consolidação de saldos disponíveis, a receber, bloqueios e reservas por produtor e evento.' },
       'diskRepasses': { title: 'Repasses & Liquidação Bancária', subtitle: 'Gestão do ciclo de repasses: análise, aprovação, programação e liquidação bancária.' },
       'diskPoliticaRepasse': { title: 'Política de Repasse & Motor de Elegibilidade', subtitle: 'Parametrização dinâmica do gatilho de vendas (50%), liberação (20%), precedência de regras e autorizações excepcionais.' },
+      'diskContaFinanceira': { title: 'Conta Financeira do Produtor (CNPJ)', subtitle: 'Conta financeira interna por CNPJ, gestão de créditos/antecipações, bloqueios cautelares e ledger interno.' },
       'diskAntecipacoes': { title: 'Antecipações de Recebíveis', subtitle: 'Análise de elegibilidade de risco, simulações, taxas e contratação de antecipações.' },
       'diskRecebiveis': { title: 'Recebíveis & Liquidações', subtitle: 'Previsão de caixa futuro por adquirente, bandeira e método de pagamento (PIX e Cartão).' },
       'diskTaxas': { title: 'Taxas & Regras Comerciais', subtitle: 'Configuração de MDR, spread comercial Disk (1,22%), parcelamento e vigências contratuais.' },
@@ -6379,6 +6386,265 @@ class LimitlessFinancialApp {
       financialStore.showToast('Ação Não Permitida', e.message, 'warning');
     }
   }
+
+  onSelectProducer(producerId) {
+    financialStore.setSelectedProducer(producerId);
+  }
+
+  openGrantCreditModal(producerId) {
+    const st = financialStore.getState();
+    const pid = producerId || st.selectedProducerId || 'prod-abc';
+    const producer = (st.data.producers || []).find(p => p.id === pid) || st.data.producers[0];
+    const events = (st.data.events || []).filter(e => e.producerId === producer.id);
+
+    if (events.length === 0) {
+      financialStore.showToast('Aviso', 'Nenhum evento vinculado a este produtor para concessão de crédito.', 'warning');
+      return;
+    }
+
+    this.showModal(`
+      <div class="modal-card" style="max-width: 650px;">
+        <div class="modal-header d-flex justify-content-between align-items-center bg-dark text-white p-3">
+          <div>
+            <h4 class="mb-0 fw-bold"><i class="ph-credit-card me-2"></i>Conceder Crédito / Antecipação</h4>
+            <div class="fs-xs text-light opacity-75">Produtor: ${producer.name} (${producer.cnpj || producer.id})</div>
+          </div>
+          <button class="modal-close-btn text-white" onclick="window.app.closeModal()">&times;</button>
+        </div>
+        <form onsubmit="window.app.handleGrantCreditSubmit(event)">
+          <input type="hidden" name="producerId" value="${producer.id}">
+          <div class="modal-body p-4">
+            <div class="alert alert-info py-2 px-3 fs-xs mb-3">
+              <i class="ph-info me-1"></i> Crédito concedido pela mesa do Financeiro Disk. Lançamento formal no ledger interno com modelo de amortização e taxa de juros parametrizável.
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label fw-bold fs-sm">Evento Vinculado:</label>
+              <select name="eventId" class="form-select form-select-sm" required>
+                ${events.map(ev => `
+                  <option value="${ev.id}">
+                    ${ev.name} (Vendas: ${formatCurrency(ev.grossSales || 0)} | Disp: ${formatCurrency(ev.availableBalance || 0)})
+                  </option>
+                `).join('')}
+              </select>
+            </div>
+
+            <div class="row g-3 mb-3">
+              <div class="col-md-6">
+                <label class="form-label fw-bold fs-sm">Valor Principal (R$):</label>
+                <div class="input-group input-group-sm">
+                  <span class="input-group-text">R$</span>
+                  <input type="number" step="0.01" min="100" name="principal" class="form-control" placeholder="50.000,00" required>
+                </div>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label fw-bold fs-sm">Taxa de Juros:</label>
+                <div class="input-group input-group-sm">
+                  <input type="number" step="0.1" min="0" max="20" name="interestRate" class="form-control" value="2.0" required>
+                  <span class="input-group-text">% a.m.</span>
+                </div>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label fw-bold fs-sm">Nº Parcelas:</label>
+                <input type="number" min="1" max="24" name="installments" class="form-control form-control-sm" value="5" required>
+              </div>
+            </div>
+
+            <div class="row g-3 mb-3">
+              <div class="col-md-7">
+                <label class="form-label fw-bold fs-sm">Modelo de Amortização:</label>
+                <select name="amortizationModel" class="form-select form-select-sm">
+                  <option value="PARCELAS_FIXAS">Parcelas Fixas Mensais / Quinzenais</option>
+                  <option value="PERCENTUAL_RECEBIVEIS">Retenção de % das Vendas de Bilheteria</option>
+                  <option value="FECHAMENTO_EVENTO">Liquidação Integral no Fechamento do Evento</option>
+                </select>
+              </div>
+              <div class="col-md-5">
+                <label class="form-label fw-bold fs-sm">% Retenção de Vendas:</label>
+                <div class="input-group input-group-sm">
+                  <input type="number" step="1" min="0" max="100" name="receivablePercent" class="form-control" value="15">
+                  <span class="input-group-text">%</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label fw-bold fs-sm">Justificativa Operacional da Concessão (mín. 5 chars):</label>
+              <textarea name="notes" class="form-control form-control-sm" rows="2" placeholder="Ex: Antecipação para montagem de infraestrutura de palco conforme aditivo contratual..." required minlength="5"></textarea>
+            </div>
+          </div>
+          <div class="modal-footer d-flex justify-content-between p-3 bg-light">
+            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="window.app.closeModal()">Cancelar</button>
+            <button type="submit" class="btn btn-primary btn-sm px-3 fw-bold">
+              <i class="ph-check me-1"></i> Efetivar Concessão de Crédito
+            </button>
+          </div>
+        </form>
+      </div>
+    `);
+  }
+
+  handleGrantCreditSubmit(e) {
+    e.preventDefault();
+    const form = e.target;
+    const formData = new FormData(form);
+    const data = {
+      producerId: formData.get('producerId'),
+      eventId: formData.get('eventId'),
+      principal: parseFloat(formData.get('principal')),
+      interestRate: parseFloat(formData.get('interestRate')) || 0,
+      installments: parseInt(formData.get('installments')) || 1,
+      amortizationModel: formData.get('amortizationModel'),
+      receivablePercent: parseFloat(formData.get('receivablePercent')) || 0,
+      notes: formData.get('notes')
+    };
+
+    const res = financialStore.grantProducerCredit(data);
+    if (res) {
+      this.closeModal();
+      this.render();
+    }
+  }
+
+  openAccountBlockModal(producerId, eventId = null) {
+    const st = financialStore.getState();
+    const pid = producerId || st.selectedProducerId || 'prod-abc';
+    const producer = (st.data.producers || []).find(p => p.id === pid) || st.data.producers[0];
+    const events = (st.data.events || []).filter(e => e.producerId === producer.id);
+
+    if (events.length === 0) {
+      financialStore.showToast('Aviso', 'Nenhum evento vinculado a este produtor.', 'warning');
+      return;
+    }
+
+    const selectedEvt = eventId ? events.find(e => e.id === eventId) || events[0] : events[0];
+
+    this.showModal(`
+      <div class="modal-card" style="max-width: 600px;">
+        <div class="modal-header d-flex justify-content-between align-items-center bg-danger text-white p-3">
+          <div>
+            <h4 class="mb-0 fw-bold"><i class="ph-lock-simple me-2"></i>Trava de Saldo / Retenção Cautelar</h4>
+            <div class="fs-xs text-light opacity-75">Produtor: ${producer.name} (${producer.cnpj || producer.id})</div>
+          </div>
+          <button class="modal-close-btn text-white" onclick="window.app.closeModal()">&times;</button>
+        </div>
+        <form onsubmit="window.app.handleAccountBlockSubmit(event)">
+          <input type="hidden" name="producerId" value="${producer.id}">
+          <div class="modal-body p-4">
+            <div class="alert alert-warning py-2 px-3 fs-xs mb-3">
+              <i class="ph-shield-warning me-1"></i> O saldo bloqueado ou retido é imediatamente deduzido do limite de repasse do produtor no ledger central.
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label fw-bold fs-sm">Evento de Origem:</label>
+              <select name="eventId" class="form-select form-select-sm" required>
+                ${events.map(ev => `
+                  <option value="${ev.id}" ${ev.id === selectedEvt.id ? 'selected' : ''}>
+                    ${ev.name} (Disponível: ${formatCurrency(ev.availableBalance || 0)} | Bloq/Ret: ${formatCurrency((ev.blockedBalance || 0) + (ev.retainedBalance || 0))})
+                  </option>
+                `).join('')}
+              </select>
+            </div>
+
+            <div class="row g-3 mb-3">
+              <div class="col-md-6">
+                <label class="form-label fw-bold fs-sm">Tipo de Operação:</label>
+                <select name="type" class="form-select form-select-sm" required>
+                  <option value="BLOQUEIO">🔒 Bloqueio Cautelar / Risco</option>
+                  <option value="RETENCAO">⚖️ Retenção Administrativa / Judicial</option>
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-bold fs-sm">Valor a Bloquear (R$):</label>
+                <div class="input-group input-group-sm">
+                  <span class="input-group-text">R$</span>
+                  <input type="number" step="0.01" min="1" name="amount" class="form-control" placeholder="10.000,00" required>
+                </div>
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label fw-bold fs-sm">Justificativa Formal Obrigatória (mín. 5 chars):</label>
+              <textarea name="reason" class="form-control form-control-sm" rows="3" placeholder="Ex: Bloqueio cautelar de segurança preventiva devido a contestação de ingressos em lote..." required minlength="5"></textarea>
+            </div>
+          </div>
+          <div class="modal-footer d-flex justify-content-between p-3 bg-light">
+            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="window.app.closeModal()">Cancelar</button>
+            <button type="submit" class="btn btn-danger btn-sm px-3 fw-bold">
+              <i class="ph-lock me-1"></i> Confirmar Bloqueio no Ledger
+            </button>
+          </div>
+        </form>
+      </div>
+    `);
+  }
+
+  handleAccountBlockSubmit(e) {
+    e.preventDefault();
+    const form = e.target;
+    const formData = new FormData(form);
+    const data = {
+      producerId: formData.get('producerId'),
+      eventId: formData.get('eventId'),
+      amount: parseFloat(formData.get('amount')),
+      type: formData.get('type') || 'BLOQUEIO',
+      reason: formData.get('reason')
+    };
+
+    const res = financialStore.blockAccountBalance(data);
+    if (res) {
+      this.closeModal();
+      this.render();
+    }
+  }
+
+  handleReleaseAccountBalance(producerId, eventId, amount) {
+    const reason = prompt(`Confirma a liberação do saldo bloqueado/retido de ${formatCurrency(amount)} no evento?\n\nDigite a justificativa formal de liberação (mínimo 5 caracteres):`, 'Liberação após conferência e regularização das pendências');
+    if (!reason) return;
+    if (reason.trim().length < 5) {
+      financialStore.showToast('Erro de Validação', 'A justificativa de liberação deve ter pelo menos 5 caracteres.', 'warning');
+      return;
+    }
+
+    const res = financialStore.releaseAccountBalance({
+      producerId,
+      eventId,
+      amount,
+      reason: reason.trim()
+    });
+    if (res) {
+      this.render();
+    }
+  }
+
+  handleAmortizeCredit(creditId) {
+    const st = financialStore.getState();
+    const credit = (st.data.producerCredits || []).find(c => c.id === creditId || c.protocol === creditId);
+    if (!credit) {
+      financialStore.showToast('Erro', 'Contrato de crédito não encontrado.', 'warning');
+      return;
+    }
+
+    const defaultVal = credit.installmentValue || Math.min(10000, credit.outstandingDebt);
+    const valStr = prompt(`Amortizar Parcela do Contrato ${credit.protocol}\nSaldo Devedor Atual: ${formatCurrency(credit.outstandingDebt)}\nValor sugerido da parcela: ${formatCurrency(defaultVal)}\n\nInforme o valor a amortizar (R$):`, defaultVal);
+    if (!valStr) return;
+
+    const val = parseFloat(valStr.replace(',', '.'));
+    if (!val || val <= 0) {
+      financialStore.showToast('Valor Inválido', 'Informe um valor numérico positivo para amortização.', 'warning');
+      return;
+    }
+
+    const res = financialStore.amortizeProducerCredit({
+      creditId,
+      amount: val,
+      type: 'PARCELA_FIXA',
+      notes: 'Abatimento regular efetuado via mesa de controle.'
+    });
+    if (res) {
+      this.render();
+    }
+  }
 }
 
 // ============================================================================
@@ -6610,6 +6876,42 @@ window.openBankAccountHistoryModal = function(accountId) {
 window.setAccountAsDefault = function(accountId) {
   if (window.app && typeof window.app.setAccountAsDefault === 'function') {
     return window.app.setAccountAsDefault(accountId);
+  }
+};
+
+window.openGrantCreditModal = function(producerId) {
+  if (window.app && typeof window.app.openGrantCreditModal === 'function') {
+    return window.app.openGrantCreditModal(producerId);
+  }
+};
+
+window.handleGrantCreditSubmit = function(ev) {
+  if (window.app && typeof window.app.handleGrantCreditSubmit === 'function') {
+    return window.app.handleGrantCreditSubmit(ev);
+  }
+};
+
+window.openAccountBlockModal = function(producerId, eventId) {
+  if (window.app && typeof window.app.openAccountBlockModal === 'function') {
+    return window.app.openAccountBlockModal(producerId, eventId);
+  }
+};
+
+window.handleAccountBlockSubmit = function(ev) {
+  if (window.app && typeof window.app.handleAccountBlockSubmit === 'function') {
+    return window.app.handleAccountBlockSubmit(ev);
+  }
+};
+
+window.handleReleaseAccountBalance = function(producerId, eventId, amount) {
+  if (window.app && typeof window.app.handleReleaseAccountBalance === 'function') {
+    return window.app.handleReleaseAccountBalance(producerId, eventId, amount);
+  }
+};
+
+window.handleAmortizeCredit = function(creditId) {
+  if (window.app && typeof window.app.handleAmortizeCredit === 'function') {
+    return window.app.handleAmortizeCredit(creditId);
   }
 };
 

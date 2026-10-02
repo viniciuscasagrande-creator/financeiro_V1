@@ -101,7 +101,7 @@ export const menuFinanceiroCompleto = [
     subItems: [
       { id: 'diskProdutores', label: 'Produtores', filterArg: 'all' },
       { id: 'diskEventos', label: 'Eventos', filterArg: 'all' },
-      { id: 'diskProdutores', label: 'Contas Financeiras', filterArg: 'contas' },
+      { id: 'diskContaFinanceira', label: 'Conta Financeira do Produtor', filterArg: 'conta' },
       { id: 'diskSaldos', label: 'Saldos por Produtor', filterArg: 'produtor' },
       { id: 'diskSaldos', label: 'Saldos por Evento', filterArg: 'evento' }
     ]

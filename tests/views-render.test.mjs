@@ -39,6 +39,7 @@ import { renderDiskGovernanca } from '../js/views/disk/diskGovernanca.js';
 import { renderDiskCentralTrabalho } from '../js/views/disk/diskCentralTrabalho.js';
 import { renderDiskFinanceiroAvancado } from '../js/views/disk/diskFinanceiroAvancado.js';
 import { renderDiskPoliticaRepasse } from '../js/views/disk/diskPoliticaRepasse.js';
+import { renderDiskContaFinanceira } from '../js/views/disk/diskContaFinanceira.js';
 
 let passed = 0;
 function test(name, fn) {
@@ -112,7 +113,8 @@ const diskViews = [
   ['Disk: assinaturasIntegracoes', () => renderDiskAssinaturasIntegracoes(stateDisk, 'assinaturas')],
   ['Disk: governanca', () => renderDiskGovernanca(stateDisk, 'visao')],
   ['Disk: centralTrabalho', () => renderDiskCentralTrabalho(stateDisk, 'central')],
-  ['Disk: politicaRepasse', () => renderDiskPoliticaRepasse(stateDisk)]
+  ['Disk: politicaRepasse', () => renderDiskPoliticaRepasse(stateDisk)],
+  ['Disk: contaFinanceira', () => renderDiskContaFinanceira(stateDisk)]
 ];
 
 for (const [name, fn] of diskViews) {
