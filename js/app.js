@@ -6741,6 +6741,13 @@ class LimitlessFinancialApp {
               </div>
             </div>
 
+            <div class="form-check form-switch mb-3">
+              <input class="form-check-input" type="checkbox" name="reserveNow" id="obReserveNow" value="1" checked>
+              <label class="form-check-label fw-bold fs-sm" for="obReserveNow">
+                Reservar valor agora no Ledger (deduzir imediatamente da base de repasse)
+              </label>
+            </div>
+
             <div class="mb-3">
               <label class="form-label fw-bold fs-sm">Observações da Mesa:</label>
               <textarea name="notes" class="form-control form-control-sm" rows="2" placeholder="Observações internas da auditoria Disk..."></textarea>
@@ -6749,7 +6756,7 @@ class LimitlessFinancialApp {
           <div class="modal-footer d-flex justify-content-between p-3 bg-light">
             <button type="button" class="btn btn-outline-secondary btn-sm" onclick="window.app.closeModal()">Cancelar</button>
             <button type="submit" class="btn btn-primary btn-sm px-3 fw-bold">
-              <i class="ph-check me-1"></i> Cadastrar Obrigação &amp; Reservar Saldo
+              <i class="ph-check me-1"></i> Cadastrar Obrigação &amp; Salvar
             </button>
           </div>
         </form>
@@ -6761,6 +6768,7 @@ class LimitlessFinancialApp {
     e.preventDefault();
     const form = e.target;
     const formData = new FormData(form);
+    const reserveNow = formData.get('reserveNow') === '1';
     const data = {
       eventId: formData.get('eventId'),
       category: formData.get('category'),
@@ -6770,6 +6778,7 @@ class LimitlessFinancialApp {
       dueDate: formData.get('dueDate'),
       documentRef: formData.get('documentRef'),
       status: formData.get('status') || 'RESERVADO',
+      reserveNow,
       notes: formData.get('notes')
     };
 
@@ -6917,6 +6926,42 @@ class LimitlessFinancialApp {
     const res = financialStore.cancelInternalRefund({
       refundId,
       reason: reason.trim()
+    });
+    if (res) {
+      this.render();
+    }
+  }
+
+  handleRejectRefund(refundId) {
+    const reason = prompt("Justificativa formal para a rejeição do estorno e liberação imediata da reserva (mínimo 5 caracteres):", "Estorno rejeitado após análise técnica e documental");
+    if (!reason) return;
+    if (reason.trim().length < 5) {
+      financialStore.showToast("Validação", "A justificativa de rejeição deve ter pelo menos 5 caracteres.", "warning");
+      return;
+    }
+
+    const res = financialStore.rejectInternalRefund({
+      refundId,
+      reason: reason.trim()
+    });
+    if (res) {
+      this.render();
+    }
+  }
+
+  handleRegisterRevenue(eventId) {
+    const valStr = prompt("Valor da nova receita de bilheteria a ser registrada (R$):", "50000.00");
+    if (!valStr) return;
+    const amount = parseFloat(valStr.replace(',', '.'));
+    if (!amount || amount <= 0) {
+      financialStore.showToast("Validação", "Informe um valor positivo para a receita.", "warning");
+      return;
+    }
+
+    const res = financialStore.registerEventRevenue({
+      eventId,
+      amount,
+      reason: "Entrada de vendas de bilheteria registrada na mesa Disk"
     });
     if (res) {
       this.render();
@@ -7428,6 +7473,18 @@ window.handleExecuteRefund = function(refundId) {
 window.handleCancelRefund = function(refundId) {
   if (window.app && typeof window.app.handleCancelRefund === 'function') {
     return window.app.handleCancelRefund(refundId);
+  }
+};
+
+window.handleRejectRefund = function(refundId) {
+  if (window.app && typeof window.app.handleRejectRefund === 'function') {
+    return window.app.handleRejectRefund(refundId);
+  }
+};
+
+window.handleRegisterRevenue = function(eventId) {
+  if (window.app && typeof window.app.handleRegisterRevenue === 'function') {
+    return window.app.handleRegisterRevenue(eventId);
   }
 };
 

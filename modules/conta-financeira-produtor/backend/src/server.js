@@ -34,8 +34,8 @@ app.get('/api/health', (_, res) => {
   res.json({
     status: 'ok',
     module: 'financeiro-disk-conta-interna',
-    version: '0.4',
-    features: ['reservas_obrigacoes', 'estornos_dupla_autorizacao_sod', 'ledger_central', 'credito_antecipacao', 'movimentacao_evento'],
+    version: '0.5',
+    features: ['reservas_obrigacoes', 'estornos_dupla_autorizacao_sod', 'ledger_central', 'credito_antecipacao', 'movimentacao_evento', 'receitas_amortizacao_automatica'],
     timestamp: new Date().toISOString()
   });
 });
@@ -87,11 +87,12 @@ app.put('/api/interno/politica', (req, res) => {
 // Agenda de Obrigações (Aluguel, ECAD, Fornecedores)
 app.get('/api/interno/obrigacoes', (_, res) => res.json(state.obligations || []));
 app.post('/api/interno/obrigacoes', (req, res) => {
-  const { eventId, category = 'OUTROS', description, beneficiary, value, dueDate, documentRef, status = 'RESERVADO', notes } = req.body;
+  const { eventId, category = 'OUTROS', description, beneficiary, value, dueDate, documentRef, status = 'RESERVADO', notes, reserveNow } = req.body;
   if (!eventId || !description || Number(value) <= 0) {
     return res.status(400).json({ error: 'Evento, descrição e valor positivo são obrigatórios.' });
   }
 
+  const shouldReserve = reserveNow === true || (reserveNow !== false && status === 'RESERVADO');
   const ev = state.events.find(e => e.id === eventId);
   const obligation = {
     id: `OB-${Date.now()}`,
@@ -103,7 +104,8 @@ app.post('/api/interno/obrigacoes', (req, res) => {
     value: Number(value),
     dueDate: dueDate || new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0],
     documentRef: documentRef ? documentRef.trim() : '',
-    status: status || 'RESERVADO',
+    status: shouldReserve ? 'RESERVADO' : (status || 'PREVISTO'),
+    reserveNow: shouldReserve,
     notes: (notes || '').trim(),
     createdAt: new Date().toISOString(),
     actor: getActor(req)
@@ -111,14 +113,16 @@ app.post('/api/interno/obrigacoes', (req, res) => {
 
   state.obligations.unshift(obligation);
 
-  addLedgerEntry({
-    eventId,
-    type: 'RETENCAO',
-    value: obligation.value,
-    reason: `Reserva de obrigação: ${obligation.description} (${obligation.beneficiary})`,
-    beneficiary: obligation.beneficiary,
-    actor: obligation.actor
-  });
+  if (shouldReserve) {
+    addLedgerEntry({
+      eventId,
+      type: 'RETENCAO',
+      value: obligation.value,
+      reason: `Reserva de obrigação: ${obligation.description} (${obligation.beneficiary})`,
+      beneficiary: obligation.beneficiary,
+      actor: obligation.actor
+    });
+  }
 
   res.status(201).json(obligation);
 });
@@ -287,6 +291,30 @@ app.post('/api/interno/estornos/:id/cancelar', (req, res) => {
   res.json(refund);
 });
 
+app.post('/api/interno/estornos/:id/rejeitar', (req, res) => {
+  const refund = state.refunds.find(r => r.id === req.params.id);
+  if (!refund) return res.status(404).json({ error: 'Estorno não encontrado.' });
+  if (refund.status === 'EFETIVADO') {
+    return res.status(409).json({ error: 'Estorno já efetivado não pode ser rejeitado.' });
+  }
+
+  const actor = getActor(req);
+  refund.status = 'REJEITADO';
+  refund.rejectedBy = actor;
+  refund.rejectedAt = new Date().toISOString();
+  if (req.body?.reason) refund.rejectReason = req.body.reason.trim();
+
+  addLedgerEntry({
+    eventId: refund.eventId,
+    type: 'LIBERACAO',
+    value: refund.value,
+    reason: `Liberação da reserva por rejeição do estorno ${refund.id}${refund.rejectReason ? ': ' + refund.rejectReason : ''}`,
+    actor
+  });
+
+  res.json(refund);
+});
+
 // Créditos e Antecipações
 app.get('/api/interno/creditos', (_, res) => res.json(state.credits || []));
 app.post('/api/interno/creditos', (req, res) => {
@@ -375,6 +403,62 @@ app.post('/api/interno/creditos/:id/amortizar', (req, res) => {
   });
 
   res.json(credit);
+});
+
+// Registro de Receita com Amortização Automática por Percentual de Recebíveis (V0.5)
+app.post('/api/interno/receitas', (req, res) => {
+  const { eventId, value } = req.body;
+  if (!eventId || Number(value) <= 0) {
+    return res.status(400).json({ error: 'Evento e valor positivo são obrigatórios.' });
+  }
+  const revenue = Number(value);
+  const actor = getActor(req);
+
+  const ev = state.events.find(e => e.id === eventId);
+  if (ev) {
+    ev.sold = Number(((ev.sold || 0) + revenue).toFixed(2));
+    if (ev.grossSales !== undefined) ev.grossSales = Number(((ev.grossSales || 0) + revenue).toFixed(2));
+  }
+
+  addLedgerEntry({
+    eventId,
+    type: 'RECEITA_EVENTO',
+    value: revenue,
+    reason: req.body.reason || 'Receita registrada no evento',
+    actor
+  });
+
+  const amortizations = [];
+  const candidateCredits = state.credits.filter(
+    c => c.eventId === eventId && c.status === 'ATIVO' &&
+    (c.amortization === 'PERCENTUAL_RECEBIVEIS' || c.amortizationModel === 'PERCENTUAL_RECEBIVEIS') &&
+    (c.receivablePercent || 0) > 0
+  );
+
+  for (const c of candidateCredits) {
+    const currentOutstanding = c.outstandingDebt ?? c.outstanding ?? 0;
+    const amount = Math.min(currentOutstanding, Number((revenue * (c.receivablePercent / 100)).toFixed(2)));
+    if (amount > 0) {
+      const remaining = Number((currentOutstanding - amount).toFixed(2));
+      c.outstandingDebt = remaining;
+      c.outstanding = remaining;
+      c.amortizedTotal = Number(((c.amortizedTotal || 0) + amount).toFixed(2));
+      if (remaining <= 0) {
+        c.status = 'LIQUIDADO';
+        c.liquidatedAt = new Date().toISOString();
+      }
+      const entry = addLedgerEntry({
+        eventId,
+        type: 'AMORTIZACAO_CREDITO',
+        value: amount,
+        reason: `Amortização automática ${c.protocol || c.id} sobre receita`,
+        actor: 'Motor Financeiro'
+      });
+      amortizations.push(entry);
+    }
+  }
+
+  res.status(201).json({ revenue, amortizations });
 });
 
 // Bloqueios e Liberações Avulsas

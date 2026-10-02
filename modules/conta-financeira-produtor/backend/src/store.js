@@ -315,6 +315,14 @@ export function calculateAccount() {
       }
     }
 
+    const amortized = entries
+      .filter(l => l.type === "AMORTIZACAO_CREDITO")
+      .reduce((acc, l) => acc + l.value, 0);
+
+    const refunds = entries
+      .filter(l => l.type === "ESTORNO_EFETIVADO")
+      .reduce((acc, l) => acc + l.value, 0);
+
     // Regra canônica de elegibilidade de repasse (50% vendas -> 20% liberação)
     const salesPercent = event.salesTarget > 0 ? (event.sold / event.salesTarget) * 100 : 0;
     const ruleMet = salesPercent >= state.policy.minimumSalesPercent;
@@ -322,22 +330,28 @@ export function calculateAccount() {
 
     const grossLimit = ruleMet ? event.sold * (state.policy.releasePercent / 100) : 0;
 
-    // Disponível para solicitar:
-    // Limite bruto - repasses já realizados - bloqueios/retenções - obrigações - reservas de estornos - amortização de crédito
-    const deductions = paidSum + activeBlocked + obligationsHold + refundsHold + (state.policy.considerCreditAmortization ? amortizationHold : 0);
+    // Disponível para solicitar (V0.5):
+    // Limite bruto - repasses já realizados - bloqueios/retenções - obrigações - reservas de estornos - estornos efetivados - amortizações
+    const effectiveAmortization = Math.max(amortized, amortizationHold);
+    const deductions = paidSum + activeBlocked + obligationsHold + refundsHold + refunds + (state.policy.considerCreditAmortization ? effectiveAmortization : amortized);
     const availableToRequest = Math.max(0, grossLimit - deductions);
 
     return {
       ...event,
       salesPercent: Math.round(salesPercent * 10) / 10,
       blocked: activeBlocked,
+      reserved: activeBlocked + obligationsHold + refundsHold,
       obligationsHold,
       refundsHold,
+      refunds,
       paid: paidSum,
+      amortized,
       outstandingDebt: outstandingDebtForEvent,
       amortizationHold,
+      creditDebt: outstandingDebtForEvent,
       eligibility: {
         ruleMet,
+        eligible: ruleMet,
         salesPercent: Math.round(salesPercent * 10) / 10,
         minimumSalesPercent: state.policy.minimumSalesPercent,
         releasePercent: state.policy.releasePercent,
@@ -345,8 +359,11 @@ export function calculateAccount() {
         grossLimit: Math.round(grossLimit * 100) / 100,
         paid: paidSum,
         blocked: activeBlocked,
+        reserved: activeBlocked + obligationsHold + refundsHold,
         obligationsHold,
         refundsHold,
+        refunds,
+        amortized,
         amortizationHold,
         availableToRequest: Math.round(availableToRequest * 100) / 100
       }

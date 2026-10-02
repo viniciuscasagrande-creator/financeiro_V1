@@ -3428,7 +3428,7 @@ export class CoreFinanceiroStore {
   // PACOTE 24 / V0.3: AGENDA DE OBRIGAÇÕES E RESERVAS INTERNAS DO EVENTO
   // ==========================================================================
 
-  createEventObligation({ eventId, category = 'OUTROS', description, beneficiary = '', value, dueDate = '', documentRef = '', status = 'RESERVADO', notes = '' }) {
+  createEventObligation({ eventId, category = 'OUTROS', description, beneficiary = '', value, dueDate = '', documentRef = '', status = 'RESERVADO', notes = '', reserveNow = true }) {
     if (this.state.currentUser.role === 'producer') {
       alert("Apenas a equipe do Financeiro Disk pode gerenciar a agenda de obrigações e retenções internas.");
       return null;
@@ -3449,6 +3449,9 @@ export class CoreFinanceiroStore {
       return null;
     }
 
+    const shouldReserve = reserveNow === true || (reserveNow !== false && status === 'RESERVADO');
+    const finalStatus = shouldReserve ? 'RESERVADO' : (status || 'PREVISTO');
+
     const obId = `OB-${Date.now()}`;
     const newOb = {
       id: obId,
@@ -3461,7 +3464,8 @@ export class CoreFinanceiroStore {
       value: numValue,
       dueDate: dueDate || new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0],
       documentRef: documentRef ? documentRef.trim() : '',
-      status: status || 'RESERVADO', // 'PREVISTO', 'RESERVADO', 'RETIDO', 'LIQUIDADO'
+      status: finalStatus, // 'PREVISTO', 'RESERVADO', 'RETIDO', 'LIQUIDADO'
+      reserveNow: shouldReserve,
       notes: notes.trim(),
       createdAt: new Date().toISOString(),
       actor: `${this.state.currentUser.name} (Financeiro Disk)`
@@ -3761,6 +3765,107 @@ export class CoreFinanceiroStore {
     this.persist();
     this.notify();
     return refund;
+  }
+
+  rejectInternalRefund({ refundId, reason = '' }) {
+    if (this.state.currentUser.role === 'producer') {
+      alert("Acesso restrito ao Financeiro Disk.");
+      return null;
+    }
+    const refund = (this.data.internalRefunds || []).find(r => r.id === refundId);
+    if (!refund) {
+      alert("Estorno não localizado.");
+      return null;
+    }
+    if (refund.status === 'EFETIVADO') {
+      alert("Estorno já efetivado e liquidado no gateway não pode ser rejeitado.");
+      return null;
+    }
+
+    refund.status = 'REJEITADO';
+    refund.rejectedAt = new Date().toISOString();
+    refund.rejectedBy = `${this.state.currentUser.name} (Financeiro Disk)`;
+    refund.rejectReason = (reason || '').trim();
+
+    this.recordOperationEvent(
+      { id: refund.id, protocol: refund.id, type: 'Rejeição de Estorno', eventName: refund.eventName },
+      'Estorno Rejeitado & Reserva Liberada',
+      `Reserva de R$ ${refund.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} liberada no evento após rejeição do estorno ${refund.id}.${refund.rejectReason ? ' Motivo: ' + refund.rejectReason : ''}`,
+      'Controle Interno Disk'
+    );
+
+    this.showToast(
+      "Estorno Rejeitado",
+      `Reserva de ${refund.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} liberada no saldo do evento.`,
+      "info"
+    );
+
+    this.persist();
+    this.notify();
+    return refund;
+  }
+
+  registerEventRevenue({ eventId, amount, reason = 'Receita de bilheteria registrada' }) {
+    if (this.state.currentUser.role === 'producer') {
+      alert("Apenas a equipe do Financeiro Disk pode registrar receitas operacionais.");
+      return null;
+    }
+    const numAmount = parseFloat(amount);
+    if (!numAmount || numAmount <= 0) {
+      alert("Informe um valor de receita válido.");
+      return null;
+    }
+    const event = (this.data.events || []).find(e => e.id === eventId);
+    if (!event) {
+      alert("Evento não encontrado.");
+      return null;
+    }
+
+    event.grossSales = Number(((event.grossSales || 0) + numAmount).toFixed(2));
+    event.availableBalance = Number(((event.availableBalance || 0) + numAmount).toFixed(2));
+    if (event.netRevenue !== undefined) {
+      event.netRevenue = Number(((event.netRevenue || 0) + numAmount * 0.9).toFixed(2));
+    }
+
+    const protocol = `REC-${Date.now()}`;
+    this.recordOperationEvent(
+      { id: protocol, protocol, type: 'Receita Registrada', eventName: event.name },
+      'Receita de Bilheteria Registrada',
+      `Entrada de R$ ${numAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} no evento ${event.name}. Motivo: ${reason}`,
+      `${this.state.currentUser.name} (Financeiro Disk)`
+    );
+
+    // Amortização automática para créditos ativos com PERCENTUAL_RECEBIVEIS
+    const amortizations = [];
+    const activeCredits = (this.data.producerCredits || []).filter(
+      c => c.eventId === event.id && c.status === 'ATIVO' &&
+      (c.amortizationModel === 'PERCENTUAL_RECEBIVEIS' || c.amortization === 'PERCENTUAL_RECEBIVEIS') &&
+      (c.receivablePercent || 0) > 0
+    );
+
+    for (const credit of activeCredits) {
+      const debt = Number(credit.outstandingDebt || 0);
+      const amortAmount = Math.min(debt, Number((numAmount * (credit.receivablePercent / 100)).toFixed(2)));
+      if (amortAmount > 0) {
+        const amortizedCredit = this.amortizeProducerCredit({
+          creditId: credit.id,
+          amount: amortAmount,
+          type: 'PERCENTUAL_RECEBIVEIS',
+          notes: `Amortização automática sobre receita de bilheteria (${credit.receivablePercent}%)`
+        });
+        amortizations.push(amortizedCredit);
+      }
+    }
+
+    this.showToast(
+      "✓ Receita Registrada",
+      `R$ ${numAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} adicionados ao evento ${event.name}.${amortizations.length > 0 ? ` (${amortizations.length} amortização(ões) automática(s))` : ''}`,
+      "success"
+    );
+
+    this.persist();
+    this.notify();
+    return { event, revenue: numAmount, amortizations };
   }
 
   resetDemoData() {

@@ -258,13 +258,24 @@ export function renderDiskContaFinanceira(state, filterArg = 'conta') {
                     </span>
                   </td>
                   <td style="padding: 12px 14px;">
-                    <button
-                      class="btn-sm"
-                      style="background: #eff6ff; border: 1px solid #bfdbfe; color: #1d4ed8; padding: 5px 10px; border-radius: 6px; font-weight: 700; font-size: 11px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;"
-                      onclick="window.app.openEventMovementModal('${ev.id}');"
-                    >
-                      🔍 Movimentação
-                    </button>
+                    <div style="display: flex; gap: 6px;">
+                      <button
+                        class="btn-sm"
+                        style="background: #eff6ff; border: 1px solid #bfdbfe; color: #1d4ed8; padding: 5px 10px; border-radius: 6px; font-weight: 700; font-size: 11px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;"
+                        onclick="window.app.openEventMovementModal('${ev.id}');"
+                        title="Ver toda a movimentação deste evento"
+                      >
+                        🔍 Movimentação
+                      </button>
+                      <button
+                        class="btn-sm"
+                        style="background: #f0fdf4; border: 1px solid #bbf7d0; color: #15803d; padding: 5px 8px; border-radius: 6px; font-weight: 700; font-size: 11px; cursor: pointer;"
+                        onclick="window.app.handleRegisterRevenue('${ev.id}');"
+                        title="Registrar novas vendas / receita de bilheteria e disparar amortizações automáticas"
+                      >
+                        + Receita
+                      </button>
+                    </div>
                   </td>
                 </tr>
               `;
@@ -474,7 +485,7 @@ export function renderDiskContaFinanceira(state, filterArg = 'conta') {
                       r.status === 'EFETIVADO' ? 'background: #dcfce7; color: #15803d;' :
                       r.status === 'AUTORIZADO_PARA_EFETIVAR' ? 'background: #e0e7ff; color: #3730a3;' :
                       r.status === 'AGUARDANDO_SEGUNDA_AUTORIZACAO' ? 'background: #fef3c7; color: #b45309;' :
-                      r.status === 'CANCELADO' ? 'background: #f1f5f9; color: #64748b;' :
+                      r.status === 'CANCELADO' || r.status === 'REJEITADO' ? 'background: #f1f5f9; color: #64748b;' :
                       'background: #fee2e2; color: #b91c1c;'
                     }">
                       ${r.status.replaceAll('_', ' ')}
@@ -482,7 +493,7 @@ export function renderDiskContaFinanceira(state, filterArg = 'conta') {
                   </td>
                   <td style="padding: 12px 14px;">
                     <div style="display: flex; gap: 6px; flex-wrap: wrap;">
-                      ${!hasFirstAuth && r.status !== 'CANCELADO' ? `
+                      ${!hasFirstAuth && r.status !== 'CANCELADO' && r.status !== 'REJEITADO' ? `
                         <button
                           style="background: #2563eb; color: white; border: 0; padding: 5px 9px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer;"
                           onclick="window.app.handleAuthorizeRefund('${r.id}');"
@@ -491,7 +502,7 @@ export function renderDiskContaFinanceira(state, filterArg = 'conta') {
                         </button>
                       ` : ''}
 
-                      ${hasFirstAuth && !hasSecondAuth && r.status !== 'CANCELADO' ? `
+                      ${hasFirstAuth && !hasSecondAuth && r.status !== 'CANCELADO' && r.status !== 'REJEITADO' ? `
                         ${alreadyApprovedByCurrent ? `
                           <button
                             disabled
@@ -519,7 +530,14 @@ export function renderDiskContaFinanceira(state, filterArg = 'conta') {
                         </button>
                       ` : ''}
 
-                      ${r.status !== 'EFETIVADO' && r.status !== 'CANCELADO' ? `
+                      ${r.status !== 'EFETIVADO' && r.status !== 'CANCELADO' && r.status !== 'REJEITADO' ? `
+                        <button
+                          style="background: #fef2f2; border: 1px solid #fecaca; color: #dc2626; padding: 5px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer;"
+                          onclick="window.app.handleRejectRefund('${r.id}');"
+                          title="Rejeitar estorno e liberar reserva imediatamente"
+                        >
+                          ✕ Rejeitar
+                        </button>
                         <button
                           style="background: white; border: 1px solid #cbd5e1; color: #64748b; padding: 5px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer;"
                           onclick="window.app.handleCancelRefund('${r.id}');"
@@ -530,6 +548,10 @@ export function renderDiskContaFinanceira(state, filterArg = 'conta') {
 
                       ${r.status === 'EFETIVADO' ? `
                         <span style="color: #059669; font-weight: 700; font-size: 11px;">✓ Liquidado</span>
+                      ` : ''}
+
+                      ${r.status === 'REJEITADO' ? `
+                        <span style="color: #64748b; font-weight: 700; font-size: 11px;">✕ Rejeitado</span>
                       ` : ''}
                     </div>
                   </td>

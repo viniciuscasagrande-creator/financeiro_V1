@@ -361,4 +361,123 @@ test('Drilldown do evento consolida obrigações, estornos, créditos e extrato 
   assert(Array.isArray(ledger), 'Ledger do evento deve ser array');
 });
 
+// 10. Rejeição de Estorno com Liberação Imediata da Reserva (V0.5)
+test('Rejeição de estorno transiciona para REJEITADO e libera a reserva hold imediatamente', () => {
+  const store = new CoreFinanceiroStore();
+  store.login('disk');
+
+  const eligBefore = store.calculatePayoutEligibility('evt-003');
+  const holdBefore = eligBefore.refundsHold || 0;
+
+  const refund = store.openInternalRefund({
+    eventId: 'evt-003',
+    orderId: 'PED-REJ-TEST',
+    value: 7500,
+    reason: 'Solicitação preliminar sob averiguação de fraude'
+  });
+
+  assert(refund, 'Estorno deve ser aberto');
+  assert.equal(refund.status, 'AGUARDANDO_PRIMEIRA_AUTORIZACAO');
+
+  const eligWithHold = store.calculatePayoutEligibility('evt-003');
+  assert.equal(eligWithHold.refundsHold, holdBefore + 7500, 'Reserva de estorno deve ser retida');
+
+  // Rejeição da solicitação de estorno
+  const rejected = store.rejectInternalRefund({
+    refundId: refund.id,
+    reason: 'Contestação improcedente confirmada junto à operadora'
+  });
+
+  assert.equal(rejected.status, 'REJEITADO');
+  assert(rejected.rejectedAt, 'Deve registrar timestamp da rejeição');
+  assert(rejected.rejectedBy, 'Deve registrar operador que rejeitou');
+
+  // A reserva hold deve ser liberada imediatamente
+  const eligAfterReject = store.calculatePayoutEligibility('evt-003');
+  assert.equal(eligAfterReject.refundsHold, holdBefore, 'Reserva hold deve retornar ao estado original após rejeição');
+
+  // Tentativa de autorizar estorno rejeitado é bloqueada
+  const authOnRejected = store.authorizeInternalRefund({ refundId: refund.id, factor: 'MFA' });
+  assert.equal(authOnRejected, null, 'Estorno rejeitado não pode ser autorizado');
+});
+
+// 11. Agenda de Obrigações com Opção reserveNow (V0.5)
+test('Agenda de obrigações respeita reserveNow: true (reserva imediata) e reserveNow: false (planejamento futuro)', () => {
+  const store = new CoreFinanceiroStore();
+  store.login('disk');
+
+  const eligBefore = store.calculatePayoutEligibility('evt-003');
+  const holdBefore = eligBefore.obligationsHold || 0;
+
+  // Obrigação futura planejada sem reserva imediata (reserveNow: false)
+  const obFuture = store.createEventObligation({
+    eventId: 'evt-003',
+    category: 'FORNECEDOR',
+    description: 'Iluminação cênica lote 2',
+    value: 25000,
+    dueDate: '2026-12-15',
+    status: 'PREVISTO',
+    reserveNow: false
+  });
+
+  assert.equal(obFuture.status, 'PREVISTO');
+  assert.equal(obFuture.reserveNow, false);
+
+  const eligAfterFuture = store.calculatePayoutEligibility('evt-003');
+  assert.equal(eligAfterFuture.obligationsHold, holdBefore, 'Obrigação com reserveNow=false não pode reter limite de repasse');
+
+  // Obrigação com reserva imediata (reserveNow: true)
+  const obReserved = store.createEventObligation({
+    eventId: 'evt-003',
+    category: 'ALUGUEL_ESPACO',
+    description: 'Adicional de camarins e gerador',
+    value: 12000,
+    dueDate: '2026-11-20',
+    reserveNow: true
+  });
+
+  assert.equal(obReserved.status, 'RESERVADO');
+  assert.equal(obReserved.reserveNow, true);
+
+  const eligAfterReserved = store.calculatePayoutEligibility('evt-003');
+  assert.equal(eligAfterReserved.obligationsHold, holdBefore + 12000, 'Obrigação com reserveNow=true deve ser retida no motor');
+});
+
+// 12. Receita com Amortização Automática por Percentual dos Recebíveis (V0.5)
+test('Registro de receita dispara amortização automática em créditos com percentual dos recebíveis', () => {
+  const store = new CoreFinanceiroStore();
+  store.login('disk');
+
+  // Concede crédito com 20% de retenção sobre receitas
+  const credit = store.grantProducerCredit({
+    producerId: 'prod-abc',
+    eventId: 'evt-inverno',
+    principal: 30000,
+    interestRate: 0,
+    installments: 1,
+    amortizationModel: 'PERCENTUAL_RECEBIVEIS',
+    receivablePercent: 20.0,
+    notes: 'Adiantamento com amortização automática sobre bilheteria'
+  });
+
+  assert.equal(credit.outstandingDebt, 30000);
+
+  // Registro de nova receita de R$ 50.000 -> Amortização de 20% = R$ 10.000
+  const result = store.registerEventRevenue({
+    eventId: 'evt-inverno',
+    amount: 50000,
+    reason: 'Venda de lote extra de ingressos'
+  });
+
+  assert(result, 'Resultado de receita deve ser retornado');
+  assert.equal(result.revenue, 50000);
+  assert.equal(result.amortizations.length, 1);
+
+  // Verifica que o contrato teve amortização de R$ 10.000
+  const updatedCredit = (store.data.producerCredits || []).find(c => c.id === credit.id);
+  assert.equal(updatedCredit.outstandingDebt, 20000);
+  assert.equal(updatedCredit.amortizedTotal, 10000);
+  assert.equal(updatedCredit.status, 'ATIVO');
+});
+
 console.log(`\nTodos os ${passed} testes da Conta Financeira do Produtor passaram com sucesso!`);
