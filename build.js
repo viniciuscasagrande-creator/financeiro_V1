@@ -19,4 +19,10 @@ for (const d of dirs) {
   }
 }
 
+const vercelStatic = path.resolve('.vercel', 'output', 'static');
+if (fs.existsSync(path.resolve('.vercel', 'output'))) {
+  fs.cpSync(distDir, vercelStatic, { recursive: true });
+}
+
 console.log('✓ Build estático concluído com sucesso para o Vercel: pasta dist/ criada.');
+

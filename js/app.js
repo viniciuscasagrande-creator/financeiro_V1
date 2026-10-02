@@ -84,6 +84,8 @@ class LimitlessFinancialApp {
     this.modalOverlay = document.getElementById('modal-overlay');
     this.modalContent = document.getElementById('modal-dynamic-content');
     this.activeScrollSpy = null;
+    this.activeDossieTab = 'sec-dossie-resumo';
+    this.dossieTab = 'sec-dossie-resumo';
 
     // Subscribe to state changes
     financialStore.subscribe((state) => {
@@ -2092,8 +2094,16 @@ class LimitlessFinancialApp {
   }
 
   setupViewScrollSpy() {
-    const navBar = document.querySelector('.limitless-scrollspy-bar');
-    if (!navBar) return;
+    // ScrollSpy observador contínuo apenas para páginas longas como Gateways/MDR e Conciliação
+    // Exclui #dossie-scrollspy-nav porque o Dossiê opera por abas independentes (tab panels)
+    const navBar = document.querySelector('.limitless-scrollspy-bar:not(#dossie-scrollspy-nav)');
+    if (!navBar) {
+      if (this.activeScrollSpy) {
+        this.activeScrollSpy.destroy();
+        this.activeScrollSpy = null;
+      }
+      return;
+    }
 
     if (this.activeScrollSpy) {
       this.activeScrollSpy.destroy();
@@ -2101,15 +2111,54 @@ class LimitlessFinancialApp {
     }
 
     this.activeScrollSpy = initScrollSpy({
-      navSelector: '.limitless-scrollspy-bar',
+      navSelector: '.limitless-scrollspy-bar:not(#dossie-scrollspy-nav)',
       rootSelector: '#appMainContent',
       offset: 76
     });
   }
 
+  setDossieTab(tabId, event) {
+    if (event && typeof event.preventDefault === 'function') {
+      event.preventDefault();
+    }
+    this.activeDossieTab = tabId;
+    this.dossieTab = tabId;
+
+    // 1. Atualiza estado visual ativo nos botões de abas (pills)
+    const nav = document.getElementById('dossie-scrollspy-nav') || document.querySelector('[data-scrollspy-nav="dossie-scrollspy-nav"]');
+    if (nav) {
+      nav.querySelectorAll('.scrollspy-pill').forEach(btn => {
+        const match = btn.getAttribute('data-target') === tabId || btn.id === `spy-btn-${tabId}`;
+        btn.classList.toggle('active', match);
+        btn.setAttribute('aria-selected', match ? 'true' : 'false');
+      });
+    }
+
+    // 2. Alterna visibilidade dos painéis: apenas a aba ativa fica visível, as outras 4 ficam ocultas
+    const panels = document.querySelectorAll('.dossie-tab-panel');
+    if (panels && panels.length > 0) {
+      panels.forEach(panel => {
+        const match = panel.id === tabId || panel.getAttribute('data-tab') === tabId;
+        panel.style.display = match ? 'block' : 'none';
+      });
+    } else {
+      this.render(financialStore.getState());
+    }
+
+    // 3. Rola suavemente para o topo do conteúdo para melhor ergonomia
+    const rootEl = document.getElementById('appMainContent') || window;
+    if (rootEl && typeof rootEl.scrollTo === 'function') {
+      rootEl.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }
+
   scrollToSpySection(targetId, event) {
     if (event && typeof event.preventDefault === 'function') {
       event.preventDefault();
+    }
+    if (targetId && (targetId.startsWith('sec-dossie-') || targetId.includes('dossie'))) {
+      this.setDossieTab(targetId, event);
+      return;
     }
     if (this.activeScrollSpy) {
       this.activeScrollSpy.scrollTo(targetId);

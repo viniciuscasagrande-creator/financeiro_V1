@@ -457,6 +457,7 @@ function renderTabDossieProdutor(state, activeProducer) {
   const eventEligibility = Object.fromEntries(producerEvents.map(e => [e.id, calculateEligibility(e.id)]));
   const producerApprovals = (state.data.approvalQueue || []).filter(a => a.producerId === activeProducer.id);
   const bankAccounts = activeProducer.bankAccounts || [];
+  const activeTab = (typeof window !== 'undefined' && (window.app?.activeDossieTab || window.app?.dossieTab)) || 'sec-dossie-resumo';
 
   const dossieSpyItems = [
     { id: 'sec-dossie-resumo', label: 'Produtor & Contrato', icon: 'ph-buildings' },
@@ -467,273 +468,446 @@ function renderTabDossieProdutor(state, activeProducer) {
   ];
 
   return `
-    <!-- Barra de Navegação Interna Sticky ScrollSpy do Dossiê -->
-    ${renderScrollSpyNav(dossieSpyItems, 'sec-dossie-resumo', { navId: 'dossie-scrollspy-nav' })}
-
-    <!-- SEÇÃO 1: Identificação & Governança do Produtor -->
-    <section id="sec-dossie-resumo" class="scrollspy-section mb-4" data-scrollspy-section>
-      <div class="card-panel" style="padding: 16px 20px; background: #ffffff; border-left: 4px solid #2563eb;">
-        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px;">
-          <div style="display: flex; align-items: center; gap: 12px;">
-            <span style="font-size: 0.82rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Produtor em Análise:</span>
-            <select class="form-control" style="width: 320px; font-weight: 700;" onchange="window.app.selectProducerInDisk(this.value)">
-              ${producers.map(p => `
-                <option value="${p.id}" ${p.id === activeProducer.id ? 'selected' : ''}>
-                  ${p.name} (${p.cnpj})
-                </option>
-              `).join('')}
-            </select>
-          </div>
-          <div style="display: flex; gap: 10px;">
-            <span class="badge badge-success">Status: ${activeProducer.status}</span>
-            <span class="badge ${activeProducer.hasBlock ? 'badge-danger' : 'badge-neutral'}">
-              ${activeProducer.hasBlock ? 'Possui Bloqueio Cautelar' : 'Sem Bloqueios Ativos'}
-            </span>
-          </div>
+    <!-- Header do Produtor em Análise (Universal no Dossiê) -->
+    <div class="card-panel mb-3" style="padding: 16px 20px; background: #ffffff; border-left: 4px solid #2563eb;">
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px;">
+        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+          <span style="font-size: 0.82rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Produtor em Análise:</span>
+          <select class="form-control" style="width: 320px; font-weight: 700;" onchange="window.app.selectProducerInDisk(this.value)">
+            ${producers.map(p => `
+              <option value="${p.id}" ${p.id === activeProducer.id ? 'selected' : ''}>
+                ${p.name} (${p.cnpj})
+              </option>
+            `).join('')}
+          </select>
         </div>
-      </div>
-    </section>
-
-    <!-- SEÇÃO 2: POSIÇÃO CONSOLIDADA DO PRODUTOR -->
-    <section id="sec-dossie-posicao" class="scrollspy-section mb-4" data-scrollspy-section>
-    <div class="card-panel">
-      <div class="card-header-bar">
-        <div class="card-title-group">
-          <h2>Posição Financeira Consolidada de ${activeProducer.name}</h2>
-          <p class="card-subtitle">Contrato nº ${activeProducer.contract?.number || 'CON-MASTER'} • Taxa Disk: ${activeProducer.contract?.diskFeePercent || 10.0}% • Antecipação: ${activeProducer.contract?.anticipationRateMonthly || 2.5}% a.m.</p>
-        </div>
-      </div>
-      <div class="card-body">
-        <div class="kpi-grid">
-          <div class="kpi-card highlight">
-            <div class="kpi-header"><span class="kpi-title">Saldo Total Acumulado</span></div>
-            <div class="kpi-value">${formatCurrency(activeProducer.totals.totalBalance)}</div>
-            <div class="kpi-subtext"><span>Passivo da Disk com o produtor</span></div>
-          </div>
-
-          <div class="kpi-card success-accent">
-            <div class="kpi-header"><span class="kpi-title">Saldo Disponível Imediato</span></div>
-            <div class="kpi-value" style="color: #059669;">${formatCurrency(activeProducer.totals.availableBalance)}</div>
-            <div class="kpi-subtext"><span>Liberado para transferência</span></div>
-          </div>
-
-          <div class="kpi-card">
-            <div class="kpi-header"><span class="kpi-title">Recebíveis Futuros (Cartão)</span></div>
-            <div class="kpi-value" style="color: #2563eb;">${formatCurrency(activeProducer.totals.futureReceivables)}</div>
-            <div class="kpi-subtext"><span>Parcelamentos a liquidar</span></div>
-          </div>
-
-          <div class="kpi-card warning-accent">
-            <div class="kpi-header"><span class="kpi-title">Bloqueado / Reservas</span></div>
-            <div class="kpi-value" style="color: #b45309;">${formatCurrency(activeProducer.totals.blockedBalance)}</div>
-            <div class="kpi-subtext"><span>Reserva técnica para chargebacks</span></div>
-          </div>
+        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+          <span class="badge badge-success">Status: ${activeProducer.status || 'Ativo'}</span>
+          <span class="badge ${activeProducer.hasBlock ? 'badge-danger' : 'badge-neutral'}">
+            ${activeProducer.hasBlock ? 'Possui Bloqueio Cautelar' : 'Sem Bloqueios Ativos'}
+          </span>
+          <span class="badge badge-info" style="font-size: 0.72rem;">${activeProducer.rating || 'Tier A - Premium'}</span>
         </div>
       </div>
     </div>
+
+    <!-- Barra de Abas do Dossiê -->
+    <nav class="limitless-scrollspy-bar shadow-xs mb-4" id="dossie-scrollspy-nav" data-scrollspy-nav="dossie-scrollspy-nav" aria-label="Navegação interna do Dossiê">
+      <div class="limitless-scrollspy-container">
+        <div class="limitless-scrollspy-items" role="tablist">
+          ${dossieSpyItems.map(item => {
+            const isActive = item.id === activeTab;
+            return `
+              <button type="button"
+                      class="scrollspy-pill ${isActive ? 'active' : ''}"
+                      data-target="${item.id}"
+                      id="spy-btn-${item.id}"
+                      role="tab"
+                      aria-selected="${isActive ? 'true' : 'false'}"
+                      onclick="window.app && (window.app.setDossieTab ? window.app.setDossieTab('${item.id}', event) : window.app.scrollToSpySection('${item.id}', event))">
+                ${item.icon ? `<i class="${item.icon}"></i>` : ''}
+                <span>${item.label}</span>
+                ${item.badge !== undefined && item.badge !== null ? `<span class="scrollspy-badge">${item.badge}</span>` : ''}
+              </button>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    </nav>
+
+    <!-- ABA 1: PRODUTOR & CONTRATO -->
+    <section id="sec-dossie-resumo" class="dossie-tab-panel mb-4" data-tab="sec-dossie-resumo" style="display: ${activeTab === 'sec-dossie-resumo' ? 'block' : 'none'};">
+      <div class="card-panel mb-4">
+        <div class="card-header-bar">
+          <div class="card-title-group">
+            <h2>Cadastro & Homologação de ${activeProducer.name}</h2>
+            <p class="card-subtitle">Ficha cadastral corporativa, compliance e contatos oficiais do produtor</p>
+          </div>
+          <span class="badge badge-success fs-xs" style="padding: 6px 12px;">Homologação Concluída</span>
+        </div>
+        <div class="card-body">
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px;">
+            <div style="background: #f8fafc; padding: 14px 16px; border-radius: 8px; border: 1px solid #e2e8f0;">
+              <div style="font-size: 0.72rem; text-transform: uppercase; color: #64748b; font-weight: 700;">Razão Social</div>
+              <div style="font-size: 0.95rem; font-weight: 700; color: #1e293b; margin-top: 4px;">${activeProducer.name}</div>
+            </div>
+            <div style="background: #f8fafc; padding: 14px 16px; border-radius: 8px; border: 1px solid #e2e8f0;">
+              <div style="font-size: 0.72rem; text-transform: uppercase; color: #64748b; font-weight: 700;">Nome Fantasia</div>
+              <div style="font-size: 0.95rem; font-weight: 700; color: #1e293b; margin-top: 4px;">${activeProducer.tradeName || activeProducer.name}</div>
+            </div>
+            <div style="background: #f8fafc; padding: 14px 16px; border-radius: 8px; border: 1px solid #e2e8f0;">
+              <div style="font-size: 0.72rem; text-transform: uppercase; color: #64748b; font-weight: 700;">CNPJ / Inscrição</div>
+              <div style="font-size: 0.95rem; font-weight: 700; color: #2563eb; font-family: monospace; margin-top: 4px;">${maskCnpjCpf(activeProducer.cnpj)}</div>
+            </div>
+            <div style="background: #f8fafc; padding: 14px 16px; border-radius: 8px; border: 1px solid #e2e8f0;">
+              <div style="font-size: 0.72rem; text-transform: uppercase; color: #64748b; font-weight: 700;">E-mail Financeiro Oficial</div>
+              <div style="font-size: 0.95rem; font-weight: 600; color: #1e293b; margin-top: 4px;">${activeProducer.contactEmail || `financeiro@${activeProducer.id}.com.br`}</div>
+            </div>
+            <div style="background: #f8fafc; padding: 14px 16px; border-radius: 8px; border: 1px solid #e2e8f0;">
+              <div style="font-size: 0.72rem; text-transform: uppercase; color: #64748b; font-weight: 700;">Telefone de Contato</div>
+              <div style="font-size: 0.95rem; font-weight: 600; color: #1e293b; margin-top: 4px;">${activeProducer.phone || '(41) 3315-0800'}</div>
+            </div>
+            <div style="background: #f8fafc; padding: 14px 16px; border-radius: 8px; border: 1px solid #e2e8f0;">
+              <div style="font-size: 0.72rem; text-transform: uppercase; color: #64748b; font-weight: 700;">Gerente de Conta Disk</div>
+              <div style="font-size: 0.95rem; font-weight: 600; color: #1e293b; margin-top: 4px;">${activeProducer.accountManager || 'Carlos Menezes (Disk Ingressos)'}</div>
+            </div>
+            <div style="background: #f8fafc; padding: 14px 16px; border-radius: 8px; border: 1px solid #e2e8f0;">
+              <div style="font-size: 0.72rem; text-transform: uppercase; color: #64748b; font-weight: 700;">Classificação / Tier</div>
+              <div style="font-size: 0.95rem; font-weight: 700; color: #059669; margin-top: 4px;">${activeProducer.rating || 'Tier A - Premium'}</div>
+            </div>
+            <div style="background: #f8fafc; padding: 14px 16px; border-radius: 8px; border: 1px solid #e2e8f0;">
+              <div style="font-size: 0.72rem; text-transform: uppercase; color: #64748b; font-weight: 700;">Score de Risco & Compliance</div>
+              <div style="font-size: 0.95rem; font-weight: 700; color: #0284c7; margin-top: 4px;">${activeProducer.riskScore || 'Baixo Risco (Score 94/100)'}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card do Contrato Master -->
+      <div class="card-panel">
+        <div class="card-header-bar">
+          <div class="card-title-group">
+            <h2>Termos Contratuais & Regras Comerciais Vigentes</h2>
+            <p class="card-subtitle">Contrato Master de Prestação de Serviços nº ${activeProducer.contract?.number || 'DISK-CTR-2025-089'}</p>
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <button class="btn btn-outline-primary btn-sm" onclick="window.app.showToast('Contrato Digital', 'Abrindo visualizador da minuta contratual assinada em PDF...', 'info')">
+              <i class="ph-file-pdf me-1"></i> Ver Minuta PDF
+            </button>
+          </div>
+        </div>
+        <div class="card-body">
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-bottom: 20px;">
+            <div style="border-left: 3px solid #2563eb; padding: 12px 16px; background: #eff6ff; border-radius: 0 8px 8px 0;">
+              <div style="font-size: 0.75rem; color: #1e40af; font-weight: 700; text-transform: uppercase;">Taxa Disk Ingressos (Take Rate)</div>
+              <div style="font-size: 1.3rem; font-weight: 800; color: #1e3a8a; margin-top: 4px;">${activeProducer.contract?.diskFeePercent || 10.0}%</div>
+              <div style="font-size: 0.72rem; color: #3b82f6;">Comissão cobrada sobre vendas brutas</div>
+            </div>
+            <div style="border-left: 3px solid #10b981; padding: 12px 16px; background: #f0fdf4; border-radius: 0 8px 8px 0;">
+              <div style="font-size: 0.75rem; color: #065f46; font-weight: 700; text-transform: uppercase;">MDR Processamento Adquirência</div>
+              <div style="font-size: 1.3rem; font-weight: 800; color: #047857; margin-top: 4px;">${activeProducer.contract?.processingFeePercent || 2.9}%</div>
+              <div style="font-size: 0.72rem; color: #10b981;">Custo de gateway e adquirente</div>
+            </div>
+            <div style="border-left: 3px solid #f59e0b; padding: 12px 16px; background: #fffdf5; border-radius: 0 8px 8px 0;">
+              <div style="font-size: 0.75rem; color: #92400e; font-weight: 700; text-transform: uppercase;">Taxa de Antecipação Contratada</div>
+              <div style="font-size: 1.3rem; font-weight: 800; color: #b45309; margin-top: 4px;">${activeProducer.contract?.anticipationRateMonthly || 2.0}% a.m.</div>
+              <div style="font-size: 0.72rem; color: #d97706;">Juros aplicáveis a antecipações voluntárias</div>
+            </div>
+            <div style="border-left: 3px solid #6366f1; padding: 12px 16px; background: #eef2ff; border-radius: 0 8px 8px 0;">
+              <div style="font-size: 0.75rem; color: #3730a3; font-weight: 700; text-transform: uppercase;">Regra de Liquidação / SLA</div>
+              <div style="font-size: 1.05rem; font-weight: 700; color: #4338ca; margin-top: 6px;">${activeProducer.contract?.settlementDaysRule || 'D+2 após evento'}</div>
+              <div style="font-size: 0.72rem; color: #6366f1;">Política de repasse canônica</div>
+            </div>
+          </div>
+          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px 18px; font-size: 0.82rem; color: #475569; line-height: 1.6;">
+            <strong>Regras Específicas do Contrato:</strong> Liberação máxima de 20% das vendas brutas em repasses pré-evento mediante alcance mínimo de 50% da meta de vendas do evento. Saldo remanescente de 80% liquidado em D+2 pós-evento, deduzidas retenções cautelares e estornos. Todos os repasses exigem conta bancária homologada em nome de <strong>${activeProducer.name}</strong>.
+          </div>
+        </div>
+      </div>
     </section>
 
-    <!-- SEÇÃO 3: EVENTOS DO PRODUTOR -->
-    <section id="sec-dossie-eventos" class="scrollspy-section mb-4" data-scrollspy-section>
-    <div class="card-panel">
-      <div class="card-header-bar">
-        <div class="card-title-group">
-          <h2>Eventos & Produções de ${activeProducer.name}</h2>
-          <p class="card-subtitle">Segregação patrimonial: cada evento opera sua própria conta e saldo</p>
+    <!-- ABA 2: POSIÇÃO CONSOLIDADA DO PRODUTOR -->
+    <section id="sec-dossie-posicao" class="dossie-tab-panel mb-4" data-tab="sec-dossie-posicao" style="display: ${activeTab === 'sec-dossie-posicao' ? 'block' : 'none'};">
+      <div class="card-panel mb-4">
+        <div class="card-header-bar">
+          <div class="card-title-group">
+            <h2>Posição Financeira Consolidada de ${activeProducer.name}</h2>
+            <p class="card-subtitle">Contrato nº ${activeProducer.contract?.number || 'CON-MASTER'} • Taxa Disk: ${activeProducer.contract?.diskFeePercent || 10.0}% • Antecipação: ${activeProducer.contract?.anticipationRateMonthly || 2.5}% a.m.</p>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="kpi-grid">
+            <div class="kpi-card highlight">
+              <div class="kpi-header"><span class="kpi-title">Saldo Total Acumulado</span></div>
+              <div class="kpi-value">${formatCurrency(activeProducer.totals.totalBalance)}</div>
+              <div class="kpi-subtext"><span>Passivo da Disk com o produtor</span></div>
+            </div>
+
+            <div class="kpi-card success-accent">
+              <div class="kpi-header"><span class="kpi-title">Saldo Disponível Imediato</span></div>
+              <div class="kpi-value" style="color: #059669;">${formatCurrency(activeProducer.totals.availableBalance)}</div>
+              <div class="kpi-subtext"><span>Liberado para transferência</span></div>
+            </div>
+
+            <div class="kpi-card">
+              <div class="kpi-header"><span class="kpi-title">Recebíveis Futuros (Cartão)</span></div>
+              <div class="kpi-value" style="color: #2563eb;">${formatCurrency(activeProducer.totals.futureReceivables)}</div>
+              <div class="kpi-subtext"><span>Parcelamentos a liquidar</span></div>
+            </div>
+
+            <div class="kpi-card warning-accent">
+              <div class="kpi-header"><span class="kpi-title">Bloqueado / Reservas</span></div>
+              <div class="kpi-value" style="color: #b45309;">${formatCurrency(activeProducer.totals.blockedBalance)}</div>
+              <div class="kpi-subtext"><span>Reserva técnica para chargebacks</span></div>
+            </div>
+          </div>
         </div>
       </div>
-      <div class="card-body card-body-no-padding">
-        <div class="table-responsive">
-          <table class="limitless-table">
-            <thead>
-              <tr>
-                <th>Evento / Produção</th>
-                <th>Data & Local</th>
-                <th style="text-align: right;">Vendas Brutas</th>
-                <th style="text-align: right;">Taxas Disk</th>
-                <th style="text-align: right;">Líquido Apurado</th>
-                <th style="text-align: right;">Saldo do Evento</th>
-                <th style="text-align: right;">Limite da Política</th>
-                <th style="text-align: right;">Deduções do Evento</th>
-                <th style="text-align: right;">Elegível p/ Repasse</th>
-                <th style="text-align: right;">Ação Financeiro Disk</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${producerEvents.map(evt => `
+
+      <!-- Demonstrativo Consolidado de Movimentações -->
+      <div class="card-panel">
+        <div class="card-header-bar">
+          <div class="card-title-group">
+            <h2>Apuração Histórica e Auditoria de Movimentações</h2>
+            <p class="card-subtitle">Valores acumulados em todas as produções vinculadas a este produtor</p>
+          </div>
+        </div>
+        <div class="card-body card-body-no-padding">
+          <div class="table-responsive">
+            <table class="limitless-table">
+              <thead>
                 <tr>
-                  <td>
-                    <div style="font-weight: 700; color: var(--text-main); font-size: 0.9rem;">${evt.name}</div>
-                    <div style="font-size: 0.74rem; color: var(--primary); font-weight: 600;">${evt.category}</div>
-                  </td>
-                  <td>
-                    <div style="font-size: 0.82rem; font-weight: 600;">${evt.date}</div>
-                    <div style="font-size: 0.72rem; color: var(--text-muted);">${evt.venue}</div>
-                  </td>
-                  <td style="text-align: right; font-weight: 600;">${formatCurrency(evt.grossSales)}</td>
-                  <td style="text-align: right; color: #dc2626;">-${formatCurrency(evt.diskFees)}</td>
-                  <td style="text-align: right; font-weight: 700; color: #059669;">${formatCurrency(evt.netRevenue)}</td>
-                  <td style="text-align: right; font-weight: 800; font-size: 0.95rem; color: #059669;">
-                    ${formatCurrency(evt.availableBalance)}
-                    <div style="font-size:.68rem;color:var(--text-muted);">Conta exclusiva do evento</div>
-                  </td>
-                  <td style="text-align: right; font-weight: 700;">
-                    ${formatCurrency(eventEligibility[evt.id]?.limiteBruto || 0)}
-                    <div style="font-size:.68rem;color:var(--text-muted);">${eventEligibility[evt.id]?.releasePercent || 20}% das vendas elegíveis</div>
-                  </td>
-                  <td style="text-align: right; font-weight: 700; color:#b45309;">
-                    -${formatCurrency(eventEligibility[evt.id]?.totalDeductions || 0)}
-                    <div style="font-size:.68rem;color:var(--text-muted);">Somente deste evento</div>
-                    <div style="font-size:.65rem;color:#94a3b8;">Repasses ${formatCurrency(eventEligibility[evt.id]?.previousPayouts || 0)} • Retido ${formatCurrency(eventEligibility[evt.id]?.retainedBalance || 0)} • Bloqueado ${formatCurrency(eventEligibility[evt.id]?.blockedBalance || 0)}</div>
-                  </td>
-                  <td style="text-align: right; font-weight: 800; color:${(eventEligibility[evt.id]?.disponivelFinal || 0) > 0 ? '#059669' : '#dc2626'};">
-                    ${formatCurrency(eventEligibility[evt.id]?.disponivelFinal || 0)}
-                    <div style="font-size:.68rem;color:var(--text-muted);">${eventEligibility[evt.id]?.status || 'BLOQUEADO'}</div>
-                  </td>
-                  <td style="text-align:right;">
-                    <button class="btn btn-outline-primary btn-sm" onclick="window.app.openExceptionalPayoutAuthorization('${evt.id}')">
-                      Autorizar exceção
-                    </button>
-                  </td>
+                  <th>Rubrica Contábil</th>
+                  <th>Descrição / Origem</th>
+                  <th style="text-align: right;">Valor Acumulado</th>
+                  <th style="text-align: center;">Natureza</th>
+                  <th style="text-align: right;">Status</th>
                 </tr>
-              `).join('')}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>Vendas Brutas Totais</strong></td>
+                  <td>Receita integral de ingressos emitidos pela plataforma</td>
+                  <td style="text-align: right; font-weight: 800; color: #1e293b;">${formatCurrency(activeProducer.totals.grossSales || 0)}</td>
+                  <td style="text-align: center;"><span class="badge badge-neutral">Crédito</span></td>
+                  <td style="text-align: right;"><span class="badge badge-success">Auditado</span></td>
+                </tr>
+                <tr>
+                  <td><strong>Receita Líquida do Produtor</strong></td>
+                  <td>Vendas brutas deduzidas das taxas e comissões da Disk Ingressos</td>
+                  <td style="text-align: right; font-weight: 800; color: #059669;">${formatCurrency(activeProducer.totals.netSales || 0)}</td>
+                  <td style="text-align: center;"><span class="badge badge-success">Direito</span></td>
+                  <td style="text-align: right;"><span class="badge badge-success">Auditado</span></td>
+                </tr>
+                <tr>
+                  <td><strong>Total Já Repassado Historicamente</strong></td>
+                  <td>Transferências liquidadas em conta bancária homologada</td>
+                  <td style="text-align: right; font-weight: 800; color: #2563eb;">${formatCurrency(activeProducer.totals.transferredAmount || 0)}</td>
+                  <td style="text-align: center;"><span class="badge badge-neutral">Débito</span></td>
+                  <td style="text-align: right;"><span class="badge badge-info">Liquidado</span></td>
+                </tr>
+                <tr>
+                  <td><strong>Estornos & Chargebacks Acumulados</strong></td>
+                  <td>Contestações operacionais e devoluções a consumidores</td>
+                  <td style="text-align: right; font-weight: 800; color: #dc2626;">-${formatCurrency(activeProducer.totals.refundsAndChargebacks || 0)}</td>
+                  <td style="text-align: center;"><span class="badge badge-danger">Dedução</span></td>
+                  <td style="text-align: right;"><span class="badge badge-neutral">Compensado</span></td>
+                </tr>
+                <tr>
+                  <td><strong>Saldos Retidos / Reservas Técnicas</strong></td>
+                  <td>Margem de segurança para estornos futuros até o encerramento dos eventos</td>
+                  <td style="text-align: right; font-weight: 800; color: #b45309;">${formatCurrency(activeProducer.totals.blockedBalance || 0)}</td>
+                  <td style="text-align: center;"><span class="badge badge-warning">Custódia</span></td>
+                  <td style="text-align: right;"><span class="badge badge-warning">Retido</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
-    </div>
     </section>
 
-    <!-- SEÇÃO 4: Pendências & Solicitações Deste Produtor -->
-    <section id="sec-dossie-solicitacoes" class="scrollspy-section mb-4" data-scrollspy-section>
-    <div class="card-panel">
-      <div class="card-header-bar">
-        <div class="card-title-group">
-          <h2>Solicitações Deste Produtor na Central de Aprovações</h2>
-          <p class="card-subtitle">Repasses, antecipações e alterações pendentes de ação do operador</p>
+    <!-- ABA 3: EVENTOS DO PRODUTOR -->
+    <section id="sec-dossie-eventos" class="dossie-tab-panel mb-4" data-tab="sec-dossie-eventos" style="display: ${activeTab === 'sec-dossie-eventos' ? 'block' : 'none'};">
+      <div class="card-panel">
+        <div class="card-header-bar">
+          <div class="card-title-group">
+            <h2>Eventos & Produções de ${activeProducer.name}</h2>
+            <p class="card-subtitle">Segregação patrimonial: cada evento opera sua própria conta e saldo</p>
+          </div>
         </div>
-      </div>
-      <div class="card-body card-body-no-padding">
-        <div class="table-responsive">
-          <table class="limitless-table">
-            <thead>
-              <tr>
-                <th>Código</th>
-                <th>Evento Origem</th>
-                <th>Tipo</th>
-                <th>Data</th>
-                <th style="text-align: right;">Valor</th>
-                <th style="text-align: center;">Status</th>
-                <th style="text-align: right;">Ação</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${producerApprovals.length > 0 ? producerApprovals.map(appr => `
+        <div class="card-body card-body-no-padding">
+          <div class="table-responsive">
+            <table class="limitless-table">
+              <thead>
                 <tr>
-                  <td style="font-family: monospace; font-weight: 700;">${appr.id}</td>
-                  <td style="font-weight: 600;">${appr.eventName || 'Cadastro Geral'}</td>
-                  <td><strong>${appr.type}</strong></td>
-                  <td style="font-size: 0.8rem; color: var(--text-muted);">${appr.requestDate}</td>
-                  <td style="text-align: right; font-weight: 800;">${formatCurrency(appr.requestedAmount || appr.netAmount || 0)}</td>
-                  <td style="text-align: center;">${createStatusBadge(appr.status)}</td>
-                  <td style="text-align: right;">
-                    <button class="btn btn-primary btn-sm" onclick="window.app.openApprovalSheet('${appr.id}')">
-                      Abrir Análise →
-                    </button>
-                  </td>
+                  <th>Evento / Produção</th>
+                  <th>Data & Local</th>
+                  <th style="text-align: right;">Vendas Brutas</th>
+                  <th style="text-align: right;">Taxas Disk</th>
+                  <th style="text-align: right;">Líquido Apurado</th>
+                  <th style="text-align: right;">Saldo do Evento</th>
+                  <th style="text-align: right;">Limite da Política</th>
+                  <th style="text-align: right;">Deduções do Evento</th>
+                  <th style="text-align: right;">Elegível p/ Repasse</th>
+                  <th style="text-align: right;">Ação Financeiro Disk</th>
                 </tr>
-              `).join('') : `
-                <tr>
-                  <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 24px;">
-                    Nenhuma solicitação pendente para este produtor no momento.
-                  </td>
-                </tr>
-              `}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-    </section>
-
-    <!-- SEÇÃO 5: Contas Bancárias de Repasse Cadastradas -->
-    <section id="sec-dossie-contas" class="scrollspy-section mb-4" data-scrollspy-section>
-    <div class="card-panel">
-      <div class="card-header-bar">
-        <div class="card-title-group">
-          <h2>Contas Bancárias de Repasse Homologadas</h2>
-          <p class="card-subtitle">Contas externas vinculadas a ${activeProducer.name} para liquidação via CIP/Bacen</p>
-        </div>
-        <button class="btn btn-outline-primary btn-sm" onclick="window.app.openAddProducerBankModal('${activeProducer.id}')">
-          <i class="ph-plus me-1"></i> + Adicionar Conta Bancária
-        </button>
-      </div>
-      <div class="card-body card-body-no-padding">
-        <div class="table-responsive">
-          <table class="limitless-table">
-            <thead>
-              <tr>
-                <th>Banco</th>
-                <th>Agência / Conta</th>
-                <th>PIX</th>
-                <th>Titularidade</th>
-                <th style="text-align: center;">Status</th>
-                <th style="text-align: right;">Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${bankAccounts.length > 0 ? bankAccounts.map(b => `
-                <tr>
-                  <td>
-                    <div class="fw-bold text-dark">${b.bankName}</div>
-                    <div class="fs-xxs text-muted">Cód: ${b.bankCode || '—'}</div>
-                  </td>
-                  <td>
-                    <div>Ag: ${b.agency} · CC: ${b.accountNumber}</div>
-                    ${b.isDefault ? '<span class="badge badge-primary fs-xxs">Conta Principal de Repasse</span>' : ''}
-                  </td>
-                  <td>
-                    ${b.pixKey ? `<span class="badge badge-info fs-xxs">${b.pixKeyType || 'PIX'}: ${b.pixKey}</span>` : '<span class="text-muted fs-xxs">Não cadastrado</span>'}
-                  </td>
-                  <td>
-                    <div class="fs-xs fw-semibold">${b.holderName || activeProducer.name}</div>
-                    <div class="fs-xxs text-muted">${b.holderDocument || activeProducer.cnpj}</div>
-                  </td>
-                  <td style="text-align: center;">
-                    <span class="badge ${b.status === 'Ativa' || b.status === 'Validada & Ativa' ? 'badge-success' : (b.status === 'Pendente' ? 'badge-warning' : 'badge-neutral')}">
-                      ${b.status}
-                    </span>
-                  </td>
-                  <td style="text-align: right;">
-                    <div class="d-flex gap-1 justify-content-end">
-                      <button class="btn btn-light btn-xs" onclick="window.app.openViewBankModal('${activeProducer.id}', '${b.id}')" title="Ver detalhes">
-                        <i class="ph-eye"></i>
+              </thead>
+              <tbody>
+                ${producerEvents.map(evt => `
+                  <tr>
+                    <td>
+                      <div style="font-weight: 700; color: var(--text-main); font-size: 0.9rem;">${evt.name}</div>
+                      <div style="font-size: 0.74rem; color: var(--primary); font-weight: 600;">${evt.category}</div>
+                    </td>
+                    <td>
+                      <div style="font-size: 0.82rem; font-weight: 600;">${evt.date}</div>
+                      <div style="font-size: 0.72rem; color: var(--text-muted);">${evt.venue}</div>
+                    </td>
+                    <td style="text-align: right; font-weight: 600;">${formatCurrency(evt.grossSales)}</td>
+                    <td style="text-align: right; color: #dc2626;">-${formatCurrency(evt.diskFees)}</td>
+                    <td style="text-align: right; font-weight: 700; color: #059669;">${formatCurrency(evt.netRevenue)}</td>
+                    <td style="text-align: right; font-weight: 800; font-size: 0.95rem; color: #059669;">
+                      ${formatCurrency(evt.availableBalance)}
+                      <div style="font-size:.68rem;color:var(--text-muted);">Conta exclusiva do evento</div>
+                    </td>
+                    <td style="text-align: right; font-weight: 700;">
+                      ${formatCurrency(eventEligibility[evt.id]?.limiteBruto || 0)}
+                      <div style="font-size:.68rem;color:var(--text-muted);">${eventEligibility[evt.id]?.releasePercent || 20}% das vendas elegíveis</div>
+                    </td>
+                    <td style="text-align: right; font-weight: 700; color:#b45309;">
+                      -${formatCurrency(eventEligibility[evt.id]?.totalDeductions || 0)}
+                      <div style="font-size:.68rem;color:var(--text-muted);">Somente deste evento</div>
+                      <div style="font-size:.65rem;color:#94a3b8;">Repasses ${formatCurrency(eventEligibility[evt.id]?.previousPayouts || 0)} • Retido ${formatCurrency(eventEligibility[evt.id]?.retainedBalance || 0)} • Bloqueado ${formatCurrency(eventEligibility[evt.id]?.blockedBalance || 0)}</div>
+                    </td>
+                    <td style="text-align: right; font-weight: 800; color:${(eventEligibility[evt.id]?.disponivelFinal || 0) > 0 ? '#059669' : '#dc2626'};">
+                      ${formatCurrency(eventEligibility[evt.id]?.disponivelFinal || 0)}
+                      <div style="font-size:.68rem;color:var(--text-muted);">${eventEligibility[evt.id]?.status || 'BLOQUEADO'}</div>
+                    </td>
+                    <td style="text-align:right;">
+                      <button class="btn btn-outline-primary btn-sm" onclick="window.app.openExceptionalPayoutAuthorization('${evt.id}')">
+                        Autorizar exceção
                       </button>
-                      ${b.status === 'Pendente' ? `
-                        <button class="btn btn-success btn-xs" onclick="window.app.validateBank('${activeProducer.id}', '${b.id}')" title="Validar conta">
-                          <i class="ph-check"></i> Validar
-                        </button>
-                      ` : ''}
-                      ${!b.isDefault && (b.status === 'Ativa' || b.status === 'Validada & Ativa') ? `
-                        <button class="btn btn-primary btn-xs" onclick="window.app.setDefaultBank('${activeProducer.id}', '${b.id}')" title="Definir Principal">
-                          <i class="ph-star"></i> Principal
-                        </button>
-                      ` : ''}
-                    </div>
-                  </td>
-                </tr>
-              `).join('') : `
-                <tr>
-                  <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 24px;">
-                    Nenhuma conta bancária externa cadastrada para este produtor.
-                  </td>
-                </tr>
-              `}
-            </tbody>
-          </table>
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
-    </div>
+    </section>
+
+    <!-- ABA 4: PENDÊNCIAS & SOLICITAÇÕES DESTE PRODUTOR -->
+    <section id="sec-dossie-solicitacoes" class="dossie-tab-panel mb-4" data-tab="sec-dossie-solicitacoes" style="display: ${activeTab === 'sec-dossie-solicitacoes' ? 'block' : 'none'};">
+      <div class="card-panel">
+        <div class="card-header-bar">
+          <div class="card-title-group">
+            <h2>Solicitações Deste Produtor na Central de Aprovações</h2>
+            <p class="card-subtitle">Repasses, antecipações e alterações pendentes de ação do operador</p>
+          </div>
+        </div>
+        <div class="card-body card-body-no-padding">
+          <div class="table-responsive">
+            <table class="limitless-table">
+              <thead>
+                <tr>
+                  <th>Código</th>
+                  <th>Evento Origem</th>
+                  <th>Tipo</th>
+                  <th>Data</th>
+                  <th style="text-align: right;">Valor</th>
+                  <th style="text-align: center;">Status</th>
+                  <th style="text-align: right;">Ação</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${producerApprovals.length > 0 ? producerApprovals.map(appr => `
+                  <tr>
+                    <td style="font-family: monospace; font-weight: 700;">${appr.id}</td>
+                    <td style="font-weight: 600;">${appr.eventName || 'Cadastro Geral'}</td>
+                    <td><strong>${appr.type}</strong></td>
+                    <td style="font-size: 0.8rem; color: var(--text-muted);">${appr.requestDate}</td>
+                    <td style="text-align: right; font-weight: 800;">${formatCurrency(appr.requestedAmount || appr.netAmount || 0)}</td>
+                    <td style="text-align: center;">${createStatusBadge(appr.status)}</td>
+                    <td style="text-align: right;">
+                      <button class="btn btn-primary btn-sm" onclick="window.app.openApprovalSheet('${appr.id}')">
+                        Abrir Análise →
+                      </button>
+                    </td>
+                  </tr>
+                `).join('') : `
+                  <tr>
+                    <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 24px;">
+                      Nenhuma solicitação pendente para este produtor no momento.
+                    </td>
+                  </tr>
+                `}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ABA 5: CONTAS BANCÁRIAS DE REPASSE HOMOLOGADAS -->
+    <section id="sec-dossie-contas" class="dossie-tab-panel mb-4" data-tab="sec-dossie-contas" style="display: ${activeTab === 'sec-dossie-contas' ? 'block' : 'none'};">
+      <div class="card-panel">
+        <div class="card-header-bar">
+          <div class="card-title-group">
+            <h2>Contas Bancárias de Repasse Homologadas</h2>
+            <p class="card-subtitle">Contas externas vinculadas a ${activeProducer.name} para liquidação via CIP/Bacen</p>
+          </div>
+          <button class="btn btn-outline-primary btn-sm" onclick="window.app.openAddProducerBankModal('${activeProducer.id}')">
+            <i class="ph-plus me-1"></i> + Adicionar Conta Bancária
+          </button>
+        </div>
+        <div class="card-body card-body-no-padding">
+          <div class="table-responsive">
+            <table class="limitless-table">
+              <thead>
+                <tr>
+                  <th>Banco</th>
+                  <th>Agência / Conta</th>
+                  <th>PIX</th>
+                  <th>Titularidade</th>
+                  <th style="text-align: center;">Status</th>
+                  <th style="text-align: right;">Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${bankAccounts.length > 0 ? bankAccounts.map(b => `
+                  <tr>
+                    <td>
+                      <div class="fw-bold text-dark">${b.bankName}</div>
+                      <div class="fs-xxs text-muted">Cód: ${b.bankCode || '—'}</div>
+                    </td>
+                    <td>
+                      <div>Ag: ${b.agency} · CC: ${maskAccount(b.accountNumber)}</div>
+                      ${b.isDefault ? '<span class="badge badge-primary fs-xxs">Conta Principal de Repasse</span>' : ''}
+                    </td>
+                    <td>
+                      ${b.pixKey ? `<span class="badge badge-info fs-xxs">${b.pixKeyType || 'PIX'}: ${maskPix(b.pixKey, b.pixKeyType)}</span>` : '<span class="text-muted fs-xxs">Não cadastrado</span>'}
+                    </td>
+                    <td>
+                      <div class="fs-xs fw-semibold">${b.holderName || activeProducer.name}</div>
+                      <div class="fs-xxs text-muted">${maskCnpjCpf(b.holderDocument || activeProducer.cnpj)}</div>
+                    </td>
+                    <td style="text-align: center;">
+                      <span class="badge ${b.status === 'Ativa' || b.status === 'Validada & Ativa' ? 'badge-success' : (b.status === 'Pendente' || b.status === 'Pendente de validação' ? 'badge-warning' : 'badge-neutral')}">
+                        ${b.status}
+                      </span>
+                    </td>
+                    <td style="text-align: right;">
+                      <div class="d-flex gap-1 justify-content-end">
+                        <button class="btn btn-light btn-xs" onclick="window.app.openViewBankDetails('${activeProducer.id}', '${b.id}')" title="Ver detalhes">
+                          <i class="ph-eye"></i>
+                        </button>
+                        ${b.status === 'Pendente' || b.status === 'Pendente de validação' ? `
+                          <button class="btn btn-success btn-xs" onclick="window.app.openValidateBankModal('${activeProducer.id}', '${b.id}')" title="Validar conta">
+                            <i class="ph-check"></i> Validar
+                          </button>
+                        ` : ''}
+                        ${!b.isDefault && (b.status === 'Ativa' || b.status === 'Validada & Ativa') ? `
+                          <button class="btn btn-primary btn-xs" onclick="window.app.setDefaultBank('${activeProducer.id}', '${b.id}')" title="Definir Principal">
+                            <i class="ph-star"></i> Principal
+                          </button>
+                        ` : ''}
+                      </div>
+                    </td>
+                  </tr>
+                `).join('') : `
+                  <tr>
+                    <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 24px;">
+                      Nenhuma conta bancária externa cadastrada para este produtor.
+                    </td>
+                  </tr>
+                `}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
     </section>
   `;
 }

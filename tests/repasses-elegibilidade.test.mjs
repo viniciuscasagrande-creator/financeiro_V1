@@ -312,5 +312,50 @@ test('V0.6.2.3: Festival Curitiba 2026 possui elegibilidade líquida de R$ 100.0
   assert.equal(payout.checklist.balanceSufficient, true, 'Saldo deve ser suficiente');
 });
 
+// 11. V0.6.2.4: Segregação e Visibilidade Exclusiva das 5 Abas do Dossiê do Produtor
+test('V0.6.2.4: Dossiê do Produtor possui 5 abas com painéis segregados e exibição exclusiva da aba ativa', async () => {
+  const store = new CoreFinanceiroStore();
+  const state = store.getState();
+  state.calculatePayoutEligibility = store.calculatePayoutEligibility.bind(store);
+  const { renderDiskProdutores } = await import('../js/views/disk/produtores.js');
+
+  // Teste 1: Aba padrão ('sec-dossie-resumo')
+  globalThis.window = { app: { activeDossieTab: 'sec-dossie-resumo' } };
+  let html = renderDiskProdutores(state, 'all');
+
+  // As 5 abas existem no tablist
+  assert.ok(html.includes('id="spy-btn-sec-dossie-resumo"'), 'Deve existir botão da aba Produtor & Contrato');
+  assert.ok(html.includes('id="spy-btn-sec-dossie-posicao"'), 'Deve existir botão da aba Posição Consolidada');
+  assert.ok(html.includes('id="spy-btn-sec-dossie-eventos"'), 'Deve existir botão da aba Eventos & Produções');
+  assert.ok(html.includes('id="spy-btn-sec-dossie-solicitacoes"'), 'Deve existir botão da aba Aprovações Pendentes');
+  assert.ok(html.includes('id="spy-btn-sec-dossie-contas"'), 'Deve existir botão da aba Contas Homologadas');
+
+  // Com sec-dossie-resumo ativo: apenas sec-dossie-resumo visível (block), outros 4 ocultos (none)
+  assert.ok(html.includes('id="sec-dossie-resumo" class="dossie-tab-panel mb-4" data-tab="sec-dossie-resumo" style="display: block;"'), 'Aba resumo deve estar visível');
+  assert.ok(html.includes('id="sec-dossie-posicao" class="dossie-tab-panel mb-4" data-tab="sec-dossie-posicao" style="display: none;"'), 'Aba posição deve estar oculta');
+  assert.ok(html.includes('id="sec-dossie-eventos" class="dossie-tab-panel mb-4" data-tab="sec-dossie-eventos" style="display: none;"'), 'Aba eventos deve estar oculta');
+  assert.ok(html.includes('id="sec-dossie-solicitacoes" class="dossie-tab-panel mb-4" data-tab="sec-dossie-solicitacoes" style="display: none;"'), 'Aba aprovações deve estar oculta');
+  assert.ok(html.includes('id="sec-dossie-contas" class="dossie-tab-panel mb-4" data-tab="sec-dossie-contas" style="display: none;"'), 'Aba contas deve estar oculta');
+
+  // Teste 2: Alternando para Contas Homologadas ('sec-dossie-contas')
+  globalThis.window.app.activeDossieTab = 'sec-dossie-contas';
+  html = renderDiskProdutores(state, 'all');
+  assert.ok(html.includes('id="sec-dossie-contas" class="dossie-tab-panel mb-4" data-tab="sec-dossie-contas" style="display: block;"'), 'Aba contas deve estar visível');
+  assert.ok(html.includes('id="sec-dossie-eventos" class="dossie-tab-panel mb-4" data-tab="sec-dossie-eventos" style="display: none;"'), 'Tabela Eventos & Produções deve estar oculta ao selecionar Contas');
+  assert.ok(html.includes('id="sec-dossie-resumo" class="dossie-tab-panel mb-4" data-tab="sec-dossie-resumo" style="display: none;"'), 'Aba resumo deve estar oculta');
+  assert.ok(html.includes('id="sec-dossie-posicao" class="dossie-tab-panel mb-4" data-tab="sec-dossie-posicao" style="display: none;"'), 'Aba posição deve estar oculta');
+  assert.ok(html.includes('id="sec-dossie-solicitacoes" class="dossie-tab-panel mb-4" data-tab="sec-dossie-solicitacoes" style="display: none;"'), 'Aba solicitações deve estar oculta');
+
+  // Teste 3: Alternando para Eventos & Produções ('sec-dossie-eventos')
+  globalThis.window.app.activeDossieTab = 'sec-dossie-eventos';
+  html = renderDiskProdutores(state, 'all');
+  assert.ok(html.includes('id="sec-dossie-eventos" class="dossie-tab-panel mb-4" data-tab="sec-dossie-eventos" style="display: block;"'), 'Aba eventos deve estar visível');
+  assert.ok(html.includes('id="sec-dossie-contas" class="dossie-tab-panel mb-4" data-tab="sec-dossie-contas" style="display: none;"'), 'Aba contas deve estar oculta ao selecionar Eventos');
+
+  // Limpa o global
+  delete globalThis.window;
+});
+
 console.log(`\nTodos os ${passed} testes do Motor de Elegibilidade de Repasses passaram com sucesso!`);
+
 
