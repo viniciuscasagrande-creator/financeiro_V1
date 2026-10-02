@@ -633,13 +633,20 @@ export function renderDiskContaFinanceira(state, filterArg = 'conta') {
                 </td>
                 <td style="padding: 12px 14px;">
                   <span style="padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; ${
-                    c.status === 'ATIVO' ? 'background: #fef3c7; color: #b45309;' : 'background: #dcfce7; color: #15803d;'
+                    c.status === 'ATIVO' ? 'background: #fef3c7; color: #b45309;' :
+                    c.status === 'EM_ATRASO' ? 'background: #fee2e2; color: #b91c1c;' :
+                    'background: #dcfce7; color: #15803d;'
                   }">
-                    ${c.status}
+                    ${c.status === 'EM_ATRASO' ? '⚠️ EM ATRASO' : c.status}
                   </span>
+                  ${Array.isArray(c.schedule) && c.schedule.length > 0 ? `
+                    <br /><small style="color: #64748b; font-size: 10px;">
+                      ${c.schedule.filter(s => s.status === 'PAGO').length}/${c.schedule.length} pagas
+                    </small>
+                  ` : ''}
                 </td>
                 <td style="padding: 12px 14px;">
-                  ${c.status === 'ATIVO' ? `
+                  ${c.status === 'ATIVO' || c.status === 'EM_ATRASO' ? `
                     <button
                       style="background: white; border: 1px solid #cbd5e1; padding: 5px 9px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; color: #334155;"
                       onclick="window.app.handleAmortizeCredit('${c.id}');"

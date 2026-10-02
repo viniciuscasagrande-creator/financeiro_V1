@@ -67,3 +67,12 @@ npm run dev
 ## 4. Integração com o PDT Novo
 
 O arquivo `backend/src/adapters/pdtNovoAdapter.js` permanece como fronteira oficial para plugar os dados reais de produtores, eventos, bilheteria, gateways e autenticação JWT/MFA do PDT Novo durante a homologação.
+
+## Evolução V0.6 — Contratos de Crédito
+- Crédito/antecipação passa a possuir contrato e cronograma de parcelas.
+- Suporte a primeira data de vencimento e referência contratual.
+- Cada parcela possui valor previsto, valor pago, situação e data de quitação.
+- Amortizações manuais e automáticas por recebíveis são apropriadas ao cronograma.
+- Identificação de parcelas pendentes, parciais, vencidas e parcialmente vencidas.
+- Endpoint de posição detalhada: `GET /api/interno/creditos/:id`.
+- Mantida a regra de acesso exclusivo `FINANCEIRO_DISK`.

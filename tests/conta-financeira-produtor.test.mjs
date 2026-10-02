@@ -480,4 +480,53 @@ test('Registro de receita dispara amortização automática em créditos com per
   assert.equal(updatedCredit.status, 'ATIVO');
 });
 
+// 13. Contrato Financeiro de Crédito com Cronograma de Parcelas e Delinquência (V0.6)
+test('Contrato financeiro de crédito constrói cronograma de parcelas, apropria amortização e identifica status das parcelas', () => {
+  const store = new CoreFinanceiroStore();
+  store.login('disk');
+
+  const credit = store.grantProducerCredit({
+    producerId: 'prod-abc',
+    eventId: 'evt-001',
+    contractRef: 'CTR-2026/04-ARENA',
+    principal: 60000,
+    interestRate: 0,
+    installments: 3,
+    firstDueDate: '2026-11-15',
+    amortizationModel: 'PARCELAS_FIXAS',
+    notes: 'Adiantamento com contrato formal e cronograma em 3 parcelas'
+  });
+
+  assert(credit, 'Crédito com contrato deve ser criado');
+  assert.equal(credit.contractRef, 'CTR-2026/04-ARENA');
+  assert.equal(credit.firstDueDate, '2026-11-15');
+  assert(Array.isArray(credit.schedule), 'Cronograma de parcelas deve existir');
+  assert.equal(credit.schedule.length, 3, 'Deve conter 3 parcelas no cronograma');
+
+  // Cada parcela deve ter R$ 20.000 prevista
+  assert.equal(credit.schedule[0].scheduledValue, 20000);
+  assert.equal(credit.schedule[0].status, 'PENDENTE');
+  assert.equal(credit.schedule[0].paidValue, 0);
+
+  // Amortização parcial de R$ 25.000:
+  // Quita integralmente a 1ª parcela (R$ 20.000) e paga parcialmente a 2ª parcela (R$ 5.000)
+  store.amortizeProducerCredit({
+    creditId: credit.id,
+    amount: 25000,
+    type: 'PARCELA_FIXA'
+  });
+
+  assert.equal(credit.schedule[0].status, 'PAGO');
+  assert.equal(credit.schedule[0].paidValue, 20000);
+  assert(credit.schedule[0].paidAt, 'Deve registrar data de pagamento da parcela');
+
+  assert.equal(credit.schedule[1].status, 'PARCIAL');
+  assert.equal(credit.schedule[1].paidValue, 5000);
+
+  assert.equal(credit.schedule[2].status, 'PENDENTE');
+  assert.equal(credit.schedule[2].paidValue, 0);
+
+  assert.equal(credit.outstandingDebt, 35000);
+});
+
 console.log(`\nTodos os ${passed} testes da Conta Financeira do Produtor passaram com sucesso!`);

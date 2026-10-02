@@ -6468,6 +6468,17 @@ class LimitlessFinancialApp {
               </div>
             </div>
 
+            <div class="row g-3 mb-3">
+              <div class="col-md-6">
+                <label class="form-label fw-bold fs-sm">Referência Contratual:</label>
+                <input type="text" name="contractRef" class="form-control form-control-sm" placeholder="Ex: CTR-2026/04 ou ADIT-02">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-bold fs-sm">Primeiro Vencimento:</label>
+                <input type="date" name="firstDueDate" class="form-control form-control-sm">
+              </div>
+            </div>
+
             <div class="mb-3">
               <label class="form-label fw-bold fs-sm">Justificativa Operacional da Concessão (mín. 5 chars):</label>
               <textarea name="notes" class="form-control form-control-sm" rows="2" placeholder="Ex: Antecipação para montagem de infraestrutura de palco conforme aditivo contratual..." required minlength="5"></textarea>
@@ -6496,6 +6507,8 @@ class LimitlessFinancialApp {
       installments: parseInt(formData.get('installments')) || 1,
       amortizationModel: formData.get('amortizationModel'),
       receivablePercent: parseFloat(formData.get('receivablePercent')) || 0,
+      contractRef: formData.get('contractRef') || '',
+      firstDueDate: formData.get('firstDueDate') || null,
       notes: formData.get('notes')
     };
 

@@ -34,7 +34,7 @@ app.get('/api/health', (_, res) => {
   res.json({
     status: 'ok',
     module: 'financeiro-disk-conta-interna',
-    version: '0.5',
+    version: '0.6',
     features: ['reservas_obrigacoes', 'estornos_dupla_autorizacao_sod', 'ledger_central', 'credito_antecipacao', 'movimentacao_evento', 'receitas_amortizacao_automatica'],
     timestamp: new Date().toISOString()
   });
@@ -315,10 +315,73 @@ app.post('/api/interno/estornos/:id/rejeitar', (req, res) => {
   res.json(refund);
 });
 
+
+
+// V0.6 — Contrato, cronograma e posição detalhada do crédito
+function buildInstallmentSchedule(credit, firstDueDate) {
+  const start = firstDueDate ? new Date(firstDueDate + 'T12:00:00') : new Date();
+  if (!firstDueDate) start.setMonth(start.getMonth() + 1);
+  const schedule = [];
+  for (let i = 1; i <= credit.installmentsCount; i++) {
+    const due = new Date(start);
+    due.setMonth(start.getMonth() + (i - 1));
+    schedule.push({
+      installment: i,
+      dueDate: due.toISOString().slice(0, 10),
+      scheduledValue: credit.installmentValue,
+      paidValue: 0,
+      status: 'PENDENTE',
+      paidAt: null
+    });
+  }
+  return schedule;
+}
+
+function applyPaymentToSchedule(credit, value, paidAt = new Date().toISOString()) {
+  let remaining = Number(value);
+  credit.schedule = credit.schedule || buildInstallmentSchedule(credit);
+  for (const item of credit.schedule) {
+    if (remaining <= 0) break;
+    const open = Math.max(0, Number(item.scheduledValue) - Number(item.paidValue || 0));
+    if (open <= 0) continue;
+    const applied = Math.min(open, remaining);
+    item.paidValue = Number((Number(item.paidValue || 0) + applied).toFixed(2));
+    remaining = Number((remaining - applied).toFixed(2));
+    if (item.paidValue >= item.scheduledValue) {
+      item.status = 'PAGO';
+      item.paidAt = paidAt;
+    } else {
+      item.status = 'PARCIAL';
+    }
+  }
+}
+
+function refreshCreditDelinquency(credit) {
+  const today = new Date().toISOString().slice(0,10);
+  for (const item of (credit.schedule || [])) {
+    if (item.status !== 'PAGO' && item.dueDate < today) item.status = item.paidValue > 0 ? 'PARCIAL_VENCIDA' : 'VENCIDA';
+  }
+  if (credit.status === 'ATIVO' && (credit.schedule || []).some(i => ['VENCIDA','PARCIAL_VENCIDA'].includes(i.status))) credit.status = 'EM_ATRASO';
+  if (credit.outstandingDebt <= 0) credit.status = 'LIQUIDADO';
+}
+
 // Créditos e Antecipações
-app.get('/api/interno/creditos', (_, res) => res.json(state.credits || []));
+app.get('/api/interno/creditos', (_, res) => {
+  for (const c of state.credits || []) {
+    if (!c.schedule) c.schedule = buildInstallmentSchedule(c, c.firstDueDate);
+    refreshCreditDelinquency(c);
+  }
+  res.json(state.credits || []);
+});
+app.get('/api/interno/creditos/:id', (req, res) => {
+  const credit = state.credits.find(c => c.id === req.params.id);
+  if (!credit) return res.status(404).json({ error: 'Contrato de crédito não encontrado.' });
+  if (!credit.schedule) credit.schedule = buildInstallmentSchedule(credit, credit.firstDueDate);
+  refreshCreditDelinquency(credit);
+  res.json(credit);
+});
 app.post('/api/interno/creditos', (req, res) => {
-  const { eventId, principal, interestRate = 2.0, installments = 5, amortization = 'PARCELAS_FIXAS', receivablePercent = 15.0, notes = '' } = req.body;
+  const { eventId, principal, interestRate = 2.0, installments = 5, amortization = 'PARCELAS_FIXAS', receivablePercent = 15.0, notes = '', firstDueDate = null, contractRef = '', interestModel = 'JUROS_SIMPLES_MENSAL' } = req.body;
   const numPrincipal = parseFloat(principal);
   if (!eventId || !numPrincipal || numPrincipal <= 0) {
     return res.status(400).json({ error: 'Evento e valor principal positivo são obrigatórios.' });
@@ -350,9 +413,13 @@ app.post('/api/interno/creditos', (req, res) => {
     grantedAt: new Date().toISOString(),
     grantedBy: actor,
     notes: (notes || '').trim(),
+    contractRef: (contractRef || '').trim(),
+    interestModel,
+    firstDueDate,
     amortizationHistory: []
   };
 
+  credit.schedule = buildInstallmentSchedule(credit, firstDueDate);
   state.credits.unshift(credit);
 
   addLedgerEntry({
@@ -385,6 +452,8 @@ app.post('/api/interno/creditos/:id/amortizar', (req, res) => {
 
   const actor = getActor(req);
   credit.amortizationHistory = credit.amortizationHistory || [];
+  applyPaymentToSchedule(credit, amortizedValue);
+  refreshCreditDelinquency(credit);
   credit.amortizationHistory.unshift({
     id: `AM-${Date.now()}`,
     date: new Date().toLocaleString('pt-BR'),
@@ -443,6 +512,8 @@ app.post('/api/interno/receitas', (req, res) => {
       c.outstandingDebt = remaining;
       c.outstanding = remaining;
       c.amortizedTotal = Number(((c.amortizedTotal || 0) + amount).toFixed(2));
+      applyPaymentToSchedule(c, amount);
+      refreshCreditDelinquency(c);
       if (remaining <= 0) {
         c.status = 'LIQUIDADO';
         c.liquidatedAt = new Date().toISOString();

@@ -3112,6 +3112,61 @@ export class CoreFinanceiroStore {
   // CONTA FINANCEIRA DO PRODUTOR (CNPJ), CRÉDITOS, RETENÇÕES & LEDGER INTERNO
   // ==========================================================================
 
+  buildInstallmentSchedule(credit, firstDueDate = null) {
+    const start = firstDueDate ? new Date(firstDueDate + 'T12:00:00') : new Date();
+    if (!firstDueDate) start.setMonth(start.getMonth() + 1);
+    const schedule = [];
+    const count = Number(credit.installmentsCount || credit.installments || 1);
+    const instVal = Number(credit.installmentValue || (credit.totalDebt / count) || 0);
+    for (let i = 1; i <= count; i++) {
+      const due = new Date(start);
+      due.setMonth(start.getMonth() + (i - 1));
+      schedule.push({
+        installment: i,
+        dueDate: due.toISOString().slice(0, 10),
+        scheduledValue: Math.round(instVal * 100) / 100,
+        paidValue: 0,
+        status: 'PENDENTE',
+        paidAt: null
+      });
+    }
+    return schedule;
+  }
+
+  applyPaymentToSchedule(credit, value, paidAt = new Date().toISOString()) {
+    let remaining = Number(value);
+    credit.schedule = credit.schedule || this.buildInstallmentSchedule(credit, credit.firstDueDate);
+    for (const item of credit.schedule) {
+      if (remaining <= 0) break;
+      const open = Math.max(0, Number(item.scheduledValue) - Number(item.paidValue || 0));
+      if (open <= 0) continue;
+      const applied = Math.min(open, remaining);
+      item.paidValue = Number((Number(item.paidValue || 0) + applied).toFixed(2));
+      remaining = Number((remaining - applied).toFixed(2));
+      if (item.paidValue >= item.scheduledValue) {
+        item.status = 'PAGO';
+        item.paidAt = paidAt;
+      } else {
+        item.status = 'PARCIAL';
+      }
+    }
+  }
+
+  refreshCreditDelinquency(credit) {
+    const today = new Date().toISOString().slice(0, 10);
+    for (const item of (credit.schedule || [])) {
+      if (item.status !== 'PAGO' && item.dueDate < today) {
+        item.status = item.paidValue > 0 ? 'PARCIAL_VENCIDA' : 'VENCIDA';
+      }
+    }
+    if (credit.status === 'ATIVO' && (credit.schedule || []).some(i => ['VENCIDA', 'PARCIAL_VENCIDA'].includes(i.status))) {
+      credit.status = 'EM_ATRASO';
+    }
+    if (credit.outstandingDebt <= 0) {
+      credit.status = 'LIQUIDADO';
+    }
+  }
+
   getProducerFinancialAccount(producerId = null) {
     const targetProducerId = producerId || this.state.selectedProducerId || 'prod-abc';
     const producer = this.data.producers.find(p => p.id === targetProducerId) || this.data.producers[0];
@@ -3157,6 +3212,11 @@ export class CoreFinanceiroStore {
     const consolidatedBalance = Math.max(0, totalNetRevenue - totalPaid);
     const futurePending = Math.max(0, consolidatedBalance - totalAvailableForRepasse - totalBlocked - totalRetained);
 
+    for (const c of producerCredits) {
+      if (!c.schedule) c.schedule = this.buildInstallmentSchedule(c, c.firstDueDate);
+      this.refreshCreditDelinquency(c);
+    }
+
     return {
       producer,
       summary: {
@@ -3179,7 +3239,7 @@ export class CoreFinanceiroStore {
     };
   }
 
-  grantProducerCredit({ producerId, eventId, principal, interestRate = 2.0, installments = 5, amortizationModel = 'PARCELAS_FIXAS', receivablePercent = 15.0, notes = '' }) {
+  grantProducerCredit({ producerId, eventId, principal, interestRate = 2.0, installments = 5, amortizationModel = 'PARCELAS_FIXAS', receivablePercent = 15.0, notes = '', firstDueDate = null, contractRef = '', interestModel = 'JUROS_SIMPLES_MENSAL' }) {
     if (this.state.currentUser.role === 'producer') {
       alert("Apenas a mesa do Financeiro Disk pode conceder créditos/antecipações.");
       return null;
@@ -3208,17 +3268,22 @@ export class CoreFinanceiroStore {
     const installmentValue = totalDebt / numInstallments;
 
     const creditId = `CR-${Date.now()}`;
-    const protocol = `CR-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+    const protocol = contractRef && contractRef.trim().length >= 3
+      ? contractRef.trim()
+      : `CR-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
 
     const newCredit = {
       id: creditId,
       protocol,
+      contractRef: (contractRef || protocol).trim(),
       producerId: producer ? producer.id : targetProducerId,
       producerName: producer ? producer.name : event.producerName,
       eventId: event.id,
       eventName: event.name,
       principal: numPrincipal,
       interestRate: numInterest,
+      interestModel,
+      firstDueDate,
       installmentsCount: numInstallments,
       installmentValue: Math.round(installmentValue * 100) / 100,
       amortizationModel,
@@ -3232,6 +3297,8 @@ export class CoreFinanceiroStore {
       notes: notes.trim(),
       amortizationHistory: []
     };
+
+    newCredit.schedule = this.buildInstallmentSchedule(newCredit, firstDueDate);
 
     this.data.producerCredits = this.data.producerCredits || [];
     this.data.producerCredits.unshift(newCredit);
@@ -3260,7 +3327,7 @@ export class CoreFinanceiroStore {
       alert("Contrato de crédito não encontrado.");
       return null;
     }
-    if (credit.status !== 'ATIVO') {
+    if (credit.status !== 'ATIVO' && credit.status !== 'EM_ATRASO') {
       alert("Este contrato de crédito já está liquidado.");
       return null;
     }
@@ -3274,6 +3341,9 @@ export class CoreFinanceiroStore {
     const amortizedValue = Math.min(numAmount, credit.outstandingDebt);
     credit.outstandingDebt = Math.round((credit.outstandingDebt - amortizedValue) * 100) / 100;
     credit.amortizedTotal = Math.round((credit.amortizedTotal + amortizedValue) * 100) / 100;
+
+    this.applyPaymentToSchedule(credit, amortizedValue);
+    this.refreshCreditDelinquency(credit);
 
     if (credit.outstandingDebt <= 0) {
       credit.status = 'LIQUIDADO';
