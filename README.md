@@ -221,3 +221,7 @@ No rodapé da tela, a barra interativa permite a qualquer momento:
 - `+ Venda PIX`: injeta transação direta D+0 com saldo imediato.
 - `+ Chargeback`: simula contestação de operadora debitando garantia.
 - `Restaurar Dados da Demo`: retorna todo o banco de dados fictício ao estado inicial.
+
+## V0.6.1 — Taxas, MDR, Spread e Regras Comerciais
+
+Inclui matriz administrativa de MDR e regras comerciais, Spread bruto, custos adicionais, receita fixa comercial, margem líquida efetiva, hierarquia Evento → Produtor → Geral Disk e versionamento. Veja `docs/V0.6.1_TAXAS_MDR_SPREAD_REGRAS_COMERCIAIS.md`.

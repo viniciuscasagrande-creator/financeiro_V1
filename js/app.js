@@ -3025,6 +3025,8 @@ class LimitlessFinancialApp {
       chargedRate: '',
       mdr: '',
       fixedFee: 0,
+      additionalCost: 0,
+      commercialRevenueFixed: 0,
       payer: 'Produtor',
       term: 'D+30',
       scopeType: 'Geral Disk',
@@ -3104,21 +3106,37 @@ class LimitlessFinancialApp {
               <input id="modalInputCharged" name="chargedRate" type="number" step="0.01" min="0" class="form-control" required value="${r.chargedRate}" placeholder="Ex: 8.00" oninput="window.app.recalcModalSpread()">
             </div>
             <div class="col-md-3">
-              <label class="form-label fw-bold">Tarifa Fixa (R$)</label>
+              <label class="form-label fw-bold">Tarifa Fixa do Adquirente (R$)</label>
               <input id="modalInputFixed" name="fixedFee" type="number" step="0.01" min="0" class="form-control" value="${r.fixedFee || 0}" oninput="window.app.recalcModalSpread()">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label fw-bold">Custos Adicionais (R$)</label>
+              <input id="modalInputAdditional" name="additionalCost" type="number" step="0.01" min="0" class="form-control" value="${r.additionalCost || 0}" oninput="window.app.recalcModalSpread()">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label fw-bold">Receita Fixa Comercial (R$)</label>
+              <input id="modalInputRevenueFixed" name="commercialRevenueFixed" type="number" step="0.01" min="0" class="form-control" value="${r.commercialRevenueFixed || 0}" oninput="window.app.recalcModalSpread()">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label fw-bold">Tipo de Regra</label>
+              <select name="ruleType" class="form-select">
+                <option value="Percentual" ${r.ruleType === 'Percentual' ? 'selected' : ''}>Percentual</option>
+                <option value="Fixa" ${r.ruleType === 'Fixa' ? 'selected' : ''}>Fixa</option>
+                <option value="Híbrida" ${!r.ruleType || r.ruleType === 'Híbrida' ? 'selected' : ''}>Híbrida</option>
+              </select>
             </div>
 
             <!-- Box Dinâmico de Cálculo de Spread Líquido -->
             <div class="col-12">
               <div id="modalSpreadLiveBox" style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center;">
                 <div>
-                  <div style="font-size: 0.78rem; font-weight: 700; color: #166534; text-transform: uppercase;">Margem de Spread Líquido Calculada:</div>
+                  <div style="font-size: 0.78rem; font-weight: 700; color: #166534; text-transform: uppercase;">Spread Bruto / Margem Líquida:</div>
                   <div id="modalSpreadText" style="font-size: 1.15rem; font-weight: 800; color: #15803d;">
-                    ${(Number(r.chargedRate || 0) - Number(r.mdr || 0)).toFixed(2)}% de Spread Líquido
+                    Spread bruto ${(Number(r.chargedRate || 0) - Number(r.mdr || 0)).toFixed(2)}% · simule o ticket para margem líquida
                   </div>
                 </div>
                 <div style="font-size: 0.78rem; color: #166534; text-align: right;">
-                  Fórmula Oficial:<br><strong>Spread = Taxa Cobrada - Custo MDR Disk</strong>
+                  Fórmulas:<br><strong>Spread bruto = Taxa cobrada − MDR</strong><br><strong>Margem líquida = Receita − MDR − tarifas − custos adicionais</strong>
                 </div>
               </div>
             </div>
@@ -3186,10 +3204,12 @@ class LimitlessFinancialApp {
     const charged = parseFloat(document.getElementById('modalInputCharged')?.value) || 0;
     const mdr = parseFloat(document.getElementById('modalInputMdr')?.value) || 0;
     const fixed = parseFloat(document.getElementById('modalInputFixed')?.value) || 0;
+    const additional = parseFloat(document.getElementById('modalInputAdditional')?.value) || 0;
+    const revenueFixed = parseFloat(document.getElementById('modalInputRevenueFixed')?.value) || 0;
     const spread = charged - mdr;
     const box = document.getElementById('modalSpreadText');
     if (box) {
-      box.innerText = `+${spread.toFixed(2)}% de Spread Líquido ${fixed > 0 ? `(+ R$ ${fixed.toFixed(2)} fixa)` : ''}`;
+      box.innerText = `${spread >= 0 ? '+' : ''}${spread.toFixed(2)}% de Spread Bruto · tarifa R$ ${fixed.toFixed(2)} · outros R$ ${additional.toFixed(2)} · receita fixa R$ ${revenueFixed.toFixed(2)}`;
     }
   }
 

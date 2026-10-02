@@ -2594,6 +2594,8 @@ export class CoreFinanceiroStore {
     const chargedRate = Number(payload.chargedRate);
     const mdr = Number(payload.mdr);
     const fixedFee = Number(payload.fixedFee || 0);
+    const additionalCost = Number(payload.additionalCost || 0);
+    const commercialRevenueFixed = Number(payload.commercialRevenueFixed || 0);
     if (!payload.name?.trim() || !payload.acquirer?.trim()) {
       throw new Error('Informe regra e adquirente.');
     }
@@ -2618,6 +2620,8 @@ export class CoreFinanceiroStore {
         chargedRate,
         mdr,
         fixedFee,
+        additionalCost,
+        commercialRevenueFixed,
         version: (row.version || 1) + 1,
         updatedAt: now
       });
@@ -2628,6 +2632,9 @@ export class CoreFinanceiroStore {
         chargedRate,
         mdr,
         fixedFee,
+        additionalCost,
+        commercialRevenueFixed,
+        ruleType: payload.ruleType || 'Híbrida',
         status: 'Ativa',
         version: 1,
         history: [],

@@ -413,7 +413,7 @@ export function renderDiskTaxas(state, filter = 'disk') {
             <i class="ph-percent text-primary"></i> Taxas & Regras Comerciais Administrativas
           </h1>
           <p class="page-title-desc" style="color: #94a3b8; font-size: 0.85rem;">
-            Gestão operacional de custos de adquirência (MDR), taxas comerciais cobradas, spreads líquidos, políticas de parcelamento e regras por escopo (Geral Disk, Produtor ou Evento).
+            Gestão operacional de custos de adquirência (MDR), taxas comerciais cobradas, spread bruto, margem líquida efetiva, políticas de parcelamento e regras por escopo (Geral Disk, Produtor ou Evento).
           </p>
         </div>
         <div class="header-action-group" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
@@ -442,9 +442,9 @@ export function renderDiskTaxas(state, filter = 'disk') {
           </div>
 
           <div class="kpi-card success-accent">
-            <div class="kpi-header"><span class="kpi-title">Spread Médio Líquido</span></div>
+            <div class="kpi-header"><span class="kpi-title">Spread Bruto Médio</span></div>
             <div class="kpi-value" style="color: #059669;">+${avgSpread}%</div>
-            <div class="kpi-subtext"><span>Margem líquida da Disk Ingressos</span></div>
+            <div class="kpi-subtext"><span>Diferença média entre taxa comercial e MDR</span></div>
           </div>
 
           <div class="kpi-card">
