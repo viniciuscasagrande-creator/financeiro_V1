@@ -1164,7 +1164,7 @@ export class CoreFinanceiroStore {
 
     // Deduções operacionais canônicas do limite de repasse:
     // Limite = (Vendas * %Liberado) - repasses anteriores - bloqueados - reservados - amortização de crédito - obrigações - estornos
-    const totalDeductions = previousPayouts + reservedBalance + blockedBalance + creditAmortizationHold + obligationsHold + refundsHold + executedRefunds;
+    const totalDeductions = previousPayouts + reservedBalance + retainedBalance + blockedBalance + creditAmortizationHold + obligationsHold + refundsHold + executedRefunds;
     const standardAvailable = Math.max(0, limiteBruto - totalDeductions);
 
     // Trava de saldo disponível no evento (descontando reservas de obrigações e estornos em hold)

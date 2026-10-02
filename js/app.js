@@ -229,9 +229,13 @@ class LimitlessFinancialApp {
     }
 
     if (targetView === 'diskProdutores') {
-      if (filterArg === 'contas') {
+      // Produtores sempre abre no Dossiê Financeiro. Contas bancárias só por rota explícita.
+      // Evita herdar a última aba visitada e parecer que o submenu Produtores não mudou.
+      if (filterArg === 'contas' || filterArg === 'bancarias') {
         this.diskProdutoresTab = 'bancarias';
-      } else if (filterArg === 'all') {
+      } else if (filterArg === 'financeiras') {
+        this.diskProdutoresTab = 'financeiras';
+      } else {
         this.diskProdutoresTab = 'dossie';
       }
     }

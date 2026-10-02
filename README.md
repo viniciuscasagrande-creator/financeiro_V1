@@ -232,3 +232,7 @@ A matriz de Taxas/MDR/Spread passa a alimentar a apuração gerencial por evento
 ## V0.6.2.1 — Correção Produtores, Saldos e Repasse por Evento
 Abertura padrão no Dossiê Financeiro do Produtor, segregação patrimonial e contábil por evento (`Saldo do Evento → Limite da Política → Deduções do Evento → Elegível para Repasse`), eliminação da simulação indevida de repasse pelo Financeiro Disk e atuação administrativa via Autorização Excepcional. Consulte `docs/V0.6.2.1_CORRECAO_PRODUTORES_REPASSE_EVENTO.md`.
 
+## V0.6.2.2 — Correção Real do Submenu Produtores
+Ajuste da implementação utilizada no protótipo web (`js/views/disk/produtores.js` e `js/app.js`): abertura por padrão no Dossiê Financeiro (`dossie`), cabeçalho e botões dinâmicos por aba (ocultando adição de conta bancária no Dossiê), deduções detalhadas por evento e inclusão de `retainedBalance` em `totalDeductions` no cálculo de elegibilidade do motor (`js/state.js`). Consulte `docs/V0.6.2.2_CORRECAO_REAL_SUBMENU_PRODUTORES.md`.
+
+

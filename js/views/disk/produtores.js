@@ -73,17 +73,18 @@ export function renderDiskProdutores(state, filterArg = 'all') {
         <div class="page-title-group">
           <h1 style="color: #f8fafc;">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2.2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-            Contas Financeiras & Contas Bancárias de Produtores
+            ${currentTab === 'dossie' ? 'Dossiê Financeiro do Produtor' : (currentTab === 'financeiras' ? 'Contas Financeiras Internas' : 'Contas Bancárias de Repasse')}
           </h1>
           <p class="page-title-desc" style="color: #94a3b8;">
-            Cadastro de contas bancárias externas homologadas para repasse (Bacen/CIP), segregação de contas financeiras internas e esteira de validação.
+            ${currentTab === 'dossie' ? 'Visão administrativa por produtor e evento, com saldo, política de repasse, deduções exclusivas do evento e autorizações excepcionais.' : (currentTab === 'financeiras' ? 'Contas internas do Core, saldos segregados e controles financeiros administrativos.' : 'Cadastro e homologação das contas bancárias externas utilizadas na liquidação dos repasses.')}
           </p>
         </div>
         <div class="header-action-group" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-          <button class="btn btn-primary" onclick="window.app.openAddProducerBankModal('${activeProducer ? activeProducer.id : ''}')" style="background: #2563eb; border-color: #1d4ed8; display: flex; align-items: center; gap: 8px; font-weight: 700;">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-            + Adicionar Conta Bancária
-          </button>
+          ${currentTab === 'bancarias' ? `
+            <button class="btn btn-primary" onclick="window.app.openAddProducerBankModal('${activeProducer ? activeProducer.id : ''}')" style="background: #2563eb; border-color: #1d4ed8; display: flex; align-items: center; gap: 8px; font-weight: 700;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+              + Adicionar Conta Bancária
+            </button>` : ''}
         </div>
       </div>
     </div>
@@ -583,6 +584,7 @@ function renderTabDossieProdutor(state, activeProducer) {
                   <td style="text-align: right; font-weight: 700; color:#b45309;">
                     -${formatCurrency(eventEligibility[evt.id]?.totalDeductions || 0)}
                     <div style="font-size:.68rem;color:var(--text-muted);">Somente deste evento</div>
+                    <div style="font-size:.65rem;color:#94a3b8;">Repasses ${formatCurrency(eventEligibility[evt.id]?.previousPayouts || 0)} • Retido ${formatCurrency(eventEligibility[evt.id]?.retainedBalance || 0)} • Bloqueado ${formatCurrency(eventEligibility[evt.id]?.blockedBalance || 0)}</div>
                   </td>
                   <td style="text-align: right; font-weight: 800; color:${(eventEligibility[evt.id]?.disponivelFinal || 0) > 0 ? '#059669' : '#dc2626'};">
                     ${formatCurrency(eventEligibility[evt.id]?.disponivelFinal || 0)}
