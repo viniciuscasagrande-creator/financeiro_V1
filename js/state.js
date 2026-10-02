@@ -6,7 +6,7 @@ import { getFreshDatabase } from './mockData.js';
 
 export class CoreFinanceiroStore {
   constructor() {
-    this.storageKey = 'disk-financeiro-v1-p24';
+    this.storageKey = 'disk-financeiro-v1-p24-v03';
     this.data = this.loadPersistedData() || getFreshDatabase();
     if (!this.data.__p12Enriched) {
       this.enrichApprovalQueueWithAuditAndSignatures();
@@ -555,6 +555,101 @@ export class CoreFinanceiroStore {
         }
       ];
     }
+
+    // Pacote 24 / V0.3: Agenda de Obrigações e Reservas Internas (Aluguel, ECAD, Fornecedores, etc.)
+    if (!this.data.eventObligations) {
+      this.data.eventObligations = [
+        {
+          id: "OB-2026-001",
+          eventId: "evt-003",
+          producerId: "prod-abc",
+          category: "ALUGUEL_ESPACO",
+          description: "Aluguel do espaço / Arena Principal",
+          beneficiary: "Arena Positivo / Teatro",
+          value: 80000.00,
+          dueDate: "2026-11-10",
+          documentRef: "Contrato Locação 2026/04",
+          status: "RESERVADO", // 'PREVISTO', 'RESERVADO', 'RETIDO', 'LIQUIDADO'
+          createdAt: "2026-10-01T12:00:00Z",
+          actor: "Financeiro Disk",
+          notes: "Reserva preventiva para garantia do aluguel do espaço"
+        },
+        {
+          id: "OB-2026-002",
+          eventId: "evt-003",
+          producerId: "prod-abc",
+          category: "ECAD",
+          description: "Direitos Autorais / ECAD",
+          beneficiary: "ECAD - Escritório Central de Arrecadação",
+          value: 15000.00,
+          dueDate: "2026-11-15",
+          documentRef: "Guia ECAD ref. 10/2026",
+          status: "RESERVADO",
+          createdAt: "2026-10-01T12:10:00Z",
+          actor: "Financeiro Disk",
+          notes: "Reserva preventiva obrigatória de execução musical"
+        },
+        {
+          id: "OB-2026-003",
+          eventId: "evt-003",
+          producerId: "prod-abc",
+          category: "OPERACIONAL",
+          description: "Segurança e Brigada de Incêndio",
+          beneficiary: "Grupo Alfa Segurança Armada",
+          value: 10000.00,
+          dueDate: "2026-11-05",
+          documentRef: "Ordem de Serviço OS-8821",
+          status: "RESERVADO",
+          createdAt: "2026-10-01T12:20:00Z",
+          actor: "Financeiro Disk",
+          notes: "Obrigação operacional indispensável para realização"
+        }
+      ];
+    }
+
+    // Pacote 24 / V0.3: Fila Interna de Estornos com Reserva Imediata e Dupla Autorização (SoD)
+    if (!this.data.internalRefunds) {
+      this.data.internalRefunds = [
+        {
+          id: "ES-2026-001",
+          eventId: "evt-003",
+          producerId: "prod-abc",
+          orderId: "PED-98421",
+          value: 1250.00,
+          reason: "Contestação de compra / cancelamento de ingresso VIP Duplo",
+          status: "AGUARDANDO_SEGUNDA_AUTORIZACAO",
+          requestedBy: "João Analista (Financeiro Disk)",
+          approvals: [
+            {
+              approvalIndex: 1,
+              userId: "usr-disk-01",
+              userName: "Karine Mendes",
+              userRole: "Financeiro Disk",
+              at: "2026-10-02T10:15:00Z",
+              factor: "MFA_TOKEN_VALIDADO",
+              notes: "1ª autorização: Comprovante de cancelamento conferido no SAC"
+            }
+          ],
+          executedBy: null,
+          executedAt: null,
+          createdAt: "2026-10-02T10:00:00Z"
+        },
+        {
+          id: "ES-2026-002",
+          eventId: "evt-003",
+          producerId: "prod-abc",
+          orderId: "PED-98770",
+          value: 450.00,
+          reason: "Cancelamento no prazo legal do consumidor (Art. 49 CDC)",
+          status: "AGUARDANDO_PRIMEIRA_AUTORIZACAO",
+          requestedBy: "Mesa Financeiro Disk",
+          approvals: [],
+          executedBy: null,
+          executedAt: null,
+          createdAt: "2026-10-02T11:00:00Z"
+        }
+      ];
+    }
   }
 
   recordOperationEvent(item, action, details = '', module = 'Core Financeiro') {
@@ -1049,13 +1144,32 @@ export class CoreFinanceiroStore {
       }
     }
 
+    // Pacote 24 / V0.3: Obrigações internas do evento (aluguel, ECAD, fornecedores, etc.)
+    const obligationsForEvent = (this.data.eventObligations || []).filter(
+      o => o.eventId === event.id && ['RESERVADO', 'RETIDO'].includes(o.status)
+    );
+    const obligationsHold = obligationsForEvent.reduce((s, o) => s + Number(o.value || 0), 0);
+
+    // Pacote 24 / V0.3: Reservas de estornos em andamento (aguardando autorização/efetivação)
+    const pendingRefundsForEvent = (this.data.internalRefunds || []).filter(
+      r => r.eventId === event.id && ['AGUARDANDO_PRIMEIRA_AUTORIZACAO', 'AGUARDANDO_SEGUNDA_AUTORIZACAO', 'AUTORIZADO_PARA_EFETIVAR'].includes(r.status)
+    );
+    const refundsHold = pendingRefundsForEvent.reduce((s, r) => s + Number(r.value || 0), 0);
+
+    // Estornos já efetivados
+    const executedRefundsForEvent = (this.data.internalRefunds || []).filter(
+      r => r.eventId === event.id && r.status === 'EFETIVADO'
+    );
+    const executedRefunds = executedRefundsForEvent.reduce((s, r) => s + Number(r.value || 0), 0);
+
     // Deduções operacionais canônicas do limite de repasse:
-    // Limite = (Vendas * %Liberado) - repasses anteriores - bloqueados - reservados - amortização de crédito
-    const totalDeductions = previousPayouts + reservedBalance + blockedBalance + creditAmortizationHold;
+    // Limite = (Vendas * %Liberado) - repasses anteriores - bloqueados - reservados - amortização de crédito - obrigações - estornos
+    const totalDeductions = previousPayouts + reservedBalance + blockedBalance + creditAmortizationHold + obligationsHold + refundsHold + executedRefunds;
     const standardAvailable = Math.max(0, limiteBruto - totalDeductions);
 
-    // Trava de saldo disponível no evento
-    const eventAvailable = Number(event.availableBalance || 0);
+    // Trava de saldo disponível no evento (descontando reservas de obrigações e estornos em hold)
+    const rawEventAvailable = Number(event.availableBalance || 0);
+    const eventAvailable = Math.max(0, rawEventAvailable - obligationsHold - refundsHold);
     const maxStandardEligible = Math.min(eventAvailable, standardAvailable);
 
     // Verifica se há Autorização Excepcional ativa para este evento
@@ -1089,9 +1203,15 @@ export class CoreFinanceiroStore {
       retainedBalance,
       blockedBalance,
       creditAmortizationHold,
+      obligationsHold,
+      refundsHold,
+      executedRefunds,
+      obligations: obligationsForEvent,
+      pendingRefunds: pendingRefundsForEvent,
       activeCredit: activeCreditForEvent || null,
       totalDeductions,
       eventAvailable,
+      rawEventAvailable,
       standardAvailable,
       disponivelPadrao: maxStandardEligible,
       disponivelFinal: finalAvailable,
@@ -3019,6 +3139,17 @@ export class CoreFinanceiroStore {
     const totalBlocked = eventsCalculated.reduce((acc, e) => acc + Number(e.blockedBalance || 0), 0);
     const totalRetained = eventsCalculated.reduce((acc, e) => acc + Number(e.retainedBalance || 0), 0);
 
+    const allObligations = (this.data.eventObligations || []).filter(o => events.some(e => e.id === o.eventId));
+    const allRefunds = (this.data.internalRefunds || []).filter(r => events.some(e => e.id === r.eventId));
+
+    const totalObligationsHold = allObligations
+      .filter(o => ['RESERVADO', 'RETIDO'].includes(o.status))
+      .reduce((s, o) => s + Number(o.value || 0), 0);
+
+    const totalRefundsHold = allRefunds
+      .filter(r => ['AGUARDANDO_PRIMEIRA_AUTORIZACAO', 'AGUARDANDO_SEGUNDA_AUTORIZACAO', 'AUTORIZADO_PARA_EFETIVAR'].includes(r.status))
+      .reduce((s, r) => s + Number(r.value || 0), 0);
+
     const totalAvailableForRepasse = eventsCalculated.reduce((acc, e) => {
       return acc + (e.eligibility ? e.eligibility.disponivelFinal : 0);
     }, 0);
@@ -3034,12 +3165,16 @@ export class CoreFinanceiroStore {
         futurePending: Math.round(futurePending * 100) / 100,
         blocked: Math.round(totalBlocked * 100) / 100,
         retained: Math.round(totalRetained * 100) / 100,
+        obligationsReserved: Math.round(totalObligationsHold * 100) / 100,
+        pendingRefundsHold: Math.round(totalRefundsHold * 100) / 100,
         outstandingCredits: Math.round(totalOutstandingCredits * 100) / 100,
         totalSold: Math.round(totalGrossSales * 100) / 100,
         totalPaid: Math.round(totalPaid * 100) / 100
       },
       events: eventsCalculated,
       credits: producerCredits,
+      obligations: allObligations,
+      refunds: allRefunds,
       ledger: (this.data.operationAuditTrail || []).filter(l => l.producerId === producer.id || l.producerName === producer.name)
     };
   }
@@ -3287,6 +3422,345 @@ export class CoreFinanceiroStore {
     this.persist();
     this.notify();
     return event;
+  }
+
+  // ==========================================================================
+  // PACOTE 24 / V0.3: AGENDA DE OBRIGAÇÕES E RESERVAS INTERNAS DO EVENTO
+  // ==========================================================================
+
+  createEventObligation({ eventId, category = 'OUTROS', description, beneficiary = '', value, dueDate = '', documentRef = '', status = 'RESERVADO', notes = '' }) {
+    if (this.state.currentUser.role === 'producer') {
+      alert("Apenas a equipe do Financeiro Disk pode gerenciar a agenda de obrigações e retenções internas.");
+      return null;
+    }
+    const numValue = parseFloat(value);
+    if (!numValue || numValue <= 0) {
+      alert("Informe um valor válido para a obrigação.");
+      return null;
+    }
+    if (!description || description.trim().length < 3) {
+      alert("A descrição da obrigação deve ter no mínimo 3 caracteres.");
+      return null;
+    }
+
+    const event = this.data.events.find(e => e.id === eventId);
+    if (!event) {
+      alert("Evento não encontrado.");
+      return null;
+    }
+
+    const obId = `OB-${Date.now()}`;
+    const newOb = {
+      id: obId,
+      eventId: event.id,
+      eventName: event.name,
+      producerId: event.producerId,
+      category,
+      description: description.trim(),
+      beneficiary: beneficiary ? beneficiary.trim() : 'Favorecido não especificado',
+      value: numValue,
+      dueDate: dueDate || new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0],
+      documentRef: documentRef ? documentRef.trim() : '',
+      status: status || 'RESERVADO', // 'PREVISTO', 'RESERVADO', 'RETIDO', 'LIQUIDADO'
+      notes: notes.trim(),
+      createdAt: new Date().toISOString(),
+      actor: `${this.state.currentUser.name} (Financeiro Disk)`
+    };
+
+    this.data.eventObligations = this.data.eventObligations || [];
+    this.data.eventObligations.unshift(newOb);
+
+    const protocol = `OBG-${Date.now()}`;
+    this.recordOperationEvent(
+      { id: protocol, protocol, type: 'Agenda de Obrigações', eventName: event.name },
+      'Obrigação Registrada',
+      `Obrigação ${newOb.description} no valor de R$ ${numValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} vinculada ao credor ${newOb.beneficiary}. Status: ${newOb.status}.`,
+      'Financeiro Disk'
+    );
+
+    this.showToast(
+      "📌 Obrigação Registrada na Agenda",
+      `${newOb.description}: ${numValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} reservado para ${newOb.beneficiary}.`,
+      "info"
+    );
+
+    this.persist();
+    this.notify();
+    return newOb;
+  }
+
+  updateEventObligationStatus({ obligationId, status, notes = '' }) {
+    if (this.state.currentUser.role === 'producer') {
+      alert("Acesso restrito ao Financeiro Disk.");
+      return null;
+    }
+    const ob = (this.data.eventObligations || []).find(o => o.id === obligationId);
+    if (!ob) {
+      alert("Obrigação não localizada.");
+      return null;
+    }
+
+    const oldStatus = ob.status;
+    ob.status = status;
+    ob.updatedAt = new Date().toISOString();
+    if (notes) ob.notes = `${ob.notes ? ob.notes + ' | ' : ''}${notes.trim()}`;
+
+    if (status === 'LIQUIDADO') {
+      ob.liquidatedAt = new Date().toISOString();
+      ob.liquidatedBy = `${this.state.currentUser.name} (Financeiro Disk)`;
+
+      // Quando liquidada/paga, abate do saldo financeiro real do evento
+      const event = this.data.events.find(e => e.id === ob.eventId);
+      if (event) {
+        event.availableBalance = Math.max(0, (event.availableBalance || 0) - ob.value);
+      }
+
+      this.recordOperationEvent(
+        { id: ob.id, protocol: ob.id, type: 'Liquidação de Obrigação', eventName: ob.eventName },
+        'Obrigação Paga / Liquidada',
+        `Pagamento de R$ ${ob.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} liquidado a favor de ${ob.beneficiary}.`,
+        'Tesouraria Disk'
+      );
+    } else {
+      this.recordOperationEvent(
+        { id: ob.id, protocol: ob.id, type: 'Atualização de Obrigação', eventName: ob.eventName },
+        `Status alterado: ${oldStatus} -> ${status}`,
+        `Obrigação ${ob.description} (${ob.beneficiary}) agora com status ${status}.`,
+        'Financeiro Disk'
+      );
+    }
+
+    this.showToast(
+      "Obrigação Atualizada",
+      `${ob.description} transicionada para ${status}.`,
+      "success"
+    );
+
+    this.persist();
+    this.notify();
+    return ob;
+  }
+
+  // ==========================================================================
+  // PACOTE 24 / V0.3: FILA INTERNA DE ESTORNOS COM DUPLA AUTORIZAÇÃO (SoD)
+  // ==========================================================================
+
+  openInternalRefund({ eventId, orderId, value, reason }) {
+    if (this.state.currentUser.role === 'producer') {
+      alert("Apenas a equipe do Financeiro Disk pode abrir estornos internos.");
+      return null;
+    }
+    const numValue = parseFloat(value);
+    if (!numValue || numValue <= 0) {
+      alert("Informe um valor de estorno válido.");
+      return null;
+    }
+    if (!orderId || orderId.trim().length < 2) {
+      alert("Identificador do pedido/ingresso obrigatório.");
+      return null;
+    }
+    if (!reason || reason.trim().length < 5) {
+      alert("Justificativa formal do estorno obrigatória (mínimo 5 caracteres).");
+      return null;
+    }
+
+    const event = this.data.events.find(e => e.id === eventId);
+    if (!event) {
+      alert("Evento não encontrado.");
+      return null;
+    }
+
+    const refId = `ES-${Date.now()}`;
+    const newRefund = {
+      id: refId,
+      eventId: event.id,
+      eventName: event.name,
+      producerId: event.producerId,
+      orderId: orderId.trim(),
+      value: numValue,
+      reason: reason.trim(),
+      status: 'AGUARDANDO_PRIMEIRA_AUTORIZACAO',
+      requestedBy: `${this.state.currentUser.name} (Financeiro Disk)`,
+      requestedByUserId: this.state.currentUser.id,
+      approvals: [],
+      executedBy: null,
+      executedAt: null,
+      createdAt: new Date().toISOString()
+    };
+
+    this.data.internalRefunds = this.data.internalRefunds || [];
+    this.data.internalRefunds.unshift(newRefund);
+
+    this.recordOperationEvent(
+      { id: refId, protocol: refId, type: 'Reserva de Estorno', eventName: event.name },
+      'Estorno Aberto & Saldo Reservado',
+      `Pedido ${newRefund.orderId}: R$ ${numValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} reservado preventivamente. Aguardando 1ª autorização. Justificativa: ${reason.trim()}`,
+      'Mesa de Estornos Disk'
+    );
+
+    this.showToast(
+      "↩️ Estorno Solicitado & Saldo Reservado",
+      `Pedido ${orderId}: ${numValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} retido para aprovação interna.`,
+      "info"
+    );
+
+    this.persist();
+    this.notify();
+    return newRefund;
+  }
+
+  authorizeInternalRefund({ refundId, factor = 'REAUTENTICACAO_MFA', notes = '' }) {
+    if (this.state.currentUser.role === 'producer') {
+      alert("Apenas a equipe do Financeiro Disk pode autorizar estornos.");
+      return null;
+    }
+    const refund = (this.data.internalRefunds || []).find(r => r.id === refundId);
+    if (!refund) {
+      alert("Registro de estorno não localizado.");
+      return null;
+    }
+
+    if (['EFETIVADO', 'REJEITADO', 'CANCELADO'].includes(refund.status)) {
+      alert("Este estorno já foi finalizado e não aceita novas autorizações.");
+      return null;
+    }
+
+    // Regra estrita de Segregação de Funções (SoD):
+    // Quem concedeu a 1ª autorização NÃO pode conceder a 2ª autorização!
+    const currentUserId = this.state.currentUser.id;
+    const currentUserName = this.state.currentUser.name;
+
+    const alreadyApproved = (refund.approvals || []).some(
+      a => a.userId === currentUserId || (a.userName === currentUserName && currentUserName !== 'Usuário Disk')
+    );
+
+    if (alreadyApproved) {
+      alert("Segregação de Funções Estrita: O mesmo usuário não pode conceder a 1ª e a 2ª autorização da mesma operação.");
+      return null;
+    }
+
+    refund.approvals = refund.approvals || [];
+    refund.approvals.push({
+      approvalIndex: refund.approvals.length + 1,
+      userId: currentUserId,
+      userName: currentUserName,
+      userRole: this.state.currentUser.role === 'admin' ? 'Administrador Disk' : 'Analista Financeiro Disk',
+      at: new Date().toISOString(),
+      factor: factor || 'REAUTENTICACAO_MFA',
+      notes: notes.trim()
+    });
+
+    if (refund.approvals.length === 1) {
+      refund.status = 'AGUARDANDO_SEGUNDA_AUTORIZACAO';
+    } else if (refund.approvals.length >= 2) {
+      refund.status = 'AUTORIZADO_PARA_EFETIVAR';
+    }
+
+    this.recordOperationEvent(
+      { id: refund.id, protocol: refund.id, type: 'Autorização de Estorno', eventName: refund.eventName },
+      `${refund.approvals.length}ª Autorização Concedida`,
+      `Autorizado por ${currentUserName} com fator ${factor}. Status atual: ${refund.status}.`,
+      'Controle Interno Disk'
+    );
+
+    this.showToast(
+      `✓ ${refund.approvals.length}ª Autorização Confirmada`,
+      refund.status === 'AUTORIZADO_PARA_EFETIVAR'
+        ? "Dupla autorização concluída! Liberado para efetivação bancária/gateway."
+        : "1ª autorização registrada. Aguardando 2ª autorização por outro operador.",
+      "success"
+    );
+
+    this.persist();
+    this.notify();
+    return refund;
+  }
+
+  executeInternalRefund({ refundId }) {
+    if (this.state.currentUser.role === 'producer') {
+      alert("Apenas a mesa do Financeiro Disk pode efetivar estornos.");
+      return null;
+    }
+    const refund = (this.data.internalRefunds || []).find(r => r.id === refundId);
+    if (!refund) {
+      alert("Estorno não localizado.");
+      return null;
+    }
+
+    if (refund.status !== 'AUTORIZADO_PARA_EFETIVAR' || (refund.approvals || []).length < 2) {
+      alert("Efetivação bloqueada: O estorno exige 2 autorizações distintas de operadores do Financeiro Disk antes da liquidação financeira.");
+      return null;
+    }
+
+    refund.status = 'EFETIVADO';
+    refund.executedBy = `${this.state.currentUser.name} (Financeiro Disk)`;
+    refund.executedAt = new Date().toISOString();
+
+    const event = this.data.events.find(e => e.id === refund.eventId);
+    if (event) {
+      event.availableBalance = Math.max(0, (event.availableBalance || 0) - refund.value);
+      event.grossSales = Math.max(0, (event.grossSales || 0) - refund.value);
+    }
+
+    // Registra baixa de reserva e débito definitivo de estorno no Ledger
+    this.recordOperationEvent(
+      { id: refund.id, protocol: refund.id, type: 'Estorno Efetivado', eventName: refund.eventName },
+      'Estorno Liquidado no Gateway & Ledger',
+      `Estorno de R$ ${refund.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} no pedido ${refund.orderId} efetivado após dupla conferência (${refund.approvals.map(a => a.userName).join(' & ')}).`,
+      'Gateway & Ledger Disk'
+    );
+
+    this.showToast(
+      "✓ Estorno Efetivado com Sucesso",
+      `R$ ${refund.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} estornado no gateway e registrado no ledger.`,
+      "success"
+    );
+
+    this.persist();
+    this.notify();
+    return refund;
+  }
+
+  cancelInternalRefund({ refundId, reason = '' }) {
+    if (this.state.currentUser.role === 'producer') {
+      alert("Acesso restrito ao Financeiro Disk.");
+      return null;
+    }
+    const refund = (this.data.internalRefunds || []).find(r => r.id === refundId);
+    if (!refund) {
+      alert("Estorno não localizado.");
+      return null;
+    }
+    if (refund.status === 'EFETIVADO') {
+      alert("Estorno já efetivado e liquidado no gateway não pode ser cancelado.");
+      return null;
+    }
+    if (!reason || reason.trim().length < 5) {
+      alert("Justificativa formal de cancelamento obrigatória (mínimo 5 caracteres).");
+      return null;
+    }
+
+    refund.status = 'CANCELADO';
+    refund.cancelledAt = new Date().toISOString();
+    refund.cancelledBy = `${this.state.currentUser.name} (Financeiro Disk)`;
+    refund.cancelReason = reason.trim();
+
+    this.recordOperationEvent(
+      { id: refund.id, protocol: refund.id, type: 'Cancelamento de Estorno', eventName: refund.eventName },
+      'Estorno Cancelado & Reserva Liberada',
+      `Reserva de R$ ${refund.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} liberada no evento. Motivo do cancelamento: ${reason.trim()}`,
+      'Controle Interno Disk'
+    );
+
+    this.showToast(
+      "Estorno Cancelado",
+      `Reserva de ${refund.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} liberada no saldo do evento.`,
+      "info"
+    );
+
+    this.persist();
+    this.notify();
+    return refund;
   }
 
   resetDemoData() {

@@ -1,77 +1,55 @@
-# Conta Financeira do Produtor — V0.2 (Homologação PDT Novo)
+# Financeiro Disk — Conta Financeira Interna V0.4 (Operacional)
 
-Módulo contábil e financeiro unificado desenvolvido para a **Disk Ingressos**, estruturado em torno da **Conta Financeira Interna Vinculada ao CNPJ do Produtor** e preparado para homologação e posterior incorporação ao **PDT Novo** (`pdtnovo.diskingressos.com.br`).
-
----
-
-## 1. Fundamentos Arquiteturais
-
-### 1.1 Conta Financeira Vinculada ao CNPJ (Sem Apresentação como "Banco")
-A Disk Ingressos opera controles estritos de **conta corrente financeira interna** dentro do seu ledger, enquanto as movimentações bancárias reais ocorrem nas contas e gateways correspondentes.
-- Cada produtor possui uma conta mestra identificada por seu **CNPJ**.
-- A conta mestra consolida os saldos e mantém a segregação contábil rigorosa de **cada evento individual**.
-- O ledger identifica a origem de cada centavo:
-  $$\text{Saldo Anterior} + \text{Créditos} - \text{Débitos} = \text{Saldo Atual}$$
-
-### 1.2 Estrutura Canônica dos 5 Saldos
-```text
-CONTA FINANCEIRA DO PRODUTOR
-CNPJ: 14.829.301/0001-92
-
-Saldo Consolidado                         R$ 680.000
-├─ Disponível para Repasse               R$ 310.000
-├─ A Liberar (Vendas < 50%)              R$ 250.000
-├─ Bloqueado Cautelar                     R$ 70.000
-├─ Retido Administrativo                  R$ 50.000
-└─ Créditos/Antecipações em Aberto        R$ 120.000
-
-EVENTOS VINCULADOS
-├─ Festival Curitiba 2026                 R$ 320.000
-├─ Arena Verão 2026                       R$ 210.000
-└─ Show Especial Teatro                   R$ 150.000
-```
-
-### 1.3 Imutabilidade do Ledger & Proibição de "Editar Saldo"
-Nenhuma tela ou usuário pode "editar saldo" diretamente. Toda e qualquer alteração financeira decorre de lançamentos auditados:
-- `CREDITO_CONCEDIDO`: Injeção de capital com taxa de juros e parcelamento.
-- `AMORTIZACAO_CREDITO`: Abatimento de dívida (fixa ou percentual sobre a bilheteria).
-- `BLOQUEIO` / `RETENCAO`: Travas cautelares com justificativa obrigatória ($\ge 5$ caracteres).
-- `LIBERACAO`: Devolução de saldo bloqueado com motivo formal.
-- `REPASSE`: Saída liquidada via PIX/TED na Tesouraria.
+Módulo contábil e financeiro unificado desenvolvido para a **Disk Ingressos**, estruturado em torno da **Conta Financeira de Controle Interno Vinculada ao CNPJ do Produtor** e preparado para homologação e posterior incorporação ao **PDT Novo** (`pdtnovo.diskingressos.com.br`).
 
 ---
 
-## 2. Créditos e Antecipações ao Produtor
+## 1. Acesso & Isolamento Arquitetural Estrito
 
-O produtor pode contratar capital antes do evento gerar caixa suficiente.
-
-### Parâmetros do Contrato:
-- **Principal (R$)**: Valor liberado ao produtor.
-- **Taxa de Juros (% a.m.)**: Juros acordados.
-- **Quantidade de Parcelas**: Prazo do contrato.
-- **Modelos de Amortização**:
-  1. **Parcelas Fixas**: Abatimento programado em datas fixas.
-  2. **Percentual sobre Recebíveis**: Enquanto houver dívida ativa, um percentual (ex: $15\%$) de cada receita líquida do evento é retido automaticamente para amortizar o crédito conforme as vendas entram.
-  3. **Liquidação no Fechamento do Evento**: Quitado no acerto do borderô final.
+Todo o núcleo desta aplicação é de **uso exclusivo do perfil FINANCEIRO_DISK**.
+O Produtor não visualiza reservas internas, retenções, agenda de obrigações, concessão de crédito, critérios internos de risco, fila administrativa de estornos ou ledger interno — ele enxerga exclusivamente seus números operacionais líquidos auditados.
 
 ---
 
-## 3. Integração com a Regra de Repasse (50% → 20%)
+## 2. Domínios Consolidados na V0.4 Operacional
 
-O motor de repasse consulta primeiro a Conta Financeira:
-$$\text{Disponível para Repasse} = (\text{Vendas Realizadas} \times \%_{\text{liberado}}) - \text{Bloqueios} - \text{Retenções} - \text{Amortizações de Crédito} - \text{Repasses Anteriores}$$
+A V0.4 organiza as telas em 6 domínios totalmente operacionais, com formulários, modais e ações em tempo real:
+
+1. **Conta Interna (Saldos & Elegibilidade por Evento)**:
+   - Consolidação por CNPJ nos 5 pilares canônicos de saldo.
+   - Detalhamento por evento com aplicação da regra canônica:
+     $$\text{Disponível} = (\text{Vendas} \times 20\%) - \text{Repasses Anteriores} - \text{Retenções} - \text{Obrigações Reservadas} - \text{Estornos Pendentes/Efetivados} - \text{Amortizações}$$
+   - **Visualizar Toda a Movimentação do Evento (Drilldown)**: Modal completo que reúne resumo da fórmula de repasse, obrigações específicas, estornos do pedido, contratos de crédito e extrato exclusivo do ledger daquele evento.
+   - Solicitação de repasse com validação automática contra o limite elegível.
+
+2. **Reservas e Retenções**:
+   - Modal para criar nova retenção cautelar ou bloqueio operacional com favorecido e justificativa ($\ge 5$ caracteres).
+   - Tabela de retenções ativas com ação de **Liberar Saldo**, exigindo motivo formal e gerando lançamento de `LIBERACAO` no Ledger.
+
+3. **Agenda de Obrigações do Evento**:
+   - Modal para programar obrigações por categoria: `ALUGUEL_ESPACO` (teatros/arenas), `ECAD` (direitos autorais), `FORNECEDOR` (palco, som, iluminação), `OPERACIONAL` (segurança, brigada) e `OUTROS`.
+   - Transições de status: `PREVISTO` $\to$ `RESERVADO` $\to$ `RETIDO` $\to$ `LIQUIDADO`.
+   - Ação de **Liquidar Pagamento**: Registra baixa contábil definitiva e liberação no Ledger.
+
+4. **Créditos e Antecipações ao Produtor**:
+   - Modal para concessão de crédito com valor principal, taxa de juros (% a.m.), quantidade de parcelas e modelo de amortização (`PARCELAS_FIXAS` ou `PERCENTUAL_RECEBIVEIS`).
+   - Ações operacionais: **Abater Parcela** e **Simular Venda com Retenção (15%)** para demonstrar amortização automática retida na bilheteria.
+
+5. **Fila de Estornos com Reserva Imediata e Dupla Autorização Estrita (SoD)**:
+   - Ao iniciar um estorno, o valor é **imediatamente retido** (`RESERVA_ESTORNO`), deduzindo da base de repasse para evitar saques indevidos.
+   - **Segregação de Funções Obrigatória (SoD)**: O mesmo usuário NÃO pode conceder a 1ª e a 2ª autorização (bloqueio rígido no backend e frontend).
+   - Simulador de Operador Ativo no topo para alternar operadores durante testes (`Karine Mendes`, `Carlos Eduardo`, `Mariana Costa`).
+   - Efetivação bloqueada até que existam duas autorizações distintas com registro de MFA.
+
+6. **Extrato Imutável do Ledger**:
+   - Livro-razão contábil com partidas dobradas.
+   - Invariante rigorosa:
+     $$\text{Saldo Anterior} + \text{Créditos} - \text{Débitos} = \text{Saldo Atual}$$
+   - Filtros operacionais por Evento e por Tipo de Lançamento.
 
 ---
 
-## 4. Esteira Operacional Ponta a Ponta
-$$\text{Solicitação} \longrightarrow \text{Análise Financeiro Disk} \longrightarrow \text{Assinatura Produtor} \longrightarrow \text{Assinatura Disk} \longrightarrow \text{Liquidação Tesouraria PIX}$$
-
-- **Segregação de Funções (SoD)**: Quem aprovou o repasse não pode liquidar o pagamento na tesouraria.
-- **Ordem Estrita**: O Produtor deve assinar digitalmente antes da Disk Ingressos.
-
----
-
-## 5. Como Executar
+## 3. Como Executar
 
 ```bash
 cd modules/conta-financeira-produtor
@@ -79,5 +57,11 @@ npm run install:all
 npm run dev
 ```
 
-- **Frontend (Vite / React)**: `http://localhost:5173`
-- **Backend API (Node / Express)**: `http://localhost:3333`
+- **Backend API**: `http://localhost:3333`
+- **Frontend Vite**: `http://localhost:5173`
+
+---
+
+## 4. Integração com o PDT Novo
+
+O arquivo `backend/src/adapters/pdtNovoAdapter.js` permanece como fronteira oficial para plugar os dados reais de produtores, eventos, bilheteria, gateways e autenticação JWT/MFA do PDT Novo durante a homologação.

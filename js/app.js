@@ -6645,6 +6645,474 @@ class LimitlessFinancialApp {
       this.render();
     }
   }
+
+  // ==========================================================================
+  // PACOTE 24 / V0.3: MODAIS DE OBRIGAÇÕES E ESTORNOS INTERNOS
+  // ==========================================================================
+
+  openNewObligationModal(producerId, eventId = null) {
+    const st = financialStore.getState();
+    const pid = producerId || st.selectedProducerId || 'prod-abc';
+    const producer = (st.data.producers || []).find(p => p.id === pid) || st.data.producers[0];
+    const events = (st.data.events || []).filter(e => e.producerId === producer.id);
+
+    if (events.length === 0) {
+      financialStore.showToast('Aviso', 'Nenhum evento vinculado a este produtor.', 'warning');
+      return;
+    }
+    const selectedEvt = eventId ? events.find(e => e.id === eventId) || events[0] : events[0];
+
+    this.showModal(`
+      <div class="modal-card" style="max-width: 650px;">
+        <div class="modal-header d-flex justify-content-between align-items-center bg-dark text-white p-3">
+          <div>
+            <h4 class="mb-0 fw-bold"><i class="ph-calendar-check me-2"></i>Nova Obrigação / Reserva do Evento</h4>
+            <div class="fs-xs text-light opacity-75">Produtor: ${producer.name} (${producer.cnpj || producer.id}) · Exclusivo Disk</div>
+          </div>
+          <button class="modal-close-btn text-white" onclick="window.app.closeModal()">&times;</button>
+        </div>
+        <form onsubmit="window.app.handleCreateObligationSubmit(event)">
+          <input type="hidden" name="producerId" value="${producer.id}">
+          <div class="modal-body p-4">
+            <div class="alert alert-info py-2 px-3 fs-xs mb-3">
+              <i class="ph-info me-1"></i> As reservas de obrigações (aluguel de espaço, ECAD, fornecedores, etc.) abatem imediatamente da base de repasse e <strong>não são visíveis para o produtor</strong>.
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label fw-bold fs-sm">Evento Vinculado:</label>
+              <select name="eventId" class="form-select form-select-sm" required>
+                ${events.map(ev => `
+                  <option value="${ev.id}" ${ev.id === selectedEvt.id ? 'selected' : ''}>
+                    ${ev.name} (Vendas: ${formatCurrency(ev.grossSales || 0)} | Disp: ${formatCurrency(ev.availableBalance || 0)})
+                  </option>
+                `).join('')}
+              </select>
+            </div>
+
+            <div class="row g-3 mb-3">
+              <div class="col-md-6">
+                <label class="form-label fw-bold fs-sm">Categoria da Obrigação:</label>
+                <select name="category" class="form-select form-select-sm" required>
+                  <option value="ALUGUEL_ESPACO">🎭 Aluguel de Espaço / Teatro / Arena</option>
+                  <option value="ECAD">🎵 Direitos Autorais / ECAD</option>
+                  <option value="FORNECEDOR">📦 Fornecedor / Infraestrutura / Rider</option>
+                  <option value="OPERACIONAL">🛡️ Segurança, Brigada e Operacional</option>
+                  <option value="CONTINGENCIA">⚠️ Contingência / Reserva Preventiva</option>
+                  <option value="OUTROS">📋 Outras Obrigações Contratuais</option>
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-bold fs-sm">Valor da Reserva (R$):</label>
+                <div class="input-group input-group-sm">
+                  <span class="input-group-text">R$</span>
+                  <input type="number" step="0.01" min="1" name="value" class="form-control" placeholder="50.000,00" required>
+                </div>
+              </div>
+            </div>
+
+            <div class="row g-3 mb-3">
+              <div class="col-md-7">
+                <label class="form-label fw-bold fs-sm">Favorecido / Beneficiário / Credor:</label>
+                <input type="text" name="beneficiary" class="form-control form-control-sm" placeholder="Ex: Teatro Positivo Ltda." required>
+              </div>
+              <div class="col-md-5">
+                <label class="form-label fw-bold fs-sm">Vencimento Previsto:</label>
+                <input type="date" name="dueDate" class="form-control form-control-sm">
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label fw-bold fs-sm">Descrição Detalhada:</label>
+              <input type="text" name="description" class="form-control form-control-sm" placeholder="Ex: Locação do salão nobre e taxas de limpeza do teatro" required minlength="3">
+            </div>
+
+            <div class="row g-3 mb-3">
+              <div class="col-md-6">
+                <label class="form-label fw-bold fs-sm">Documento / Contrato / Anexo:</label>
+                <input type="text" name="documentRef" class="form-control form-control-sm" placeholder="Ex: Contrato 2026/04 ou OS-8821">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-bold fs-sm">Status Inicial:</label>
+                <select name="status" class="form-select form-select-sm">
+                  <option value="RESERVADO" selected>RESERVADO (Dedução imediata de repasse)</option>
+                  <option value="RETIDO">RETIDO (Retenção formal)</option>
+                  <option value="PREVISTO">PREVISTO (Planejamento futuro)</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label fw-bold fs-sm">Observações da Mesa:</label>
+              <textarea name="notes" class="form-control form-control-sm" rows="2" placeholder="Observações internas da auditoria Disk..."></textarea>
+            </div>
+          </div>
+          <div class="modal-footer d-flex justify-content-between p-3 bg-light">
+            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="window.app.closeModal()">Cancelar</button>
+            <button type="submit" class="btn btn-primary btn-sm px-3 fw-bold">
+              <i class="ph-check me-1"></i> Cadastrar Obrigação &amp; Reservar Saldo
+            </button>
+          </div>
+        </form>
+      </div>
+    `);
+  }
+
+  handleCreateObligationSubmit(e) {
+    e.preventDefault();
+    const form = e.target;
+    const formData = new FormData(form);
+    const data = {
+      eventId: formData.get('eventId'),
+      category: formData.get('category'),
+      description: formData.get('description'),
+      beneficiary: formData.get('beneficiary'),
+      value: parseFloat(formData.get('value')),
+      dueDate: formData.get('dueDate'),
+      documentRef: formData.get('documentRef'),
+      status: formData.get('status') || 'RESERVADO',
+      notes: formData.get('notes')
+    };
+
+    const res = financialStore.createEventObligation(data);
+    if (res) {
+      this.closeModal();
+      this.render();
+    }
+  }
+
+  handleUpdateObligationStatus(obligationId, newStatus) {
+    const actionLabel = newStatus === 'LIQUIDADO' ? 'pagamento e liquidação definitiva' : `transição para ${newStatus}`;
+    const reason = prompt(`Confirma a ${actionLabel} da obrigação?\nDigite observações complementares (opcional):`, `Atualização via mesa operacional para ${newStatus}`);
+    if (reason === null) return;
+
+    const res = financialStore.updateEventObligationStatus({
+      obligationId,
+      status: newStatus,
+      notes: reason.trim()
+    });
+    if (res) {
+      this.render();
+    }
+  }
+
+  openInternalRefundModal(producerId, eventId = null) {
+    const st = financialStore.getState();
+    const pid = producerId || st.selectedProducerId || 'prod-abc';
+    const producer = (st.data.producers || []).find(p => p.id === pid) || st.data.producers[0];
+    const events = (st.data.events || []).filter(e => e.producerId === producer.id);
+
+    if (events.length === 0) {
+      financialStore.showToast('Aviso', 'Nenhum evento vinculado a este produtor.', 'warning');
+      return;
+    }
+    const selectedEvt = eventId ? events.find(e => e.id === eventId) || events[0] : events[0];
+
+    this.showModal(`
+      <div class="modal-card" style="max-width: 620px;">
+        <div class="modal-header d-flex justify-content-between align-items-center bg-danger text-white p-3">
+          <div>
+            <h4 class="mb-0 fw-bold"><i class="ph-arrow-u-up-left me-2"></i>Abrir Estorno Interno (Reserva Imediata)</h4>
+            <div class="fs-xs text-light opacity-75">Produtor: ${producer.name} · Exclusivo Financeiro Disk</div>
+          </div>
+          <button class="modal-close-btn text-white" onclick="window.app.closeModal()">&times;</button>
+        </div>
+        <form onsubmit="window.app.handleInternalRefundSubmit(event)">
+          <input type="hidden" name="producerId" value="${producer.id}">
+          <div class="modal-body p-4">
+            <div class="alert alert-danger py-2 px-3 fs-xs mb-3">
+              <i class="ph-shield-warning me-1"></i> <strong>Regra de Segurança Estrita:</strong> Ao abrir o estorno, o valor é <strong>imediatamente reservado</strong>, impedindo que o montante seja repassado. A efetivação exige <strong>dupla autorização de dois operadores distintos</strong> do Financeiro Disk.
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label fw-bold fs-sm">Evento de Origem do Pedido:</label>
+              <select name="eventId" class="form-select form-select-sm" required>
+                ${events.map(ev => `
+                  <option value="${ev.id}" ${ev.id === selectedEvt.id ? 'selected' : ''}>
+                    ${ev.name} (Disponível: ${formatCurrency(ev.availableBalance || 0)})
+                  </option>
+                `).join('')}
+              </select>
+            </div>
+
+            <div class="row g-3 mb-3">
+              <div class="col-md-6">
+                <label class="form-label fw-bold fs-sm">Nº do Pedido / Ingresso:</label>
+                <input type="text" name="orderId" class="form-control form-control-sm" placeholder="Ex: PED-98421" required>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-bold fs-sm">Valor do Estorno (R$):</label>
+                <div class="input-group input-group-sm">
+                  <span class="input-group-text">R$</span>
+                  <input type="number" step="0.01" min="1" name="value" class="form-control" placeholder="250,00" required>
+                </div>
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label fw-bold fs-sm">Justificativa Formal Obrigatória (mínimo 5 caracteres):</label>
+              <textarea name="reason" class="form-control form-control-sm" rows="3" placeholder="Ex: Cancelamento no prazo do Art. 49 do CDC solicitado pelo cliente via SAC..." required minlength="5"></textarea>
+            </div>
+          </div>
+          <div class="modal-footer d-flex justify-content-between p-3 bg-light">
+            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="window.app.closeModal()">Cancelar</button>
+            <button type="submit" class="btn btn-danger btn-sm px-3 fw-bold">
+              <i class="ph-lock me-1"></i> Abrir Estorno &amp; Reservar Saldo
+            </button>
+          </div>
+        </form>
+      </div>
+    `);
+  }
+
+  handleInternalRefundSubmit(e) {
+    e.preventDefault();
+    const form = e.target;
+    const formData = new FormData(form);
+    const data = {
+      eventId: formData.get('eventId'),
+      orderId: formData.get('orderId'),
+      value: parseFloat(formData.get('value')),
+      reason: formData.get('reason')
+    };
+
+    const res = financialStore.openInternalRefund(data);
+    if (res) {
+      this.closeModal();
+      this.render();
+    }
+  }
+
+  handleAuthorizeRefund(refundId) {
+    const factor = prompt("Reautenticação Obrigatória para Autorização (MFA/2FA):\n\nDigite o código de verificação ou confirme o fator de segurança:", "MFA_TOKEN_CONFIRMADO");
+    if (!factor) return;
+
+    const res = financialStore.authorizeInternalRefund({
+      refundId,
+      factor: factor.trim(),
+      notes: "Autorização validada no painel de controle Disk"
+    });
+    if (res) {
+      this.render();
+    }
+  }
+
+  handleExecuteRefund(refundId) {
+    if (!confirm("Confirmar a efetivação e liquidação definitiva do estorno no gateway e no ledger?")) {
+      return;
+    }
+    const res = financialStore.executeInternalRefund({ refundId });
+    if (res) {
+      this.render();
+    }
+  }
+
+  handleCancelRefund(refundId) {
+    const reason = prompt("Justificativa formal para o cancelamento do estorno e liberação do saldo retido (mínimo 5 caracteres):", "Solicitação cancelada após conferência documental");
+    if (!reason) return;
+    if (reason.trim().length < 5) {
+      financialStore.showToast("Validação", "A justificativa de cancelamento deve ter pelo menos 5 caracteres.", "warning");
+      return;
+    }
+
+    const res = financialStore.cancelInternalRefund({
+      refundId,
+      reason: reason.trim()
+    });
+    if (res) {
+      this.render();
+    }
+  }
+
+  // ==========================================================================
+  // V0.4: VISUALIZAR TODA A MOVIMENTAÇÃO DO EVENTO (DRILLDOWN COMPLETO)
+  // ==========================================================================
+  openEventMovementModal(eventId) {
+    const st = financialStore.getState();
+    const event = (st.data.events || []).find(e => e.id === eventId);
+    if (!event) {
+      financialStore.showToast('Erro', 'Evento não encontrado.', 'error');
+      return;
+    }
+
+    const producer = (st.data.producers || []).find(p => p.id === event.producerId) || { name: 'Produtora Geral' };
+    const elig = financialStore.calculatePayoutEligibility(eventId);
+    const obligations = (st.eventObligations || []).filter(o => o.eventId === eventId);
+    const refunds = (st.internalRefunds || []).filter(r => r.eventId === eventId);
+    const credits = (st.data.producerCredits || []).filter(c => c.eventId === eventId);
+    const ledger = (st.data.ledgerEntries || []).filter(l => l.eventId === eventId);
+
+    const progress = elig.progressPercent || 0;
+    const ruleMet = elig.ruleMet || elig.isExceptional;
+
+    this.showModal(`
+      <div class="modal-card" style="max-width: 900px; max-height: 90vh; overflow-y: auto;">
+        <div class="modal-header d-flex justify-content-between align-items-center bg-dark text-white p-3">
+          <div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+              <span class="badge bg-primary text-white text-uppercase" style="font-size: 10px;">Movimentação Contábil do Evento</span>
+              <span class="badge bg-danger text-white text-uppercase" style="font-size: 10px;">Exclusivo Disk</span>
+            </div>
+            <h4 class="mb-0 fw-bold">${event.name} (${event.id})</h4>
+            <div class="fs-xs text-light opacity-75">Produtor: ${producer.name} · Cidade: ${event.city || 'Curitiba'}</div>
+          </div>
+          <button class="modal-close-btn text-white" onclick="window.app.closeModal()">&times;</button>
+        </div>
+
+        <div class="modal-body p-4 bg-white">
+          <!-- Cards de Resumo do Evento -->
+          <div class="row g-2 mb-4">
+            <div class="col-md-3">
+              <div class="p-3 border rounded bg-light text-center">
+                <span class="fs-xxs fw-bold text-muted text-uppercase d-block">Vendas Apuradas</span>
+                <strong class="fs-sm text-dark">${formatCurrency(event.grossSales || 0)}</strong>
+                <div class="fs-xxs text-muted mt-1">Meta: ${formatCurrency(event.salesTarget || 1000000)} (${progress.toFixed(1)}%)</div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="p-3 border rounded bg-light text-center">
+                <span class="fs-xxs fw-bold text-muted text-uppercase d-block">Limite Bruto (20%)</span>
+                <strong class="fs-sm text-primary">${formatCurrency(elig.grossLimit || 0)}</strong>
+                <div class="fs-xxs ${ruleMet ? 'text-success' : 'text-warning'} mt-1">${ruleMet ? '✓ Habilitado' : 'Aguardando 50%'}</div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="p-3 border rounded bg-light text-center">
+                <span class="fs-xxs fw-bold text-muted text-uppercase d-block">(-) Deduções &amp; Reservas</span>
+                <strong class="fs-sm text-danger">-${formatCurrency((elig.totalDeductions || 0))}</strong>
+                <div class="fs-xxs text-danger mt-1">Obrig: ${formatCurrency(elig.obligationsHold || 0)} · Est: ${formatCurrency(elig.refundsHold || 0)}</div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="p-3 border rounded bg-primary bg-opacity-10 text-center border-primary">
+                <span class="fs-xxs fw-bold text-primary text-uppercase d-block">(=) Disponível Repasse</span>
+                <strong class="fs-sm text-primary">${formatCurrency(elig.disponivelFinal || 0)}</strong>
+                <div class="fs-xxs text-primary fw-bold mt-1">Livre para Solicitação</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Seção de Obrigações do Evento -->
+          <div class="mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <h6 class="fw-bold mb-0 text-dark"><i class="ph-calendar-check me-1 text-primary"></i> Obrigações e Reservas Programadas (${obligations.length})</h6>
+              <button class="btn btn-xs btn-outline-primary" onclick="window.app.openNewObligationModal('${producer.id}', '${event.id}');">
+                + Nova Obrigação
+              </button>
+            </div>
+            <div class="table-responsive border rounded">
+              <table class="table table-sm table-hover mb-0 fs-xs">
+                <thead class="table-light">
+                  <tr>
+                    <th>Categoria</th>
+                    <th>Descrição</th>
+                    <th>Favorecido</th>
+                    <th>Vencimento</th>
+                    <th>Valor</th>
+                    <th>Status</th>
+                    <th>Ações</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${obligations.length === 0 ? `
+                    <tr><td colspan="7" class="text-center text-muted py-3">Nenhuma obrigação registrada para este evento.</td></tr>
+                  ` : obligations.map(o => `
+                    <tr>
+                      <td><span class="badge bg-light text-dark border">${o.category}</span></td>
+                      <td><strong>${o.description}</strong></td>
+                      <td>${o.beneficiary}</td>
+                      <td>${o.dueDate || 'N/A'}</td>
+                      <td><strong>${formatCurrency(o.value)}</strong></td>
+                      <td><span class="badge ${o.status === 'LIQUIDADO' ? 'bg-success' : (o.status === 'RETIDO' ? 'bg-danger' : 'bg-warning')}">${o.status}</span></td>
+                      <td>
+                        ${o.status !== 'LIQUIDADO' ? `
+                          <button class="btn btn-xs btn-success py-0 px-1" onclick="window.app.handleUpdateObligationStatus('${o.id}', 'LIQUIDADO')">✓ Liquidar</button>
+                        ` : `<span class="text-success fw-bold">✓ Pago</span>`}
+                      </td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Seção de Estornos do Evento -->
+          <div class="mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <h6 class="fw-bold mb-0 text-dark"><i class="ph-arrow-u-up-left me-1 text-danger"></i> Fila de Estornos &amp; Reservas Imediatas (${refunds.length})</h6>
+              <button class="btn btn-xs btn-outline-danger" onclick="window.app.openInternalRefundModal('${producer.id}', '${event.id}');">
+                + Novo Estorno
+              </button>
+            </div>
+            <div class="table-responsive border rounded">
+              <table class="table table-sm table-hover mb-0 fs-xs">
+                <thead class="table-light">
+                  <tr>
+                    <th>Pedido</th>
+                    <th>Valor</th>
+                    <th>Motivo</th>
+                    <th>1ª Aut</th>
+                    <th>2ª Aut (SoD)</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${refunds.length === 0 ? `
+                    <tr><td colspan="6" class="text-center text-muted py-3">Nenhum estorno ativo para este evento.</td></tr>
+                  ` : refunds.map(r => `
+                    <tr>
+                      <td><strong>${r.orderId}</strong></td>
+                      <td><strong class="text-danger">${formatCurrency(r.value)}</strong></td>
+                      <td>${r.reason}</td>
+                      <td>${r.approvals && r.approvals[0] ? `<span class="text-success fw-bold">✓ ${r.approvals[0].userName}</span>` : '<span class="text-muted">Pendente</span>'}</td>
+                      <td>${r.approvals && r.approvals[1] ? `<span class="text-success fw-bold">✓ ${r.approvals[1].userName}</span>` : '<span class="text-muted">Pendente</span>'}</td>
+                      <td><span class="badge ${r.status === 'EFETIVADO' ? 'bg-success' : 'bg-warning'}">${r.status.replace(/_/g, ' ')}</span></td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Seção de Extrato Ledger do Evento -->
+          <div>
+            <h6 class="fw-bold mb-2 text-dark"><i class="ph-book-open me-1 text-secondary"></i> Extrato Imutável do Ledger deste Evento (${ledger.length})</h6>
+            <div class="table-responsive border rounded" style="max-height: 220px; overflow-y: auto;">
+              <table class="table table-sm table-hover mb-0 fs-xs">
+                <thead class="table-light">
+                  <tr>
+                    <th>Data/Hora</th>
+                    <th>Tipo</th>
+                    <th>Valor</th>
+                    <th>Saldo Após</th>
+                    <th>Responsável</th>
+                    <th>Motivo / Objeto</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${ledger.length === 0 ? `
+                    <tr><td colspan="6" class="text-center text-muted py-3">Nenhum lançamento no ledger para este evento.</td></tr>
+                  ` : ledger.map(l => `
+                    <tr>
+                      <td><small class="text-muted">${new Date(l.createdAt || Date.now()).toLocaleString('pt-BR')}</small></td>
+                      <td><span class="badge bg-light text-dark border">${l.type}</span></td>
+                      <td><strong>${formatCurrency(l.value || 0)}</strong></td>
+                      <td><strong class="text-primary">${formatCurrency(l.balanceAfter || 0)}</strong></td>
+                      <td>${l.actor || 'Sistema'}</td>
+                      <td>${l.reason || ''}</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer d-flex justify-content-end p-3 bg-light">
+          <button type="button" class="btn btn-secondary btn-sm" onclick="window.app.closeModal()">Fechar Detalhamento</button>
+        </div>
+      </div>
+    `);
+  }
 }
 
 // ============================================================================
@@ -6912,6 +7380,60 @@ window.handleReleaseAccountBalance = function(producerId, eventId, amount) {
 window.handleAmortizeCredit = function(creditId) {
   if (window.app && typeof window.app.handleAmortizeCredit === 'function') {
     return window.app.handleAmortizeCredit(creditId);
+  }
+};
+
+window.openNewObligationModal = function(producerId, eventId) {
+  if (window.app && typeof window.app.openNewObligationModal === 'function') {
+    return window.app.openNewObligationModal(producerId, eventId);
+  }
+};
+
+window.handleCreateObligationSubmit = function(ev) {
+  if (window.app && typeof window.app.handleCreateObligationSubmit === 'function') {
+    return window.app.handleCreateObligationSubmit(ev);
+  }
+};
+
+window.handleUpdateObligationStatus = function(obligationId, newStatus) {
+  if (window.app && typeof window.app.handleUpdateObligationStatus === 'function') {
+    return window.app.handleUpdateObligationStatus(obligationId, newStatus);
+  }
+};
+
+window.openInternalRefundModal = function(producerId, eventId) {
+  if (window.app && typeof window.app.openInternalRefundModal === 'function') {
+    return window.app.openInternalRefundModal(producerId, eventId);
+  }
+};
+
+window.handleInternalRefundSubmit = function(ev) {
+  if (window.app && typeof window.app.handleInternalRefundSubmit === 'function') {
+    return window.app.handleInternalRefundSubmit(ev);
+  }
+};
+
+window.handleAuthorizeRefund = function(refundId) {
+  if (window.app && typeof window.app.handleAuthorizeRefund === 'function') {
+    return window.app.handleAuthorizeRefund(refundId);
+  }
+};
+
+window.handleExecuteRefund = function(refundId) {
+  if (window.app && typeof window.app.handleExecuteRefund === 'function') {
+    return window.app.handleExecuteRefund(refundId);
+  }
+};
+
+window.handleCancelRefund = function(refundId) {
+  if (window.app && typeof window.app.handleCancelRefund === 'function') {
+    return window.app.handleCancelRefund(refundId);
+  }
+};
+
+window.openEventMovementModal = function(eventId) {
+  if (window.app && typeof window.app.openEventMovementModal === 'function') {
+    return window.app.openEventMovementModal(eventId);
   }
 };
 

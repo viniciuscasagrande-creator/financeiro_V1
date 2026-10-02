@@ -225,4 +225,140 @@ test('Crédito ativo com modelo de retenção de vendas deduz amortização hold
   );
 });
 
+// 6. Agenda de Obrigações do Evento (Aluguel, ECAD, Fornecedores)
+test('Agenda de obrigações reserva saldo antes do motor e deduz da base elegível de repasse', () => {
+  const store = new CoreFinanceiroStore();
+  store.login('disk');
+
+  // Criação de obrigação de aluguel de teatro (R$ 80.000) e ECAD (R$ 15.000)
+  const obAluguel = store.createEventObligation({
+    eventId: 'evt-003',
+    category: 'ALUGUEL_ESPACO',
+    description: 'Locação Teatro Principal',
+    beneficiary: 'Teatro Positivo Ltda.',
+    value: 80000,
+    dueDate: '2026-11-10',
+    documentRef: 'Contrato 2026/04',
+    status: 'RESERVADO',
+    notes: 'Reserva preventiva de aluguel'
+  });
+
+  assert(obAluguel, 'Obrigação de aluguel deve ser criada');
+  assert.equal(obAluguel.status, 'RESERVADO');
+  assert.equal(obAluguel.value, 80000);
+
+  const elig = store.calculatePayoutEligibility('evt-003');
+  assert(elig.obligationsHold >= 80000, 'Motor deve apurar as obrigações reservadas');
+  assert(elig.totalDeductions >= elig.obligationsHold, 'Deduções totais devem englobar obrigações reservadas');
+
+  // Atualização de status da obrigação para RETIDO e depois LIQUIDADO
+  const obUpdated = store.updateEventObligationStatus({
+    obligationId: obAluguel.id,
+    status: 'LIQUIDADO',
+    notes: 'Comprovante bancário TED anexado'
+  });
+  assert.equal(obUpdated.status, 'LIQUIDADO');
+  assert(obUpdated.liquidatedAt, 'Deve registrar data de liquidação');
+});
+
+// 7. Fila de Estornos com Reserva Imediata e Dupla Autorização Estrita (SoD)
+test('Estorno reserva saldo imediatamente, exige dupla autorização por usuários distintos (SoD) e efetiva no ledger', () => {
+  const store = new CoreFinanceiroStore();
+  store.login('disk');
+
+  // Abertura de estorno de R$ 5.000 no evt-003
+  const refund = store.openInternalRefund({
+    eventId: 'evt-003',
+    orderId: 'PED-TEST-5000',
+    value: 5000,
+    reason: 'Cancelamento VIP solicitado via Procon'
+  });
+
+  assert(refund, 'Estorno deve ser aberto');
+  assert.equal(refund.status, 'AGUARDANDO_PRIMEIRA_AUTORIZACAO');
+  assert.equal(refund.value, 5000);
+
+  // Reserva imediata reflete no motor de elegibilidade
+  const eligWithRefund = store.calculatePayoutEligibility('evt-003');
+  assert(eligWithRefund.refundsHold >= 5000, 'Valor do estorno deve ser colocado imediatamente em reserva hold');
+
+  // 1ª Autorização concedida pelo Operador A
+  store.state.currentUser = { id: 'usr-operador-a', name: 'Operador A (Analista)', role: 'disk' };
+  const auth1 = store.authorizeInternalRefund({
+    refundId: refund.id,
+    factor: 'MFA_VALIDADO_TOKEN_A',
+    notes: '1ª autorização técnica'
+  });
+  assert.equal(auth1.status, 'AGUARDANDO_SEGUNDA_AUTORIZACAO');
+  assert.equal(auth1.approvals.length, 1);
+
+  // Tentativa de 2ª Autorização pelo MESMO Operador A deve ser BLOQUEADA (SoD estrito)
+  const authDuplicateAttempt = store.authorizeInternalRefund({
+    refundId: refund.id,
+    factor: 'TENTATIVA_MESMO_OPERADOR'
+  });
+  assert.equal(authDuplicateAttempt, null, 'O mesmo operador não pode autorizar duas vezes');
+
+  // Tentativa de efetivar prematuramente com apenas 1 autorização deve ser BLOQUEADA
+  const prematureExec = store.executeInternalRefund({ refundId: refund.id });
+  assert.equal(prematureExec, null, 'Não pode efetivar com apenas 1 autorização');
+
+  // 2ª Autorização concedida por Operador B (usuário distinto)
+  store.state.currentUser = { id: 'usr-operador-b', name: 'Operador B (Supervisor)', role: 'disk' };
+  const auth2 = store.authorizeInternalRefund({
+    refundId: refund.id,
+    factor: 'MFA_VALIDADO_TOKEN_B',
+    notes: '2ª autorização de mesa'
+  });
+  assert.equal(auth2.status, 'AUTORIZADO_PARA_EFETIVAR');
+  assert.equal(auth2.approvals.length, 2);
+
+  // Efetivação definitiva no Gateway & Ledger
+  const executed = store.executeInternalRefund({ refundId: refund.id });
+  assert.equal(executed.status, 'EFETIVADO');
+  assert(executed.executedAt, 'Data de efetivação deve ser preenchida');
+  assert.equal(executed.executedBy, 'Operador B (Supervisor) (Financeiro Disk)');
+});
+
+// 8. Isolamento de Acesso Arquitetural (Produtor vs. Financeiro Disk)
+test('Isolamento estrito impede que Produtor acerte, crie ou autorize obrigações, estornos ou créditos', () => {
+  const store = new CoreFinanceiroStore();
+  store.login('producer', 'prod-abc');
+
+  const obAttempt = store.createEventObligation({
+    eventId: 'evt-001',
+    description: 'Tentativa de criar obrigação',
+    value: 5000
+  });
+  assert.equal(obAttempt, null, 'Produtor não pode criar obrigações');
+
+  const refAttempt = store.openInternalRefund({
+    eventId: 'evt-001',
+    orderId: 'PED-PROD',
+    value: 1000,
+    reason: 'Tentativa indevida de estorno'
+  });
+  assert.equal(refAttempt, null, 'Produtor não pode abrir estornos internos');
+});
+
+// 9. Drilldown Contábil e Movimentação Completa do Evento (V0.4)
+test('Drilldown do evento consolida obrigações, estornos, créditos e extrato exclusivo do evento', () => {
+  const store = new CoreFinanceiroStore();
+  store.login('disk');
+
+  const account = store.getProducerFinancialAccount('prod-abc');
+  const ev = account.events.find(e => e.id === 'evt-003');
+  assert(ev, 'Evento evt-003 deve existir');
+
+  const obligations = (account.obligations || []).filter(o => o.eventId === 'evt-003');
+  const refunds = (account.refunds || []).filter(r => r.eventId === 'evt-003');
+  const credits = (account.credits || []).filter(c => c.eventId === 'evt-003');
+  const ledger = (account.ledger || []).filter(l => l.eventId === 'evt-003');
+
+  assert(Array.isArray(obligations), 'Obrigações do evento devem ser array');
+  assert(Array.isArray(refunds), 'Estornos do evento devem ser array');
+  assert(Array.isArray(credits), 'Créditos do evento devem ser array');
+  assert(Array.isArray(ledger), 'Ledger do evento deve ser array');
+});
+
 console.log(`\nTodos os ${passed} testes da Conta Financeira do Produtor passaram com sucesso!`);

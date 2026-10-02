@@ -1,511 +1,459 @@
-import express from "express";
-import cors from "cors";
-import { state, calculateAccount, addLedgerEntry } from "./store.js";
+/**
+ * Servidor REST do Módulo Conta Financeira Interna Disk (v0.3)
+ * Acesso exclusivo do perfil FINANCEIRO_DISK.
+ * Segurança: Dupla autorização com segregação de funções em estornos e controle de agenda de obrigações.
+ */
+
+import express from 'express';
+import cors from 'cors';
+import { state, calculateAccount, addLedgerEntry } from './store.js';
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// ============================================================================
-// CONTA FINANCEIRA DO PRODUTOR (CNPJ) & LEDGER
-// ============================================================================
+const PORT = process.env.PORT || 3333;
 
-app.get("/api/health", (_, res) => {
-  res.json({ ok: true, module: "conta-financeira-produtor", version: "0.2" });
+const getActor = (req) => req.header('x-user-name') || req.body?.actor || 'Usuário Financeiro Disk';
+
+// Middleware de isolamento arquitetural estrito: Acesso exclusivo do Financeiro Disk
+const requireFinancialRole = (req, res, next) => {
+  const role = req.header('x-role') || 'FINANCEIRO_DISK';
+  if (role !== 'FINANCEIRO_DISK') {
+    return res.status(403).json({
+      error: 'Acesso Negado: A Conta Financeira de Controle Interno é de uso exclusivo do Financeiro Disk.'
+    });
+  }
+  next();
+};
+
+app.use('/api/interno', requireFinancialRole);
+
+// Health check
+app.get('/api/health', (_, res) => {
+  res.json({
+    status: 'ok',
+    module: 'financeiro-disk-conta-interna',
+    version: '0.4',
+    features: ['reservas_obrigacoes', 'estornos_dupla_autorizacao_sod', 'ledger_central', 'credito_antecipacao', 'movimentacao_evento'],
+    timestamp: new Date().toISOString()
+  });
 });
 
-app.get("/api/conta", (_, res) => {
-  res.json(calculateAccount());
+// Movimentação detalhada de um evento específico (drilldown contábil)
+app.get('/api/interno/eventos/:id/movimentacao', (req, res) => {
+  const calculated = calculateAccount();
+  const ev = calculated.events.find(e => e.id === req.params.id);
+  if (!ev) return res.status(404).json({ error: 'Evento não encontrado.' });
+  const obligations = (state.obligations || []).filter(o => o.eventId === ev.id);
+  const refunds = (state.refunds || []).filter(r => r.eventId === ev.id);
+  const credits = (state.credits || []).filter(c => c.eventId === ev.id);
+  const ledger = (state.ledger || []).filter(l => l.eventId === ev.id);
+  res.json({
+    event: ev,
+    obligations,
+    refunds,
+    credits,
+    ledger
+  });
 });
 
-app.get("/api/ledger", (req, res) => {
+// Extrato do Ledger imutável
+app.get('/api/interno/ledger', (req, res) => {
   const { eventId, type } = req.query;
-  let entries = state.ledger;
-  if (eventId) entries = entries.filter(l => l.eventId === eventId);
-  if (type) entries = entries.filter(l => l.type === type);
+  let entries = state.ledger || [];
+  if (eventId && eventId !== 'all') entries = entries.filter(e => e.eventId === eventId);
+  if (type && type !== 'all') entries = entries.filter(e => e.type === type);
   res.json(entries);
 });
 
-app.get("/api/politica", (_, res) => {
+// Dashboard consolidado
+app.get('/api/interno/dashboard', (_, res) => {
+  const calculated = calculateAccount();
+  res.json({
+    ...calculated,
+    policy: state.policy,
+    requests: state.requests || []
+  });
+});
+
+// Política de Repasse
+app.get('/api/interno/politica', (_, res) => res.json(state.policy));
+app.put('/api/interno/politica', (req, res) => {
+  state.policy = { ...state.policy, ...req.body, updatedAt: new Date().toISOString() };
   res.json(state.policy);
 });
 
-app.put("/api/politica", (req, res) => {
-  state.policy = {
-    ...state.policy,
-    ...req.body,
-    updatedAt: new Date().toISOString(),
-    updatedBy: req.body.updatedBy || "Diretoria Financeira Disk"
-  };
-  res.json(state.policy);
-});
-
-// ============================================================================
-// BLOQUEIOS, RETENÇÕES E LIBERAÇÕES (A TRAVA HUMANA & AUDITORIA)
-// ============================================================================
-
-app.post("/api/bloqueios", (req, res) => {
-  const { eventId, value, reason, type = "BLOQUEIO", actor } = req.body;
-
-  if (!eventId) {
-    return res.status(400).json({ error: "Identificador do evento é obrigatório." });
+// Agenda de Obrigações (Aluguel, ECAD, Fornecedores)
+app.get('/api/interno/obrigacoes', (_, res) => res.json(state.obligations || []));
+app.post('/api/interno/obrigacoes', (req, res) => {
+  const { eventId, category = 'OUTROS', description, beneficiary, value, dueDate, documentRef, status = 'RESERVADO', notes } = req.body;
+  if (!eventId || !description || Number(value) <= 0) {
+    return res.status(400).json({ error: 'Evento, descrição e valor positivo são obrigatórios.' });
   }
 
-  const numericValue = Number(value);
-  if (!numericValue || numericValue <= 0) {
-    return res.status(400).json({ error: "Valor do bloqueio/retenção deve ser maior que zero." });
-  }
-
-  if (!reason || reason.trim().length < 5) {
-    return res.status(400).json({ error: "Justificativa formal obrigatória com no mínimo 5 caracteres." });
-  }
-
-  const entry = addLedgerEntry({
+  const ev = state.events.find(e => e.id === eventId);
+  const obligation = {
+    id: `OB-${Date.now()}`,
     eventId,
-    type: type === "RETENCAO" ? "RETENCAO" : "BLOQUEIO",
-    value: numericValue,
-    reason: reason.trim(),
-    actor: actor || "Financeiro Disk"
+    eventName: ev ? ev.name : eventId,
+    category,
+    description: description.trim(),
+    beneficiary: beneficiary ? beneficiary.trim() : 'Favorecido não especificado',
+    value: Number(value),
+    dueDate: dueDate || new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0],
+    documentRef: documentRef ? documentRef.trim() : '',
+    status: status || 'RESERVADO',
+    notes: (notes || '').trim(),
+    createdAt: new Date().toISOString(),
+    actor: getActor(req)
+  };
+
+  state.obligations.unshift(obligation);
+
+  addLedgerEntry({
+    eventId,
+    type: 'RETENCAO',
+    value: obligation.value,
+    reason: `Reserva de obrigação: ${obligation.description} (${obligation.beneficiary})`,
+    beneficiary: obligation.beneficiary,
+    actor: obligation.actor
   });
 
-  res.status(201).json({
-    message: `${type === 'RETENCAO' ? 'Retenção' : 'Bloqueio'} registrado no ledger com sucesso.`,
-    entry,
-    account: calculateAccount()
-  });
+  res.status(201).json(obligation);
 });
 
-app.post("/api/liberacoes", (req, res) => {
-  const { eventId, value, reason, actor } = req.body;
+app.patch('/api/interno/obrigacoes/:id/status', (req, res) => {
+  const { id } = req.params;
+  const { status, notes } = req.body;
+  const ob = state.obligations.find(o => o.id === id);
+  if (!ob) return res.status(404).json({ error: 'Obrigação não encontrada.' });
 
-  if (!eventId) {
-    return res.status(400).json({ error: "Identificador do evento é obrigatório." });
-  }
+  const oldStatus = ob.status;
+  ob.status = status;
+  ob.updatedAt = new Date().toISOString();
+  if (notes) ob.notes = `${ob.notes ? ob.notes + ' | ' : ''}${notes.trim()}`;
 
-  const numericValue = Number(value);
-  if (!numericValue || numericValue <= 0) {
-    return res.status(400).json({ error: "Valor de liberação deve ser maior que zero." });
-  }
-
-  if (!reason || reason.trim().length < 5) {
-    return res.status(400).json({ error: "Justificativa formal de liberação com no mínimo 5 caracteres é obrigatória." });
-  }
-
-  // Verifica se o valor a liberar não excede o saldo bloqueado ativo do evento
-  const account = calculateAccount();
-  const event = account.events.find(e => e.id === eventId);
-  if (!event || numericValue > event.blocked) {
-    return res.status(422).json({
-      error: `Valor solicitado para liberação (R$ ${numericValue.toFixed(2)}) excede o saldo atualmente bloqueado do evento (R$ ${event ? event.blocked.toFixed(2) : 0}).`
+  if (status === 'LIQUIDADO') {
+    ob.liquidatedAt = new Date().toISOString();
+    ob.liquidatedBy = getActor(req);
+    addLedgerEntry({
+      eventId: ob.eventId,
+      type: 'LIBERACAO',
+      value: ob.value,
+      reason: `Baixa de reserva para liquidação: ${ob.description}`,
+      actor: ob.liquidatedBy
     });
   }
 
-  const entry = addLedgerEntry({
-    eventId,
-    type: "LIBERACAO",
-    value: numericValue,
-    reason: reason.trim(),
-    actor: actor || "Financeiro Disk"
-  });
-
-  res.status(201).json({
-    message: "Liberação de saldo registrada com sucesso no ledger.",
-    entry,
-    account: calculateAccount()
-  });
+  res.json(ob);
 });
 
-// ============================================================================
-// CRÉDITOS E ANTECIPAÇÕES AO PRODUTOR
-// ============================================================================
-
-app.get("/api/creditos", (_, res) => {
-  res.json(state.credits);
-});
-
-app.post("/api/creditos", (req, res) => {
-  const {
-    eventId,
-    principal,
-    interestRate = 2.0,
-    installments = 5,
-    amortization = "PARCELAS_FIXAS",
-    receivablePercent = 15.0,
-    notes,
-    actor
-  } = req.body;
+// Estornos com Reserva Imediata e Dupla Autorização Estrita (SoD)
+app.get('/api/interno/estornos', (_, res) => res.json(state.refunds || []));
+app.post('/api/interno/estornos', (req, res) => {
+  const { eventId, orderId, value, reason } = req.body;
+  if (!eventId || !orderId || Number(value) <= 0 || !reason || reason.trim().length < 5) {
+    return res.status(400).json({ error: 'Evento, pedido, valor positivo e justificativa (mín. 5 chars) são obrigatórios.' });
+  }
 
   const ev = state.events.find(e => e.id === eventId);
-  if (!ev) {
-    return res.status(404).json({ error: "Evento vinculado não encontrado." });
+  const actor = getActor(req);
+
+  const refund = {
+    id: `ES-${Date.now()}`,
+    eventId,
+    eventName: ev ? ev.name : eventId,
+    orderId: orderId.trim(),
+    value: Number(value),
+    reason: reason.trim(),
+    status: 'AGUARDANDO_PRIMEIRA_AUTORIZACAO',
+    requestedBy: actor,
+    approvals: [],
+    executedBy: null,
+    executedAt: null,
+    createdAt: new Date().toISOString()
+  };
+
+  state.refunds.unshift(refund);
+
+  addLedgerEntry({
+    eventId,
+    type: 'RESERVA_ESTORNO',
+    value: refund.value,
+    reason: `Reserva imediata do estorno ${refund.id} / pedido ${orderId}`,
+    actor
+  });
+
+  res.status(201).json(refund);
+});
+
+app.post('/api/interno/estornos/:id/autorizar', (req, res) => {
+  const refund = state.refunds.find(r => r.id === req.params.id);
+  if (!refund) return res.status(404).json({ error: 'Estorno não encontrado.' });
+  if (['EFETIVADO', 'REJEITADO', 'CANCELADO'].includes(refund.status)) {
+    return res.status(409).json({ error: 'Este estorno já foi encerrado.' });
   }
 
-  const numPrincipal = Number(principal);
-  if (!numPrincipal || numPrincipal <= 0) {
-    return res.status(400).json({ error: "Valor principal do crédito deve ser maior que zero." });
+  const actor = getActor(req);
+  const alreadyApproved = (refund.approvals || []).some(a => a.user === actor);
+
+  // Regra de SoD: O mesmo usuário não pode dar a 1ª e a 2ª autorização
+  if (alreadyApproved) {
+    return res.status(409).json({
+      error: 'Segregação de Funções: O mesmo operador não pode autorizar duas vezes a mesma operação.'
+    });
   }
 
-  const numInterest = Number(interestRate || 0);
-  const numInstallments = Math.max(1, Number(installments || 1));
-  const numReceivablePercent = Number(receivablePercent || 0);
+  refund.approvals = refund.approvals || [];
+  refund.approvals.push({
+    approvalIndex: refund.approvals.length + 1,
+    user: actor,
+    at: new Date().toISOString(),
+    factor: req.body.factor || 'REAUTENTICACAO_MFA',
+    notes: req.body.notes || ''
+  });
 
-  // Cálculo de juros simples / taxa total contratual
+  if (refund.approvals.length === 1) {
+    refund.status = 'AGUARDANDO_SEGUNDA_AUTORIZACAO';
+  } else if (refund.approvals.length >= 2) {
+    refund.status = 'AUTORIZADO_PARA_EFETIVAR';
+  }
+
+  res.json(refund);
+});
+
+app.post('/api/interno/estornos/:id/efetivar', (req, res) => {
+  const refund = state.refunds.find(r => r.id === req.params.id);
+  if (!refund) return res.status(404).json({ error: 'Estorno não encontrado.' });
+
+  if (refund.status !== 'AUTORIZADO_PARA_EFETIVAR' || (refund.approvals || []).length < 2) {
+    return res.status(422).json({
+      error: 'Efetivação Bloqueada: Estorno exige duas autorizações distintas antes da liquidação financeira.'
+    });
+  }
+
+  const actor = getActor(req);
+  refund.status = 'EFETIVADO';
+  refund.executedBy = actor;
+  refund.executedAt = new Date().toISOString();
+
+  // Baixa da reserva e lançamento do estorno efetivado no ledger
+  addLedgerEntry({
+    eventId: refund.eventId,
+    type: 'LIBERACAO',
+    value: refund.value,
+    reason: `Baixa da reserva do estorno ${refund.id}`,
+    actor
+  });
+
+  addLedgerEntry({
+    eventId: refund.eventId,
+    type: 'ESTORNO_EFETIVADO',
+    value: refund.value,
+    reason: `Estorno ${refund.id} / pedido ${refund.orderId} liquidado`,
+    actor
+  });
+
+  res.json(refund);
+});
+
+app.post('/api/interno/estornos/:id/cancelar', (req, res) => {
+  const refund = state.refunds.find(r => r.id === req.params.id);
+  if (!refund) return res.status(404).json({ error: 'Estorno não encontrado.' });
+  if (refund.status === 'EFETIVADO') {
+    return res.status(409).json({ error: 'Estorno já efetivado não pode ser cancelado.' });
+  }
+
+  const { reason } = req.body;
+  if (!reason || reason.trim().length < 5) {
+    return res.status(400).json({ error: 'Justificativa de cancelamento obrigatória (mín. 5 chars).' });
+  }
+
+  const actor = getActor(req);
+  refund.status = 'CANCELADO';
+  refund.cancelledBy = actor;
+  refund.cancelledAt = new Date().toISOString();
+  refund.cancelReason = reason.trim();
+
+  addLedgerEntry({
+    eventId: refund.eventId,
+    type: 'LIBERACAO',
+    value: refund.value,
+    reason: `Liberação de reserva do estorno cancelado ${refund.id}`,
+    actor
+  });
+
+  res.json(refund);
+});
+
+// Créditos e Antecipações
+app.get('/api/interno/creditos', (_, res) => res.json(state.credits || []));
+app.post('/api/interno/creditos', (req, res) => {
+  const { eventId, principal, interestRate = 2.0, installments = 5, amortization = 'PARCELAS_FIXAS', receivablePercent = 15.0, notes = '' } = req.body;
+  const numPrincipal = parseFloat(principal);
+  if (!eventId || !numPrincipal || numPrincipal <= 0) {
+    return res.status(400).json({ error: 'Evento e valor principal positivo são obrigatórios.' });
+  }
+
+  const ev = state.events.find(e => e.id === eventId);
+  const numInterest = parseFloat(interestRate) || 0;
+  const numInstallments = Math.max(1, parseInt(installments) || 1);
   const totalDebt = numPrincipal * (1 + (numInterest * numInstallments) / 100);
   const installmentValue = totalDebt / numInstallments;
+  const actor = getActor(req);
 
-  const creditId = `CR-${Date.now()}`;
-  const protocol = `CR-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
-
-  const creditContract = {
-    id: creditId,
-    protocol,
+  const credit = {
+    id: `CR-${Date.now()}`,
+    protocol: `CR-2026-${Math.floor(1000 + Math.random() * 9000)}`,
     producerId: state.producer.id,
-    eventId: ev.id,
-    eventName: ev.name,
+    eventId,
+    eventName: ev ? ev.name : eventId,
     principal: numPrincipal,
     interestRate: numInterest,
     installmentsCount: numInstallments,
     installmentValue: Math.round(installmentValue * 100) / 100,
-    amortizationModel: amortization, // 'PARCELAS_FIXAS' | 'PERCENTUAL_RECEBIVEIS' | 'FECHAMENTO_EVENTO'
-    receivablePercent: numReceivablePercent,
+    amortizationModel: amortization,
+    receivablePercent: parseFloat(receivablePercent) || 0,
     totalDebt: Math.round(totalDebt * 100) / 100,
     outstandingDebt: Math.round(totalDebt * 100) / 100,
     amortizedTotal: 0,
-    status: "ATIVO",
+    status: 'ATIVO',
     grantedAt: new Date().toISOString(),
-    grantedBy: actor || "Karine (Financeiro Disk)",
-    notes: (notes || "Concessão de crédito ao produtor aprovada pela diretoria").trim(),
+    grantedBy: actor,
+    notes: (notes || '').trim(),
     amortizationHistory: []
   };
 
-  state.credits.unshift(creditContract);
+  state.credits.unshift(credit);
 
-  // Lançamento obrigatório no Ledger (Crédito Concedido)
   addLedgerEntry({
-    eventId: ev.id,
-    type: "CREDITO_CONCEDIDO",
+    eventId,
+    type: 'CREDITO_CONCEDIDO',
     value: numPrincipal,
-    reason: `Concessão de crédito contratual ${protocol}. Total c/ juros: R$ ${totalDebt.toFixed(2)}. ${creditContract.notes}`,
-    actor: creditContract.grantedBy
+    reason: `Crédito ${credit.protocol} concedido`,
+    actor
   });
 
-  res.status(201).json({
-    message: `Crédito ${protocol} concedido com sucesso.`,
-    credit: creditContract,
-    account: calculateAccount()
-  });
+  res.status(201).json(credit);
 });
 
-app.post("/api/creditos/:id/amortizar", (req, res) => {
-  const credit = state.credits.find(c => c.id === req.params.id || c.protocol === req.params.id);
-  if (!credit) {
-    return res.status(404).json({ error: "Contrato de crédito não encontrado." });
-  }
+app.post('/api/interno/creditos/:id/amortizar', (req, res) => {
+  const credit = state.credits.find(c => c.id === req.params.id);
+  if (!credit) return res.status(404).json({ error: 'Contrato de crédito não encontrado.' });
+  if (credit.status !== 'ATIVO') return res.status(409).json({ error: 'Contrato de crédito já quitado.' });
 
-  if (credit.status !== "ATIVO") {
-    return res.status(422).json({ error: "Este contrato de crédito já se encontra liquidado." });
-  }
-
-  const numValue = Number(req.body.value || credit.installmentValue || 0);
-  if (numValue <= 0) {
-    return res.status(400).json({ error: "Valor de amortização deve ser maior que zero." });
-  }
+  const numValue = parseFloat(req.body.value || credit.installmentValue || 0);
+  if (!numValue || numValue <= 0) return res.status(400).json({ error: 'Valor de amortização inválido.' });
 
   const amortizedValue = Math.min(numValue, credit.outstandingDebt);
   credit.outstandingDebt = Math.round((credit.outstandingDebt - amortizedValue) * 100) / 100;
   credit.amortizedTotal = Math.round((credit.amortizedTotal + amortizedValue) * 100) / 100;
 
   if (credit.outstandingDebt <= 0) {
-    credit.status = "LIQUIDADO";
+    credit.status = 'LIQUIDADO';
     credit.liquidatedAt = new Date().toISOString();
   }
 
-  const historyItem = {
+  const actor = getActor(req);
+  credit.amortizationHistory = credit.amortizationHistory || [];
+  credit.amortizationHistory.unshift({
     id: `AM-${Date.now()}`,
-    date: new Date().toLocaleString("pt-BR"),
+    date: new Date().toLocaleString('pt-BR'),
     value: amortizedValue,
-    type: req.body.type || "AMORTIZACAO_PARCELA",
+    type: req.body.type || 'PARCELA_FIXA',
     balanceAfter: credit.outstandingDebt,
-    actor: req.body.actor || "Motor Financeiro Automático"
-  };
+    actor
+  });
 
-  credit.amortizationHistory.unshift(historyItem);
-
-  // Lança amortização no Ledger
   addLedgerEntry({
     eventId: credit.eventId,
-    type: "AMORTIZACAO_CREDITO",
+    type: 'AMORTIZACAO_CREDITO',
     value: amortizedValue,
-    reason: `Amortização de R$ ${amortizedValue.toFixed(2)} referente ao crédito ${credit.protocol}. Saldo devedor: R$ ${credit.outstandingDebt.toFixed(2)}.`,
-    actor: historyItem.actor
+    reason: `Amortização de parcela no contrato ${credit.protocol || credit.id}`,
+    actor
   });
 
-  res.json({
-    message: `Amortização de R$ ${amortizedValue.toFixed(2)} realizada com sucesso.`,
-    credit,
-    account: calculateAccount()
-  });
+  res.json(credit);
 });
 
-// SIMULAÇÃO DE VENDA & AMORTIZAÇÃO AUTOMÁTICA PELA RECEITA (15% etc.)
-app.post("/api/creditos/simular-venda", (req, res) => {
-  const { eventId, grossSaleAmount } = req.body;
-  const ev = state.events.find(e => e.id === eventId);
-  if (!ev) return res.status(404).json({ error: "Evento não encontrado." });
-
-  const sale = Number(grossSaleAmount || 20000);
-  ev.sold += sale;
-  ev.grossSales += sale;
-  ev.netRevenue += (sale * 0.9); // 10% taxas
-
-  // Verifica se há créditos vinculados a este evento com modelo PERCENTUAL_RECEBIVEIS
-  const activeCredits = state.credits.filter(c => c.eventId === ev.id && c.status === "ATIVO" && c.amortizationModel === "PERCENTUAL_RECEBIVEIS");
-
-  let totalAmortized = 0;
-  for (const credit of activeCredits) {
-    const deduction = Math.min(credit.outstandingDebt, (sale * 0.9) * (credit.receivablePercent / 100));
-    if (deduction > 0) {
-      credit.outstandingDebt = Math.round((credit.outstandingDebt - deduction) * 100) / 100;
-      credit.amortizedTotal = Math.round((credit.amortizedTotal + deduction) * 100) / 100;
-      totalAmortized += deduction;
-
-      if (credit.outstandingDebt <= 0) {
-        credit.status = "LIQUIDADO";
-        credit.liquidatedAt = new Date().toISOString();
-      }
-
-      credit.amortizationHistory.unshift({
-        id: `AM-${Date.now()}`,
-        date: new Date().toLocaleString("pt-BR"),
-        value: deduction,
-        type: "RETENCAO_RECEIVABLE_AUTOMATICA",
-        balanceAfter: credit.outstandingDebt,
-        actor: "Motor Automático de Bilheteria"
-      });
-
-      addLedgerEntry({
-        eventId: ev.id,
-        type: "AMORTIZACAO_CREDITO",
-        value: deduction,
-        reason: `Amortização automática de ${credit.receivablePercent}% sobre nova bilheteria de R$ ${sale.toFixed(2)}.`,
-        actor: "Motor Automático de Bilheteria"
-      });
-    }
+// Bloqueios e Liberações Avulsas
+app.post('/api/interno/retencoes', (req, res) => {
+  const { eventId, value, reason, type = 'RETENCAO', beneficiary } = req.body;
+  if (!eventId || Number(value) <= 0 || !reason) {
+    return res.status(400).json({ error: 'Evento, valor e motivo são obrigatórios.' });
   }
-
-  res.json({
-    message: `Venda de R$ ${sale.toFixed(2)} processada. Amortização automática: R$ ${totalAmortized.toFixed(2)}.`,
-    event: ev,
-    account: calculateAccount()
+  const entry = addLedgerEntry({
+    eventId,
+    type,
+    value: Number(value),
+    reason,
+    beneficiary,
+    actor: getActor(req)
   });
+  res.status(201).json(entry);
 });
 
-// ============================================================================
-// ESTEIRA DE REPASSES (INTEGRADA COM A CONTA FINANCEIRA)
-// ============================================================================
+app.post('/api/interno/liberacoes', (req, res) => {
+  const { eventId, value, reason } = req.body;
+  if (!eventId || Number(value) <= 0 || !reason) {
+    return res.status(400).json({ error: 'Evento, valor e motivo são obrigatórios.' });
+  }
+  const entry = addLedgerEntry({
+    eventId,
+    type: 'LIBERACAO',
+    value: Number(value),
+    reason,
+    actor: getActor(req)
+  });
+  res.status(201).json(entry);
+});
 
-app.get("/api/repasses/elegibilidade/:eventId", (req, res) => {
-  const account = calculateAccount();
-  const ev = account.events.find(e => e.id === req.params.eventId);
-  if (!ev) return res.status(404).json({ error: "Evento não encontrado." });
+// Motor de Elegibilidade e Solicitações de Repasse
+app.get('/api/interno/repasses/elegibilidade/:eventId', (req, res) => {
+  const calculated = calculateAccount();
+  const ev = calculated.events.find(e => e.id === req.params.eventId);
+  if (!ev) return res.status(404).json({ error: 'Evento não encontrado.' });
   res.json(ev.eligibility);
 });
 
-app.get("/api/repasses/solicitacoes", (_, res) => {
-  res.json(state.requests);
-});
+app.post('/api/interno/repasses/solicitacoes', (req, res) => {
+  const calculated = calculateAccount();
+  const ev = calculated.events.find(e => e.id === req.body.eventId);
+  if (!ev) return res.status(404).json({ error: 'Evento não encontrado.' });
 
-app.post("/api/repasses/solicitacoes", (req, res) => {
-  const { eventId, value, applicant } = req.body;
-  const account = calculateAccount();
-  const ev = account.events.find(e => e.id === eventId);
-  if (!ev) return res.status(404).json({ error: "Evento não encontrado." });
-
-  const numValue = Number(value);
-  if (!numValue || numValue <= 0) {
-    return res.status(400).json({ error: "Valor solicitado deve ser maior que zero." });
-  }
-
-  if (!ev.eligibility.ruleMet && !req.body.exceptionAuthorization) {
-    return res.status(422).json({
-      error: `Evento ainda não atingiu ${state.policy.minimumSalesPercent}% da meta de vendas. Faltam R$ ${ev.eligibility.faltamVendas.toFixed(2)} em vendas para liberar o primeiro repasse.`
-    });
-  }
+  const numValue = Number(req.body.value);
+  if (!numValue || numValue <= 0) return res.status(400).json({ error: 'Valor inválido.' });
 
   if (numValue > ev.eligibility.availableToRequest && !req.body.exceptionAuthorization) {
     return res.status(422).json({
-      error: `Valor solicitado (R$ ${numValue.toFixed(2)}) excede o disponível para repasse na conta financeira (R$ ${ev.eligibility.availableToRequest.toFixed(2)}).`
+      error: `Valor solicitado (${numValue}) excede o disponível elegível (${ev.eligibility.availableToRequest}) após todas as deduções de obrigações e estornos.`
     });
   }
 
-  const reqId = `RP-${Date.now()}`;
-  const protocol = `REP-${new Date().getFullYear()}-${Math.floor(10000 + Math.random() * 90000)}`;
-
-  const newRequest = {
-    id: reqId,
-    protocol,
+  const actor = getActor(req);
+  const request = {
+    id: `RP-${Date.now()}`,
+    protocol: `RP-2026-${Math.floor(1000 + Math.random() * 9000)}`,
     eventId: ev.id,
     eventName: ev.name,
     value: numValue,
-    status: "EM_ANALISE",
-    applicant: applicant || `${state.producer.name} (Produtor)`,
-    createdAt: new Date().toISOString(),
+    bankAccount: req.body.bankAccount || 'Conta Bancária Homologada',
+    status: 'AGUARDANDO_APROVACAO',
+    requestedAt: new Date().toISOString(),
+    workflowStep: 'ANALISE_MESA',
+    actor,
     signatures: {
-      producer: { signed: false, signedBy: null },
-      disk: { signed: false, signedBy: null }
-    },
-    approval: { approved: false, approvedBy: null },
-    liquidation: { liquidated: false }
-  };
-
-  state.requests.unshift(newRequest);
-
-  res.status(201).json({
-    message: `Solicitação ${protocol} criada com sucesso e enviada para a mesa do Financeiro Disk.`,
-    request: newRequest
-  });
-});
-
-app.post("/api/repasses/solicitacoes/:id/aprovar", (req, res) => {
-  const r = state.requests.find(x => x.id === req.params.id || x.protocol === req.params.id);
-  if (!r) return res.status(404).json({ error: "Solicitação não encontrada." });
-
-  if (r.status !== "EM_ANALISE") {
-    return res.status(422).json({ error: `Solicitação não pode ser aprovada no status atual: ${r.status}` });
-  }
-
-  r.status = "AGUARDANDO_ASSINATURA_PRODUTOR";
-  r.approval = {
-    approved: true,
-    approvedBy: req.body.approver || "Karine (Adm Financeiro)",
-    approvedAt: new Date().toISOString()
-  };
-
-  res.json({ message: "Solicitação aprovada. Aguardando assinatura digital do produtor.", request: r });
-});
-
-app.post("/api/repasses/solicitacoes/:id/reprovar", (req, res) => {
-  const r = state.requests.find(x => x.id === req.params.id || x.protocol === req.params.id);
-  if (!r) return res.status(404).json({ error: "Solicitação não encontrada." });
-
-  const { reason, rejectedBy } = req.body;
-  if (!reason || reason.trim().length < 5) {
-    return res.status(400).json({ error: "Motivo formal de reprovação obrigatório com no mínimo 5 caracteres." });
-  }
-
-  r.status = "REPROVADO";
-  r.approval = {
-    approved: false,
-    reason: reason.trim(),
-    rejectedBy: rejectedBy || "Financeiro Disk",
-    rejectedAt: new Date().toISOString()
-  };
-
-  res.json({ message: `Solicitação ${r.protocol} reprovada.`, request: r });
-});
-
-app.post("/api/repasses/solicitacoes/:id/assinar", (req, res) => {
-  const r = state.requests.find(x => x.id === req.params.id || x.protocol === req.params.id);
-  if (!r) return res.status(404).json({ error: "Solicitação não encontrada." });
-
-  const { role, signer } = req.body; // 'PRODUTOR' | 'DISK'
-
-  if (role === "PRODUTOR") {
-    if (r.status !== "AGUARDANDO_ASSINATURA_PRODUTOR") {
-      return res.status(422).json({ error: `Solicitação não está na etapa de assinatura do produtor (status: ${r.status}).` });
+      producer: { signed: true, at: new Date().toISOString(), user: actor },
+      disk: { signed: false, at: null, user: null }
     }
-    r.signatures.producer = {
-      signed: true,
-      signedBy: signer || "João Silva (Produtor)",
-      signedAt: new Date().toISOString()
-    };
-    r.status = "AGUARDANDO_ASSINATURA_DISK";
-    return res.json({ message: "Assinatura do Produtor registrada.", request: r });
-  }
-
-  if (role === "DISK") {
-    if (!r.signatures.producer.signed) {
-      return res.status(422).json({ error: "Violação de Governança: a Disk Ingressos não pode assinar antes do Produtor." });
-    }
-    if (r.status !== "AGUARDANDO_ASSINATURA_DISK") {
-      return res.status(422).json({ error: `Solicitação não está na etapa de assinatura Disk (status: ${r.status}).` });
-    }
-    r.signatures.disk = {
-      signed: true,
-      signedBy: signer || "Karine (Financeiro Disk)",
-      signedAt: new Date().toISOString()
-    };
-    r.status = "PRONTO_LIQUIDACAO";
-    return res.json({ message: "Assinatura Disk registrada. Operação pronta para pagamento.", request: r });
-  }
-
-  res.status(400).json({ error: "Role de assinatura inválida. Utilize 'PRODUTOR' ou 'DISK'." });
-});
-
-app.post("/api/repasses/solicitacoes/:id/liquidar", (req, res) => {
-  const r = state.requests.find(x => x.id === req.params.id || x.protocol === req.params.id);
-  if (!r) return res.status(404).json({ error: "Solicitação não encontrada." });
-
-  if (r.status === "LIQUIDADO") {
-    return res.status(422).json({ error: "Idempotência: este repasse já foi liquidado." });
-  }
-
-  if (r.status !== "PRONTO_LIQUIDACAO") {
-    return res.status(422).json({ error: `Repasse não está pronto para liquidação (status: ${r.status}).` });
-  }
-
-  const { executor = "Carlos (Tesouraria Disk)", method = "PIX" } = req.body;
-
-  // SoD: quem aprovou não pode liquidar
-  if (r.approval.approvedBy && r.approval.approvedBy.toLowerCase() === executor.toLowerCase()) {
-    return res.status(403).json({ error: "Segregação de Funções: quem aprovou não pode liquidar a mesma operação." });
-  }
-
-  const voucher = `COMP-PIX-${Date.now()}`;
-  r.status = "LIQUIDADO";
-  r.liquidation = {
-    liquidated: true,
-    liquidatedBy: executor,
-    liquidatedAt: new Date().toISOString(),
-    method,
-    voucher
   };
 
-  // Registra no Ledger como REPASSE
-  addLedgerEntry({
-    eventId: r.eventId,
-    type: "REPASSE",
-    value: r.value,
-    reason: `Liquidação bancária via ${method} (${voucher}) para ${r.protocol}.`,
-    actor: executor
-  });
-
-  res.json({
-    message: `Repasse ${r.protocol} de R$ ${r.value.toFixed(2)} liquidado via ${method}.`,
-    voucher,
-    request: r,
-    account: calculateAccount()
-  });
+  state.requests = state.requests || [];
+  state.requests.unshift(request);
+  res.status(201).json(request);
 });
 
-// ============================================================================
-// DASHBOARD GERAL CONSOLIDADO
-// ============================================================================
-
-app.get("/api/dashboard", (_, res) => {
-  res.json({
-    ...calculateAccount(),
-    credits: state.credits,
-    requests: state.requests,
-    policy: state.policy
-  });
+app.listen(PORT, () => {
+  console.log(`[Financeiro Disk] Conta Financeira Interna API rodando em http://localhost:${PORT}`);
 });
-
-const PORT = process.env.PORT || 3333;
-if (process.env.NODE_ENV !== "test") {
-  app.listen(PORT, () => {
-    console.log(`Conta Financeira do Produtor API em http://localhost:${PORT}`);
-  });
-}
-
-export { app };

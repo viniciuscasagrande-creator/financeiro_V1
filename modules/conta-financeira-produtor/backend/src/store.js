@@ -1,7 +1,10 @@
 /**
- * Store Central da Conta Financeira do Produtor — Homologação PDT Novo
- * Vinculada ao CNPJ do produtor com segregação por evento e ledger imutável.
- * Invariante contábil: Saldo anterior + créditos - débitos = saldo atual.
+ * Store Central da Conta Financeira do Produtor — Homologação PDT Novo (v0.3)
+ * Regra Arquitetural Obrigatória:
+ *  - Uso exclusivo do Financeiro Disk (invisível ao produtor).
+ *  - Reservas e Retenções preventivas para aluguel, ECAD, fornecedores e operacionais.
+ *  - Fila de Estornos com reserva imediata de saldo e Dupla Autorização Estrita (SoD).
+ *  - Invariante contábil: Saldo anterior + créditos - débitos = saldo atual.
  */
 
 export const state = {
@@ -20,8 +23,9 @@ export const state = {
     considerCreditAmortization: true,
     requireApproval: true,
     requireSignature: true,
+    refundDualAuthorization: true,
     allowAdministrativeException: true,
-    updatedAt: "2026-10-02T10:00:00Z",
+    updatedAt: "2026-10-02T11:00:00Z",
     updatedBy: "Diretoria Financeira Disk"
   },
 
@@ -82,23 +86,100 @@ export const state = {
       id: "L-003",
       eventId: "EV-001",
       eventName: "Festival de Homologação 2026",
-      type: "BLOQUEIO",
-      value: 15000.00,
-      balanceAfter: 63000.00,
-      reason: "Reserva técnica operacional para monitoramento de chargeback preventivo",
-      actor: "Mesa de Risco Disk",
+      type: "RETENCAO",
+      value: 80000.00,
+      balanceAfter: 158000.00,
+      reason: "Reserva preventiva para garantia do aluguel do espaço",
+      beneficiary: "Teatro Positivo Ltda.",
+      actor: "Financeiro Disk",
       createdAt: "2026-10-01T12:00:00Z"
     },
     {
       id: "L-004",
       eventId: "EV-001",
       eventName: "Festival de Homologação 2026",
+      type: "RETENCAO",
+      value: 15000.00,
+      balanceAfter: 173000.00,
+      reason: "Reserva preventiva para garantia de direitos autorais ECAD",
+      beneficiary: "ECAD",
+      actor: "Financeiro Disk",
+      createdAt: "2026-10-01T12:10:00Z"
+    },
+    {
+      id: "L-005",
+      eventId: "EV-001",
+      eventName: "Festival de Homologação 2026",
       type: "REPASSE",
       value: 20000.00,
-      balanceAfter: 43000.00,
+      balanceAfter: 153000.00,
       reason: "Repasse ordinário liberado conforme protocolo REP-2026-00041",
       actor: "Carlos (Tesouraria Disk)",
       createdAt: "2026-09-25T16:00:00Z"
+    }
+  ],
+
+  obligations: [
+    {
+      id: "OB-001",
+      eventId: "EV-001",
+      category: "ALUGUEL_ESPACO",
+      description: "Aluguel do Teatro / Espaço Principal",
+      beneficiary: "Teatro Positivo Ltda.",
+      value: 80000.00,
+      dueDate: "2026-11-10",
+      documentRef: "Contrato 2026/04",
+      status: "RESERVADO", // 'PREVISTO', 'RESERVADO', 'RETIDO', 'LIQUIDADO'
+      createdAt: "2026-10-01T12:00:00Z",
+      actor: "Financeiro Disk"
+    },
+    {
+      id: "OB-002",
+      eventId: "EV-001",
+      category: "ECAD",
+      description: "Direitos Autorais / ECAD",
+      beneficiary: "ECAD",
+      value: 15000.00,
+      dueDate: "2026-11-15",
+      documentRef: "Guia ECAD 10/2026",
+      status: "RESERVADO",
+      createdAt: "2026-10-01T12:10:00Z",
+      actor: "Financeiro Disk"
+    },
+    {
+      id: "OB-003",
+      eventId: "EV-001",
+      category: "OPERACIONAL",
+      description: "Segurança e Brigada",
+      beneficiary: "Alfa Segurança",
+      value: 10000.00,
+      dueDate: "2026-11-05",
+      documentRef: "OS-8821",
+      status: "RESERVADO",
+      createdAt: "2026-10-01T12:20:00Z",
+      actor: "Financeiro Disk"
+    }
+  ],
+
+  refunds: [
+    {
+      id: "ES-001",
+      eventId: "EV-001",
+      orderId: "PED-98421",
+      value: 1250.00,
+      reason: "Cancelamento VIP Duplo solicitado via SAC",
+      status: "AGUARDANDO_SEGUNDA_AUTORIZACAO",
+      requestedBy: "João Analista (Financeiro Disk)",
+      approvals: [
+        {
+          approvalIndex: 1,
+          user: "Karine Mendes",
+          at: "2026-10-02T10:15:00Z",
+          factor: "MFA_TOKEN_VALIDADO",
+          notes: "1ª autorização técnica"
+        }
+      ],
+      createdAt: "2026-10-02T10:00:00Z"
     }
   ],
 
@@ -113,7 +194,7 @@ export const state = {
       interestRate: 2.0, // 2% a.m.
       installmentsCount: 5,
       installmentValue: 22000.00,
-      amortizationModel: "PARCELAS_FIXAS", // "PARCELAS_FIXAS" | "PERCENTUAL_RECEBIVEIS" | "FECHAMENTO_EVENTO"
+      amortizationModel: "PARCELAS_FIXAS",
       receivablePercent: 15.0,
       totalDebt: 110000.00,
       outstandingDebt: 88000.00,
@@ -138,44 +219,36 @@ export const state = {
   requests: [
     {
       id: "RP-2026-00089",
-      protocol: "REP-2026-00089",
+      protocol: "RP-2026-00089",
+      producerId: "PROD-001",
       eventId: "EV-001",
       eventName: "Festival de Homologação 2026",
-      value: 30000.00,
-      status: "PRONTO_LIQUIDACAO",
-      applicant: "João Silva (Produtor)",
-      createdAt: "2026-10-01T10:20:00Z",
+      value: 35000.00,
+      bankAccount: "Banco do Brasil - Ag 1234 CC 56789-0",
+      status: "AGUARDANDO_APROVACAO",
+      requestedAt: "2026-10-02T09:15:00Z",
+      workflowStep: "ANALISE_MESA",
       signatures: {
-        producer: { signed: true, signedBy: "João Silva (Produtor)", signedAt: "2026-10-01T11:00:00Z" },
-        disk: { signed: true, signedBy: "Karine (Financeiro Disk)", signedAt: "2026-10-01T11:30:00Z" }
-      },
-      approval: { approved: true, approvedBy: "Karine (Adm Financeiro)", approvedAt: "2026-10-01T10:45:00Z" },
-      liquidation: { liquidated: false }
+        producer: { signed: true, at: "2026-10-02T09:15:00Z", user: "João Silva" },
+        disk: { signed: false, at: null, user: null }
+      }
     }
   ]
 };
 
-export function addLedgerEntry({ eventId, type, value, reason, actor }) {
+export function addLedgerEntry({ eventId, type, value, reason, actor, beneficiary }) {
+  const numericValue = parseFloat(value);
+  if (!numericValue || isNaN(numericValue)) return null;
+
   const ev = state.events.find(e => e.id === eventId);
-  const numericValue = Number(value);
-
-  // Calcula saldo acumulado após este lançamento
   const previousEntries = state.ledger.filter(l => l.eventId === eventId);
-  const previousNetBalance = previousEntries.reduce((acc, curr) => {
-    if (curr.type === 'CREDITO_CONCEDIDO' || curr.type === 'LIBERACAO' || curr.type === 'VENDA_RECEITA') {
-      return acc + curr.value;
-    }
-    if (curr.type === 'AMORTIZACAO_CREDITO' || curr.type === 'BLOQUEIO' || curr.type === 'RETENCAO' || curr.type === 'REPASSE') {
-      return acc - curr.value;
-    }
-    return acc;
-  }, 0);
+  const previousBalance = previousEntries.length > 0 ? previousEntries[0].balanceAfter : 0;
 
-  let newBalance = previousNetBalance;
-  if (type === 'CREDITO_CONCEDIDO' || type === 'LIBERACAO' || type === 'VENDA_RECEITA') {
+  let newBalance = previousBalance;
+  if (["CREDITO_CONCEDIDO", "BLOQUEIO", "RETENCAO", "RESERVA_ESTORNO"].includes(type)) {
     newBalance += numericValue;
-  } else {
-    newBalance -= numericValue;
+  } else if (["AMORTIZACAO_CREDITO", "LIBERACAO", "REPASSE", "ESTORNO_EFETIVADO"].includes(type)) {
+    newBalance = Math.max(0, newBalance - numericValue);
   }
 
   const entry = {
@@ -183,10 +256,11 @@ export function addLedgerEntry({ eventId, type, value, reason, actor }) {
     eventId,
     eventName: ev ? ev.name : "Evento Geral",
     producerId: state.producer.id,
-    type, // 'BLOQUEIO' | 'RETENCAO' | 'LIBERACAO' | 'CREDITO_CONCEDIDO' | 'AMORTIZACAO_CREDITO' | 'REPASSE'
+    type,
     value: numericValue,
     balanceAfter: Math.round(newBalance * 100) / 100,
     reason: (reason || "").trim(),
+    beneficiary: beneficiary ? beneficiary.trim() : null,
     actor: actor || "Financeiro Disk",
     createdAt: new Date().toISOString()
   };
@@ -215,11 +289,22 @@ export function calculateAccount() {
       .filter(l => l.type === "REPASSE")
       .reduce((acc, l) => acc + l.value, 0);
 
+    // Obrigações internas (aluguel, ECAD, fornecedores)
+    const obligationsForEvent = (state.obligations || []).filter(
+      o => o.eventId === event.id && ["RESERVADO", "RETIDO"].includes(o.status)
+    );
+    const obligationsHold = obligationsForEvent.reduce((s, o) => s + Number(o.value || 0), 0);
+
+    // Reservas de estornos em andamento
+    const pendingRefundsForEvent = (state.refunds || []).filter(
+      r => r.eventId === event.id && !["EFETIVADO", "REJEITADO", "CANCELADO"].includes(r.status)
+    );
+    const refundsHold = pendingRefundsForEvent.reduce((s, r) => s + Number(r.value || 0), 0);
+
     // Créditos concedidos e amortizações
     const creditsForEvent = state.credits.filter(c => c.eventId === event.id && c.status === "ATIVO");
     const outstandingDebtForEvent = creditsForEvent.reduce((acc, c) => acc + c.outstandingDebt, 0);
 
-    // Amortização pendente estimada (próxima parcela ou percentual sobre a receita)
     let amortizationHold = 0;
     for (const c of creditsForEvent) {
       if (c.amortizationModel === "PARCELAS_FIXAS") {
@@ -238,14 +323,16 @@ export function calculateAccount() {
     const grossLimit = ruleMet ? event.sold * (state.policy.releasePercent / 100) : 0;
 
     // Disponível para solicitar:
-    // Limite bruto - repasses já realizados - bloqueios/retenções - retenção de amortização de crédito
-    const deductions = paidSum + activeBlocked + (state.policy.considerCreditAmortization ? amortizationHold : 0);
+    // Limite bruto - repasses já realizados - bloqueios/retenções - obrigações - reservas de estornos - amortização de crédito
+    const deductions = paidSum + activeBlocked + obligationsHold + refundsHold + (state.policy.considerCreditAmortization ? amortizationHold : 0);
     const availableToRequest = Math.max(0, grossLimit - deductions);
 
     return {
       ...event,
       salesPercent: Math.round(salesPercent * 10) / 10,
       blocked: activeBlocked,
+      obligationsHold,
+      refundsHold,
       paid: paidSum,
       outstandingDebt: outstandingDebtForEvent,
       amortizationHold,
@@ -258,6 +345,8 @@ export function calculateAccount() {
         grossLimit: Math.round(grossLimit * 100) / 100,
         paid: paidSum,
         blocked: activeBlocked,
+        obligationsHold,
+        refundsHold,
         amortizationHold,
         availableToRequest: Math.round(availableToRequest * 100) / 100
       }
@@ -268,6 +357,13 @@ export function calculateAccount() {
   const totalSold = eventsCalculated.reduce((acc, e) => acc + e.sold, 0);
   const totalPaid = eventsCalculated.reduce((acc, e) => acc + e.paid, 0);
   const totalBlocked = eventsCalculated.reduce((acc, e) => acc + e.blocked, 0);
+  const totalObligationsHold = (state.obligations || [])
+    .filter(o => ["RESERVADO", "RETIDO"].includes(o.status))
+    .reduce((s, o) => s + Number(o.value || 0), 0);
+  const totalRefundsHold = (state.refunds || [])
+    .filter(r => !["EFETIVADO", "REJEITADO", "CANCELADO"].includes(r.status))
+    .reduce((s, r) => s + Number(r.value || 0), 0);
+
   const totalOutstandingCredits = state.credits
     .filter(c => c.status === "ATIVO")
     .reduce((acc, c) => acc + c.outstandingDebt, 0);
@@ -277,10 +373,8 @@ export function calculateAccount() {
     0
   );
 
-  // Saldo financeiro consolidado:
-  // Saldo Consolidado = Vendas - Repasses Realizados
   const consolidatedBalance = Math.max(0, totalSold - totalPaid);
-  const futurePending = Math.max(0, consolidatedBalance - totalAvailableForRepasse - totalBlocked);
+  const futurePending = Math.max(0, consolidatedBalance - totalAvailableForRepasse - totalBlocked - totalObligationsHold - totalRefundsHold);
 
   return {
     producer: state.producer,
@@ -289,11 +383,17 @@ export function calculateAccount() {
       availableForRepasse: Math.round(totalAvailableForRepasse * 100) / 100,
       futurePending: Math.round(futurePending * 100) / 100,
       blocked: Math.round(totalBlocked * 100) / 100,
-      retained: 0,
+      obligationsReserved: Math.round(totalObligationsHold * 100) / 100,
+      pendingRefundsHold: Math.round(totalRefundsHold * 100) / 100,
+      retained: Math.round(totalObligationsHold * 100) / 100,
       outstandingCredits: Math.round(totalOutstandingCredits * 100) / 100,
       totalSold: Math.round(totalSold * 100) / 100,
       totalPaid: Math.round(totalPaid * 100) / 100
     },
-    events: eventsCalculated
+    events: eventsCalculated,
+    credits: state.credits,
+    obligations: state.obligations || [],
+    refunds: state.refunds || [],
+    ledger: state.ledger
   };
 }
