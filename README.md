@@ -225,3 +225,6 @@ No rodapé da tela, a barra interativa permite a qualquer momento:
 ## V0.6.1 — Taxas, MDR, Spread e Regras Comerciais
 
 Inclui matriz administrativa de MDR e regras comerciais, Spread bruto, custos adicionais, receita fixa comercial, margem líquida efetiva, hierarquia Evento → Produtor → Geral Disk e versionamento. Veja `docs/V0.6.1_TAXAS_MDR_SPREAD_REGRAS_COMERCIAIS.md`.
+
+## V0.6.2 — Spread, Rentabilidade e DRE
+A matriz de Taxas/MDR/Spread passa a alimentar a apuração gerencial por evento e o DRE de taxas/adquirência. Consulte `docs/V0.6.2_SPREAD_LEDGER_DRE.md`.
