@@ -3,6 +3,7 @@
  * Pipeline Oficial: Solicitação → Recebido Disk → Em Análise → Aprovação → Assinatura Produtor → Assinatura Disk → Programação → Pagamento & Conciliação
  */
 import { formatCurrency, createStatusBadge } from '../formatters.js';
+import { financialStore } from '../state.js';
 
 export function renderRepasses(state) {
   const producer = state.activeProducer;
@@ -10,6 +11,29 @@ export function renderRepasses(state) {
   const availableBalance = producer.totals?.availableBalance || 400000.00;
   const transferredAmount = producer.totals?.transferredAmount || 920000.00;
   const scheduledAmount = payouts.filter(p => ['Programado', 'Aprovado', 'Documento formalizado'].includes(p.status)).reduce((acc, p) => acc + (p.requestedAmount || p.amount || 0), 0);
+
+  // Eventos do produtor e cálculo do Motor de Elegibilidade (50% vendas -> 20% liberação)
+  const events = (state.data.events || []).filter(e => e.producerId === producer.id);
+  const selectedEventId = (state.selectedEventId && state.selectedEventId !== 'all')
+    ? state.selectedEventId
+    : (events.find(e => e.id === 'evt-inverno')?.id || events[0]?.id || 'evt-001');
+  const currentEvent = events.find(e => e.id === selectedEventId) || events[0] || state.data.events[0];
+  const eligibility = financialStore.calculatePayoutEligibility(currentEvent?.id) || {
+    eventName: currentEvent?.name || 'Evento',
+    salesTarget: 1000000,
+    grossSales: 500000,
+    progressPercent: 50,
+    minSalesPercent: 50,
+    releasePercent: 20,
+    ruleMet: true,
+    faltamVendas: 0,
+    limiteBruto: 100000,
+    previousPayouts: 40000,
+    totalDeductions: 50000,
+    disponivelFinal: 50000,
+    isExceptional: false,
+    status: 'HABILITADO'
+  };
 
   // Repasse em destaque para a régua (prioriza REP-2026-00128 ou o primeiro ativo)
   const activePayout = payouts.find(p => p.id === 'REP-2026-00128') ||
@@ -33,19 +57,153 @@ export function renderRepasses(state) {
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 19V5"></path><polyline points="5 12 12 5 19 12"></polyline></svg>
             Gestão e Acompanhamento de Repasses
           </h1>
-          <p class="page-title-desc">Rastreamento ponta a ponta: Solicitação → Análise de Risco → Formalização Digital → Liquidação Bancária.</p>
+          <p class="page-title-desc">Rastreamento ponta a ponta: Motor de Elegibilidade &bull; Solicitação &bull; Análise de Risco &bull; Formalização Digital &bull; Liquidação Bancária.</p>
         </div>
         <div class="header-action-group">
-          <button class="btn btn-primary" onclick="window.app.openPayoutModal()">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-            Solicitar Repasse Agora
-          </button>
+          ${eligibility.disponivelFinal > 0 ? `
+            <button class="btn btn-primary" onclick="window.app.openPayoutModal('${currentEvent.id}')">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+              Solicitar Repasse Agora (${formatCurrency(eligibility.disponivelFinal)})
+            </button>
+          ` : `
+            <button class="btn btn-secondary" onclick="window.app.openPayoutModal('${currentEvent.id}')" title="Acesse os detalhes de elegibilidade deste evento">
+              <i class="ph-lock me-1"></i> Solicitar Repasse (${eligibility.status === 'BLOQUEADO' ? 'Bloqueado' : 'Sem Limite'})
+            </button>
+          `}
         </div>
       </div>
     </div>
 
     <!-- Content -->
     <div class="limitless-content">
+
+      <!-- CARD DE ELEGIBILIDADE DO REPASSE (MOTOR 50% VENDAS -> 20% LIBERAÇÃO) -->
+      <div class="card-panel mb-4 shadow-sm" style="border: 2px solid ${eligibility.status === 'EXCECAO_AUTORIZADA' ? '#3b82f6' : (eligibility.ruleMet ? '#10b981' : '#f59e0b')}; background: #ffffff;">
+        <div class="card-header-bar" style="background: ${eligibility.status === 'EXCECAO_AUTORIZADA' ? 'rgba(59,130,246,0.06)' : (eligibility.ruleMet ? 'rgba(16,185,129,0.06)' : 'rgba(245,158,11,0.06)')};">
+          <div class="card-title-group">
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+              <span class="badge ${eligibility.status === 'EXCECAO_AUTORIZADA' ? 'bg-primary' : (eligibility.ruleMet ? 'bg-success' : 'bg-warning text-dark')}" style="font-size: 0.75rem; font-weight: 800; letter-spacing: 0.05em; padding: 5px 10px;">
+                ${eligibility.status === 'EXCECAO_AUTORIZADA' ? '🛡️ EXCEÇÃO ADMINISTRATIVA AUTORIZADA' : (eligibility.ruleMet ? '✓ REPASSE HABILITADO' : '🔒 REPASSE BLOQUEADO')}
+              </span>
+              <span style="font-size: 0.8rem; color: var(--text-muted);">
+                Motor de Elegibilidade · Política de Repasse Disk (${eligibility.minSalesPercent}% vendas &bull; ${eligibility.releasePercent}% liberado)
+              </span>
+            </div>
+            <h2 style="margin-top: 6px; font-size: 1.25rem;">
+              Status do Evento: <strong>${eligibility.eventName}</strong>
+            </h2>
+            <p class="card-subtitle">
+              Meta de vendas: <strong>${formatCurrency(eligibility.salesTarget)}</strong> &bull; Vendas realizadas: <strong>${formatCurrency(eligibility.grossSales)}</strong> (${eligibility.progressPercent}%) &bull; Regra de liberação: ${eligibility.ruleMet ? '<span class="text-success fw-bold">Atingida (mínimo ' + eligibility.minSalesPercent + '%)</span>' : '<span class="text-danger fw-bold">Não atingida (mínimo ' + eligibility.minSalesPercent + '%)</span>'}
+            </p>
+          </div>
+          <div style="display: flex; gap: 10px; align-items: center;">
+            <select class="form-select form-select-sm" style="max-width: 280px; font-weight: 600;" onchange="window.app.onRepasseViewEventSelect(this.value)">
+              ${events.map(ev => `
+                <option value="${ev.id}" ${ev.id === currentEvent.id ? 'selected' : ''}>
+                  ${ev.name} (${Math.round((ev.grossSales / (ev.salesTarget || 1000000)) * 100)}% vendido)
+                </option>
+              `).join('')}
+            </select>
+          </div>
+        </div>
+
+        <div class="card-body">
+          <!-- Barra de Progresso de Vendas vs Meta -->
+          <div style="margin-bottom: 20px;">
+            <div style="display: flex; justify-content: space-between; font-size: 0.82rem; margin-bottom: 6px; font-weight: 600;">
+              <span>Progresso de Vendas (${eligibility.progressPercent}% de ${formatCurrency(eligibility.salesTarget)})</span>
+              <span>${eligibility.ruleMet ? '<span class="text-success">✓ Gatilho mínimo alcançado</span>' : '<span class="text-danger">Faltam ' + formatCurrency(eligibility.faltamVendas) + ' em vendas para liberar repasse</span>'}</span>
+            </div>
+            <div class="progress" style="height: 12px; background: #e2e8f0; border-radius: 6px; overflow: hidden; position: relative;">
+              <div style="position: absolute; left: ${eligibility.minSalesPercent}%; top: 0; bottom: 0; width: 2px; background: #dc2626; z-index: 2;" title="Gatilho Mínimo (${eligibility.minSalesPercent}%)"></div>
+              <div class="progress-bar" style="width: ${Math.min(eligibility.progressPercent, 100)}%; background: ${eligibility.ruleMet ? '#10b981' : '#f59e0b'}; transition: width 0.4s ease;"></div>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 0.72rem; color: var(--text-muted); margin-top: 4px;">
+              <span>0%</span>
+              <span style="color: #dc2626; font-weight: 700;">▲ Gatilho Mínimo: ${eligibility.minSalesPercent}%</span>
+              <span>100% (${formatCurrency(eligibility.salesTarget)})</span>
+            </div>
+          </div>
+
+          <!-- Alerta se houver Autorização Excepcional Ativa -->
+          ${eligibility.isExceptional && eligibility.activeException ? `
+            <div class="alert alert-info p-3 mb-3 d-flex align-items-center justify-content-between" style="background: #eff6ff; border: 1px solid #bfdbfe; border-left: 4px solid #2563eb; border-radius: 8px;">
+              <div>
+                <div class="fw-bold text-primary" style="font-size: 0.9rem;">
+                  🛡️ Autorização Administrativa Excepcional Ativa (Protocolo: ${eligibility.activeException.protocol})
+                </div>
+                <div style="font-size: 0.8rem; color: #1e40af; margin-top: 2px;">
+                  Responsável: <strong>${eligibility.activeException.authorizedBy}</strong> em ${eligibility.activeException.createdDate} &bull; Limite liberado: <strong>${formatCurrency(eligibility.activeException.amount)}</strong>
+                </div>
+                <div style="font-size: 0.78rem; color: #475569; margin-top: 4px;">
+                  <em>"Justificativa registrada: ${eligibility.activeException.reason}"</em>
+                </div>
+              </div>
+              <span class="badge bg-primary text-white fs-xs px-2 py-1">Exceção Concedida</span>
+            </div>
+          ` : ''}
+
+          <!-- Alerta se Bloqueado -->
+          ${!eligibility.ruleMet && !eligibility.isExceptional ? `
+            <div class="alert alert-warning p-3 mb-3" style="background: #fffbeb; border: 1px solid #fde68a; border-left: 4px solid #f59e0b; border-radius: 8px;">
+              <div class="fw-bold text-amber-900" style="font-size: 0.88rem;">
+                🔒 Regra de Liberação: Não atingida (mínimo ${eligibility.minSalesPercent}% de vendas)
+              </div>
+              <div style="font-size: 0.8rem; color: #92400e; margin-top: 3px;">
+                Faltam <strong>${formatCurrency(eligibility.faltamVendas)}</strong> em vendas para liberar o primeiro repasse antecipado de até ${eligibility.releasePercent}%. Solicitações manuais ficam travadas preventivamente para proteção do fluxo do evento.
+              </div>
+            </div>
+          ` : ''}
+
+          <!-- Decomposição Canônica do Limite e Saldo Elegível -->
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; margin-top: 16px;">
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px;">
+              <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Limite Liberado (${eligibility.releasePercent}% vendas)</div>
+              <div style="font-size: 1.25rem; font-weight: 800; color: #1e293b; margin: 4px 0;">${formatCurrency(eligibility.limiteBruto)}</div>
+              <div style="font-size: 0.75rem; color: var(--text-muted);">Sobre vendas de ${formatCurrency(eligibility.grossSales)}</div>
+            </div>
+
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px;">
+              <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">(-) Repasses Já Realizados</div>
+              <div style="font-size: 1.25rem; font-weight: 800; color: #dc2626; margin: 4px 0;">-${formatCurrency(eligibility.previousPayouts)}</div>
+              <div style="font-size: 0.75rem; color: var(--text-muted);">Transferências anteriores quitadas</div>
+            </div>
+
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px;">
+              <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">(-) Em Análise / Bloqueados</div>
+              <div style="font-size: 1.25rem; font-weight: 800; color: #d97706; margin: 4px 0;">-${formatCurrency(eligibility.totalDeductions - eligibility.previousPayouts)}</div>
+              <div style="font-size: 0.75rem; color: var(--text-muted);">Reservas de pedidos + retenções</div>
+            </div>
+
+            <div style="background: ${eligibility.disponivelFinal > 0 ? '#ecfdf5' : '#fef2f2'}; border: 2px solid ${eligibility.disponivelFinal > 0 ? '#10b981' : '#f87171'}; border-radius: 8px; padding: 14px;">
+              <div style="font-size: 0.75rem; text-transform: uppercase; color: ${eligibility.disponivelFinal > 0 ? '#047857' : '#991b1b'}; font-weight: 800;">Saldo Disponível p/ Solicitar</div>
+              <div style="font-size: 1.35rem; font-weight: 900; color: ${eligibility.disponivelFinal > 0 ? '#065f46' : '#991b1b'}; margin: 4px 0;">${formatCurrency(eligibility.disponivelFinal)}</div>
+              <div style="font-size: 0.75rem; color: ${eligibility.disponivelFinal > 0 ? '#047857' : '#991b1b'};">
+                ${eligibility.isExceptional ? '★ Autorizado por Exceção' : (eligibility.ruleMet ? (eligibility.disponivelFinal > 0 ? 'Livre para solicitar agora' : 'Limite consumido') : 'Bloqueado pela regra dos 50%')}
+              </div>
+            </div>
+          </div>
+
+          <!-- Ação Direta no Card -->
+          <div style="margin-top: 16px; display: flex; justify-content: flex-end; align-items: center; gap: 12px; flex-wrap: wrap;">
+            ${!eligibility.ruleMet && !eligibility.isExceptional ? `
+              <span class="fs-xs text-muted"><i class="ph-info me-1"></i> Necessário atingir ${eligibility.minSalesPercent}% ou obter autorização excepcional junto ao Financeiro Disk.</span>
+              <button class="btn btn-secondary btn-sm" disabled style="opacity: 0.65; cursor: not-allowed;">
+                <i class="ph-lock me-1"></i> Solicitar Repasse (Bloqueado)
+              </button>
+            ` : (eligibility.disponivelFinal <= 0 ? `
+              <span class="fs-xs text-muted">Limite total da política vigente já transferido.</span>
+              <button class="btn btn-secondary btn-sm" disabled style="opacity: 0.65; cursor: not-allowed;">
+                Limite Esgotado
+              </button>
+            ` : `
+              <button class="btn btn-success btn-sm fw-bold px-3 py-2 shadow-sm" onclick="window.app.openPayoutModal('${currentEvent.id}')">
+                <i class="ph-hand-coins me-1"></i> Solicitar Repasse de até ${formatCurrency(eligibility.disponivelFinal)} &rarr;
+              </button>
+            `)}
+          </div>
+        </div>
+      </div>
 
       <!-- Alerta Crítico: Assinatura Pendente do Produtor -->
       ${needsProducerSignature ? `

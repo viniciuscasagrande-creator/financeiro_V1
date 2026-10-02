@@ -6,7 +6,7 @@ import { getFreshDatabase } from './mockData.js';
 
 export class CoreFinanceiroStore {
   constructor() {
-    this.storageKey = 'disk-financeiro-v1-p22';
+    this.storageKey = 'disk-financeiro-v1-p23';
     this.data = this.loadPersistedData() || getFreshDatabase();
     if (!this.data.__p12Enriched) {
       this.enrichApprovalQueueWithAuditAndSignatures();
@@ -504,6 +504,21 @@ export class CoreFinanceiroStore {
         });
       }
     }
+
+    // Pacote 23: Política Oficial de Repasse & Motor de Elegibilidade (50% vendas -> 20% liberação)
+    if (!this.data.payoutPolicies) {
+      this.data.payoutPolicies = getFreshDatabase().payoutPolicies;
+    }
+    if (!this.data.exceptionalAuthorizations) {
+      this.data.exceptionalAuthorizations = getFreshDatabase().exceptionalAuthorizations;
+    }
+    if (Array.isArray(this.data.events)) {
+      this.data.events.forEach(e => {
+        if (!e.salesTarget) {
+          e.salesTarget = e.id === 'evt-001' ? 1000000 : (e.id === 'evt-002' ? 600000 : (e.id === 'evt-003' ? 200000 : (e.grossSales ? e.grossSales * 2 : 500000)));
+        }
+      });
+    }
   }
 
   recordOperationEvent(item, action, details = '', module = 'Core Financeiro') {
@@ -770,9 +785,31 @@ export class CoreFinanceiroStore {
       return null;
     }
 
+    // Validação Canônica do Motor de Elegibilidade (50% vendas -> 20% liberação ou Exceção Administrativa)
+    const elig = this.calculatePayoutEligibility(event.id);
+    if (elig) {
+      if (!elig.ruleMet && !elig.isExceptional) {
+        const msg = `Solicitação bloqueada: O evento ainda não atingiu a política mínima de vendas (${elig.minSalesPercent}%). Progresso atual: ${elig.progressPercent.toFixed(1)}%. Faltam R$ ${elig.faltamVendas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} em vendas para liberar o primeiro repasse.`;
+        alert(msg);
+        return null;
+      }
+      if (numericAmount > elig.disponivelFinal) {
+        const msg = `Valor solicitado (R$ ${numericAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}) excede o limite disponível para repasse pela política vigente (R$ ${elig.disponivelFinal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}).`;
+        alert(msg);
+        return null;
+      }
+    }
+
     const payoutId = `REP-${Math.floor(10000 + Math.random() * 90000)}`;
     const nowTime = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
     const nowDate = new Date().toLocaleDateString('pt-BR');
+
+    // Se for exceção administrativa ativa, marca e consome a autorização
+    if (elig?.isExceptional && elig.activeException) {
+      elig.activeException.consumed = true;
+      elig.activeException.payoutId = payoutId;
+      elig.activeException.consumedAt = new Date().toISOString();
+    }
 
     const newApprovalItem = {
       id: payoutId,
@@ -800,8 +837,12 @@ export class CoreFinanceiroStore {
         eventRegular: Boolean(event && event.status !== 'Suspenso' && event.status !== 'Bloqueado'),
         noActiveBlocks: !producer.hasBlock && Number(event.blockedBalance || 0) === 0,
         limitPermitted: numericAmount <= this.getTransferableAmount(event),
+        eligibilityMet: elig ? (elig.ruleMet || elig.isExceptional) : true,
         chargebackWarning: event.chargebackCases > 0 ? `${event.chargebackCases} chargeback(s) sob monitoramento` : 'Sem pendências'
       },
+      eligibilitySnapshot: elig || null,
+      exceptionalAuthorizationId: elig?.isExceptional ? elig.activeException?.id : null,
+      exceptionalAuthorization: elig?.isExceptional ? elig.activeException : null,
       auditPosition: {
         grossSales: event.grossSales,
         netRevenue: event.netRevenue,
@@ -815,6 +856,9 @@ export class CoreFinanceiroStore {
       },
       auditTrail: [
         { timestamp: `${nowTime}`, actor: `${this.state.currentUser.name} (Produtor)`, action: "Criou solicitação de repasse", details: `R$ ${numericAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` },
+        elig?.isExceptional
+          ? { timestamp: `${nowTime}`, actor: "Mesa Financeira Disk", action: "Autorização Excepcional Aplicada", details: `Protocolo ${elig.activeException.protocol} autorizou R$ ${elig.activeException.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}. Motivo: ${elig.activeException.reason}` }
+          : { timestamp: `${nowTime}`, actor: "Motor de Elegibilidade", action: "Elegibilidade Atestada", details: `Regra de ${elig?.minSalesPercent || 50}% de vendas atingida (${elig?.progressPercent?.toFixed(1) || '0'}%). Limite liberado: ${elig?.releasePercent || 20}%.` },
         { timestamp: `${nowTime}`, actor: `${this.state.currentUser.name} (Produtor)`, action: "Conferiu valores e enviou para análise", details: "Status: Aguardando análise" },
         { timestamp: `${nowTime}`, actor: "Sistema Disk", action: "Notificou a Tesouraria Disk", details: "Entrou na Central de Aprovações" }
       ],
@@ -841,6 +885,245 @@ export class CoreFinanceiroStore {
     this.recordOperationEvent(newApprovalItem, 'Solicitação enviada', 'Saldo reservado e encaminhado ao Financeiro Disk', 'Ambiente Produtor');
     this.notify();
     return newApprovalItem;
+  }
+
+  // ==========================================================================
+  // MOTOR DE ELEGIBILIDADE DE REPASSES & POLÍTICA PARAMETRIZÁVEL (PACOTE 23)
+  // Hierarquia: Geral Disk → Produtor → Evento | Gatilho 50% → Libera 20%
+  // ==========================================================================
+
+  getPayoutPolicy(producerId = null, eventId = null) {
+    const globalPolicy = this.data.payoutPolicies?.global || {
+      minSalesPercent: 50,
+      releasePercent: 20,
+      considerRefunds: true,
+      considerChargebacks: true,
+      considerMdr: true,
+      requireValidatedBank: true,
+      requireDiskApproval: true,
+      requireDigitalSignature: true,
+      allowAdministrativeException: true,
+      updatedAt: "2026-09-30 10:00:00",
+      updatedBy: "Diretoria Financeira Disk"
+    };
+
+    const prodOverride = producerId && this.data.payoutPolicies?.byProducer?.[producerId]
+      ? this.data.payoutPolicies.byProducer[producerId]
+      : {};
+
+    const eventOverride = eventId && this.data.payoutPolicies?.byEvent?.[eventId]
+      ? this.data.payoutPolicies.byEvent[eventId]
+      : {};
+
+    const appliedScope = (eventOverride && Object.keys(eventOverride).length > 0)
+      ? 'Evento'
+      : ((prodOverride && Object.keys(prodOverride).length > 0) ? 'Produtor' : 'Geral Disk');
+
+    return {
+      ...globalPolicy,
+      ...prodOverride,
+      ...eventOverride,
+      _appliedScope: appliedScope
+    };
+  }
+
+  updatePayoutPolicy({ scope = 'global', targetId = null, policy = {} }) {
+    if (!this.data.payoutPolicies) {
+      this.data.payoutPolicies = { global: {}, byProducer: {}, byEvent: {} };
+    }
+    const actor = this.state.currentUser?.name || "Administrador Disk";
+    const timestamp = new Date().toLocaleString('pt-BR');
+
+    if (scope === 'global') {
+      this.data.payoutPolicies.global = {
+        ...this.data.payoutPolicies.global,
+        ...policy,
+        updatedAt: timestamp,
+        updatedBy: actor
+      };
+    } else if (scope === 'producer' && targetId) {
+      this.data.payoutPolicies.byProducer = this.data.payoutPolicies.byProducer || {};
+      this.data.payoutPolicies.byProducer[targetId] = {
+        ...(this.data.payoutPolicies.byProducer[targetId] || {}),
+        ...policy,
+        updatedAt: timestamp,
+        updatedBy: actor
+      };
+    } else if (scope === 'event' && targetId) {
+      this.data.payoutPolicies.byEvent = this.data.payoutPolicies.byEvent || {};
+      this.data.payoutPolicies.byEvent[targetId] = {
+        ...(this.data.payoutPolicies.byEvent[targetId] || {}),
+        ...policy,
+        updatedAt: timestamp,
+        updatedBy: actor
+      };
+    }
+
+    this.persist();
+    this.showToast(
+      "✓ Política de Repasse Atualizada",
+      `Parâmetros atualizados no escopo [${scope.toUpperCase()}] com sucesso.`,
+      "success"
+    );
+    this.notify();
+    return this.getPayoutPolicy(scope === 'producer' ? targetId : null, scope === 'event' ? targetId : null);
+  }
+
+  calculatePayoutEligibility(eventId) {
+    const event = this.data.events.find(e => e.id === eventId);
+    if (!event) return null;
+
+    const producer = this.data.producers.find(p => p.id === event.producerId) || this.getState().activeProducer;
+    const policy = this.getPayoutPolicy(producer?.id, event.id);
+
+    const salesTarget = Number(event.salesTarget || (event.capacity ? event.capacity * 150 : (event.grossSales * 2)) || 1000000);
+    const grossSales = Number(event.grossSales || 0);
+
+    // Percentual atingido das vendas em relação à meta
+    const progressPercent = salesTarget > 0 ? (grossSales / salesTarget) * 100 : 0;
+    const minSalesPercent = Number(policy.minSalesPercent ?? 50);
+    const releasePercent = Number(policy.releasePercent ?? 20);
+
+    // Gatilho: atingiu percentual mínimo de vendas?
+    const ruleMet = progressPercent >= minSalesPercent;
+
+    // Faltam vendas para liberar o primeiro repasse?
+    const targetMinSales = salesTarget * (minSalesPercent / 100);
+    const faltamVendas = ruleMet ? 0 : Math.max(0, targetMinSales - grossSales);
+
+    // Limite bruto liberado sobre as vendas realizadas
+    const limiteBruto = ruleMet ? (grossSales * (releasePercent / 100)) : 0;
+
+    // Deduções: Repasses anteriores, Bloqueios, Retenções e Reservas em andamento
+    const previousPayouts = Number(event.payoutsDone || 0);
+    const reservedBalance = Number(event.reservedBalance || 0);
+    const retainedBalance = Number(event.retainedBalance || 0);
+    const blockedBalance = Number(event.blockedBalance || 0);
+
+    // Deduções operacionais canônicas do limite de repasse:
+    // Limite = (Vendas * %Liberado) - repasses anteriores - bloqueados - reservados
+    const totalDeductions = previousPayouts + reservedBalance + blockedBalance;
+    const standardAvailable = Math.max(0, limiteBruto - totalDeductions);
+
+    // Trava de saldo disponível no evento
+    const eventAvailable = Number(event.availableBalance || 0);
+    const maxStandardEligible = Math.min(eventAvailable, standardAvailable);
+
+    // Verifica se há Autorização Excepcional ativa para este evento
+    const activeException = (this.data.exceptionalAuthorizations || []).find(
+      a => a.eventId === event.id && a.status === 'ATIVA' && !a.consumed
+    );
+
+    const isExceptional = Boolean(activeException);
+    let finalAvailable = maxStandardEligible;
+
+    if (isExceptional && activeException) {
+      // Exceção administrativa permite repasse até o limite autorizado e saldo do evento
+      finalAvailable = Math.min(eventAvailable, Number(activeException.amount));
+    }
+
+    return {
+      eventId: event.id,
+      eventName: event.name,
+      producerId: producer?.id || event.producerId,
+      producerName: producer?.name || event.producerName,
+      salesTarget,
+      grossSales,
+      progressPercent: Math.round(progressPercent * 10) / 10,
+      minSalesPercent,
+      releasePercent,
+      ruleMet,
+      faltamVendas,
+      limiteBruto,
+      previousPayouts,
+      reservedBalance,
+      retainedBalance,
+      blockedBalance,
+      totalDeductions,
+      eventAvailable,
+      standardAvailable,
+      disponivelPadrao: maxStandardEligible,
+      disponivelFinal: finalAvailable,
+      isExceptional,
+      activeException: activeException || null,
+      status: isExceptional ? 'EXCECAO_AUTORIZADA' : (ruleMet ? 'HABILITADO' : 'BLOQUEADO'),
+      policy
+    };
+  }
+
+  authorizeExceptionalPayout({ eventId, amount, reason, authorizedBy = null }) {
+    if (this.state.currentUser.role === 'producer') {
+      alert("Apenas a mesa do Financeiro Disk pode emitir Autorizações Excepcionais.");
+      return null;
+    }
+
+    const event = this.data.events.find(e => e.id === eventId);
+    if (!event) {
+      alert("Evento não encontrado.");
+      return null;
+    }
+
+    const numericAmount = parseFloat(amount);
+    if (!numericAmount || numericAmount <= 0) {
+      alert("Informe um valor válido para a autorização excepcional.");
+      return null;
+    }
+
+    if (numericAmount > event.availableBalance) {
+      alert(`O valor autorizado (${numericAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}) excede o saldo financeiro do evento (${event.availableBalance.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}).`);
+      return null;
+    }
+
+    if (!reason || reason.trim().length < 5) {
+      alert("É obrigatório fornecer uma justificativa formal com no mínimo 5 caracteres para fins de auditoria.");
+      return null;
+    }
+
+    const producer = this.data.producers.find(p => p.id === event.producerId);
+    const actor = authorizedBy || `${this.state.currentUser.name} (${this.state.currentUser.title || 'Financeiro Disk'})`;
+    const nowIso = new Date().toISOString();
+    const nowTime = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const nowDate = new Date().toLocaleDateString('pt-BR');
+
+    const authId = `AUT-${Date.now()}`;
+    const protocol = `AUT-${new Date().getFullYear()}-${Math.floor(10000 + Math.random() * 90000)}`;
+
+    const newAuth = {
+      id: authId,
+      protocol,
+      eventId: event.id,
+      eventName: event.name,
+      producerId: producer?.id || event.producerId,
+      producerName: producer?.name || event.producerName,
+      amount: numericAmount,
+      reason: reason.trim(),
+      authorizedBy: actor,
+      createdAt: nowIso,
+      createdDate: `${nowDate} ${nowTime}`,
+      status: 'ATIVA',
+      consumed: false,
+      payoutId: null
+    };
+
+    this.data.exceptionalAuthorizations = this.data.exceptionalAuthorizations || [];
+    this.data.exceptionalAuthorizations.unshift(newAuth);
+
+    this.showToast(
+      "🛡️ Autorização Excepcional Concedida",
+      `Protocolo ${protocol} emitido para ${event.name} no valor de ${numericAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}.`,
+      "success"
+    );
+
+    this.recordOperationEvent(
+      { id: protocol, protocol, type: 'Autorização Excepcional', producerName: producer?.name, eventName: event.name },
+      'Autorização Excepcional Emitida',
+      `Liberado repasse de até R$ ${numericAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}. Justificativa: ${reason.trim()}`,
+      'Mesa Financeiro Disk'
+    );
+
+    this.persist();
+    this.notify();
+    return newAuth;
   }
 
   // ==========================================================================

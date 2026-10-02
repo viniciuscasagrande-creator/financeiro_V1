@@ -115,6 +115,7 @@ export const menuFinanceiroCompleto = [
       { id: 'diskSolicitacoes', label: 'Central de Solicitações', filterArg: 'all' },
       { id: 'diskAprovacoes', label: 'Central de Aprovações', filterArg: 'pendentes' },
       { id: 'diskRepasses', label: 'Repasses', filterArg: 'all' },
+      { id: 'diskPoliticaRepasse', label: 'Política de Repasse', filterArg: 'politica' },
       { id: 'diskAntecipacoes', label: 'Antecipações', filterArg: 'all' },
       { id: 'diskDivisaoReceitas', label: 'Divisão de Receitas', filterArg: 'split' },
       { id: 'diskTransferencias', label: 'Transferências entre Eventos', action: 'openTransferModal' },

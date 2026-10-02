@@ -8,7 +8,7 @@
     "server": "node server.js",
     "dev": "node server.js",
     "build": "node build.js",
-    "test": "node tests/integridade-financeira.test.mjs && node tests/views-render.test.mjs",
+    "test": "node tests/integridade-financeira.test.mjs && node tests/views-render.test.mjs && node tests/repasses-elegibilidade.test.mjs",
     "prisma:generate": "prisma generate --schema=database/schema.prisma",
     "seed": "node -e \"console.log('Seed mock loaded com sucesso.')\""
   },

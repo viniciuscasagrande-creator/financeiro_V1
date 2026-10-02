@@ -59,6 +59,7 @@ import { renderDiskGovernanca } from './views/disk/diskGovernanca.js';
 import { renderDiskCentralTrabalho } from './views/disk/diskCentralTrabalho.js';
 import { renderDiskFinanceiroAvancado } from './views/disk/diskFinanceiroAvancado.js';
 import { renderDiskSaldos } from './views/disk/diskSaldos.js';
+import { renderDiskPoliticaRepasse } from './views/disk/diskPoliticaRepasse.js';
 import {
   renderDiskEventos,
   renderDiskRepasses,
@@ -1235,6 +1236,8 @@ class LimitlessFinancialApp {
   // ==========================================================================
   // MODAIS DE OPERAÇÃO DO PRODUTOR
   // ==========================================================================
+  // MODAL DE REPASSE COM MOTOR DE ELEGIBILIDADE & EXCEÇÕES ADMINISTRATIVAS
+  // ==========================================================================
   openPayoutModal(defaultEventId = null) {
     const state = financialStore.getState();
     let producer = state.activeProducer;
@@ -1257,15 +1260,36 @@ class LimitlessFinancialApp {
     }
     const bankAccounts = (producer.bankAccounts && producer.bankAccounts.length > 0) ? producer.bankAccounts : (state.data.producers[0]?.bankAccounts || []);
 
+    const elig = financialStore.calculatePayoutEligibility(selectedEvent.id) || {
+      salesTarget: 1000000,
+      grossSales: selectedEvent.grossSales,
+      progressPercent: 50,
+      minSalesPercent: 50,
+      releasePercent: 20,
+      ruleMet: true,
+      faltamVendas: 0,
+      limiteBruto: selectedEvent.grossSales * 0.2,
+      totalDeductions: 0,
+      disponivelFinal: selectedEvent.availableBalance,
+      isExceptional: false,
+      status: 'HABILITADO'
+    };
+
+    const isBlocked = !elig.ruleMet && !elig.isExceptional;
+    const maxAmount = Math.max(0, elig.disponivelFinal);
+    const initialAmount = isBlocked ? 0 : Math.min(Math.max(100, Math.min(80000, maxAmount)), maxAmount);
+    const hasValidBank = bankAccounts.some(b => ['Ativa', 'Validada & Ativa'].includes(b.status));
+    const canSubmit = !isBlocked && maxAmount > 0 && hasValidBank;
+
     const html = `
-      <div class="modal-card" style="max-width: 540px;">
+      <div class="modal-card" style="max-width: 580px;">
         <div class="modal-header bg-success text-white">
           <h5 class="fw-bold mb-0 text-white"><i class="ph-hand-coins me-2"></i> Solicitar Repasse Financeiro</h5>
           <button class="modal-close-btn text-white border-0 bg-transparent" onclick="window.app.closeModal()">&times;</button>
         </div>
         <div class="modal-body p-4">
           <p class="fs-xs text-muted mb-3">
-            Transfira seu saldo disponível para a conta bancária homologada de <strong>${producer.name}</strong>.
+            Transfira seu saldo elegível para a conta bancária homologada de <strong>${producer.name}</strong>.
           </p>
 
           <form id="payoutForm" onsubmit="window.app.handlePayoutSubmit(event)">
@@ -1274,19 +1298,46 @@ class LimitlessFinancialApp {
               <select class="form-select" id="modalPayoutEvent" onchange="window.app.onPayoutEventSelect(this.value)">
                 ${events.map(e => `
                   <option value="${e.id}" ${e.id === selectedEvent.id ? 'selected' : ''}>
-                    ${e.name} (Disponível: ${formatCurrency(e.availableBalance)})
+                    ${e.name} (${Math.round((e.grossSales / (e.salesTarget || 1000000)) * 100)}% vendido &bull; Livre: ${formatCurrency(financialStore.calculatePayoutEligibility(e.id)?.disponivelFinal || 0)})
                   </option>
                 `).join('')}
               </select>
             </div>
 
-            <div class="mb-3">
-              <label class="form-label fw-bold fs-xs text-uppercase text-muted">Valor a Transferir (R$)</label>
-              <input type="number" class="form-control" id="modalPayoutAmount" min="100" max="${selectedEvent.availableBalance}" value="${Math.min(80000, selectedEvent.availableBalance)}" required step="0.01">
-              <div class="form-text fs-xs text-muted">Máximo disponível neste evento: <strong id="modalMaxAvailable" class="text-success">${formatCurrency(selectedEvent.availableBalance)}</strong></div>
+            <!-- Box Dinâmico de Elegibilidade do Evento -->
+            <div id="modalEligibilityBox" class="p-3 mb-3 rounded" style="background: ${isBlocked ? '#fffbeb' : (elig.isExceptional ? '#eff6ff' : '#ecfdf5')}; border: 1px solid ${isBlocked ? '#fde68a' : (elig.isExceptional ? '#bfdbfe' : '#a7f3d0')};">
+              <div class="d-flex justify-content-between align-items-center mb-1">
+                <span class="badge ${isBlocked ? 'bg-warning text-dark' : (elig.isExceptional ? 'bg-primary text-white' : 'bg-success text-white')}" style="font-weight: 700; font-size: 0.75rem;">
+                  ${isBlocked ? '🔒 REPASSE BLOQUEADO (< ' + elig.minSalesPercent + '%)' : (elig.isExceptional ? '🛡️ EXCEÇÃO ADMINISTRATIVA AUTORIZADA' : '✓ REPASSE HABILITADO')}
+                </span>
+                <span class="fw-bold fs-xs text-dark">${elig.progressPercent}% vendido (${formatCurrency(elig.grossSales)})</span>
+              </div>
+              ${isBlocked ? `
+                <div class="text-amber-900 fs-xs mt-2" style="line-height: 1.35;">
+                  <strong>Regra de liberação pendente:</strong> O evento atingiu ${elig.progressPercent}% de vendas da meta de ${formatCurrency(elig.salesTarget)}. Faltam <strong>${formatCurrency(elig.faltamVendas)}</strong> em vendas para liberar o primeiro repasse de ${elig.releasePercent}%.
+                </div>
+              ` : `
+                <div class="d-flex justify-content-between text-muted fs-xxs mt-2">
+                  <span>Limite (${elig.releasePercent}%): <strong>${formatCurrency(elig.limiteBruto)}</strong></span>
+                  <span>Deduções anteriores: <strong>-${formatCurrency(elig.totalDeductions)}</strong></span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mt-1 pt-1 border-top">
+                  <span class="fw-bold text-dark fs-xs">Disponível para solicitar:</span>
+                  <span class="fw-bold text-success fs-sm">${formatCurrency(elig.disponivelFinal)}</span>
+                </div>
+                ${elig.isExceptional && elig.activeException ? `
+                  <div class="fs-xxs text-primary mt-1">★ Liberado por Exceção Administrativa: "${elig.activeException.reason}"</div>
+                ` : ''}
+              `}
             </div>
 
-            ${bankAccounts.some(b => ['Ativa', 'Validada & Ativa'].includes(b.status)) ? `
+            <div class="mb-3">
+              <label class="form-label fw-bold fs-xs text-uppercase text-muted">Valor a Transferir (R$)</label>
+              <input type="number" class="form-control fw-bold" id="modalPayoutAmount" min="100" max="${maxAmount}" value="${initialAmount}" required step="0.01" ${isBlocked || maxAmount <= 0 ? 'disabled' : ''}>
+              <div class="form-text fs-xs text-muted">Máximo disponível neste evento pela política: <strong id="modalMaxAvailable" class="${maxAmount > 0 ? 'text-success' : 'text-danger'}">${formatCurrency(maxAmount)}</strong></div>
+            </div>
+
+            ${hasValidBank ? `
               <div class="mb-3">
                 <label class="form-label fw-bold fs-xs text-uppercase text-muted">Conta Bancária de Destino</label>
                 <select class="form-select" id="modalPayoutBank">
@@ -1315,7 +1366,7 @@ class LimitlessFinancialApp {
 
             <div class="modal-footer px-0 pb-0 pt-2 d-flex justify-content-end gap-2">
               <button type="button" class="btn btn-secondary" onclick="window.app.closeModal()">Cancelar</button>
-              <button type="submit" class="btn btn-success" ${!bankAccounts.some(b => ['Ativa', 'Validada & Ativa'].includes(b.status)) ? 'disabled' : ''}>Confirmar e Enviar para Análise</button>
+              <button type="submit" id="modalPayoutSubmitBtn" class="btn btn-success" ${!canSubmit ? 'disabled' : ''}>Confirmar e Enviar para Análise</button>
             </div>
           </form>
         </div>
@@ -1328,10 +1379,70 @@ class LimitlessFinancialApp {
   onPayoutEventSelect(eventId) {
     const state = financialStore.getState();
     const event = state.data.events.find(e => e.id === eventId);
-    if (event) {
-      document.getElementById('modalPayoutAmount').max = event.availableBalance;
-      document.getElementById('modalPayoutAmount').value = Math.min(80000, event.availableBalance);
-      document.getElementById('modalMaxAvailable').innerText = formatCurrency(event.availableBalance);
+    if (!event) return;
+
+    const elig = financialStore.calculatePayoutEligibility(eventId) || {
+      salesTarget: 1000000,
+      grossSales: event.grossSales,
+      progressPercent: 50,
+      minSalesPercent: 50,
+      releasePercent: 20,
+      ruleMet: true,
+      faltamVendas: 0,
+      limiteBruto: event.grossSales * 0.2,
+      totalDeductions: 0,
+      disponivelFinal: event.availableBalance,
+      isExceptional: false,
+      status: 'HABILITADO'
+    };
+
+    const isBlocked = !elig.ruleMet && !elig.isExceptional;
+    const maxAmount = Math.max(0, elig.disponivelFinal);
+    const amountInput = document.getElementById('modalPayoutAmount');
+    const submitBtn = document.getElementById('modalPayoutSubmitBtn');
+    const maxLabel = document.getElementById('modalMaxAvailable');
+    const box = document.getElementById('modalEligibilityBox');
+
+    if (amountInput) {
+      amountInput.max = maxAmount;
+      amountInput.value = isBlocked ? 0 : Math.min(80000, maxAmount);
+      amountInput.disabled = isBlocked || maxAmount <= 0;
+    }
+    if (maxLabel) {
+      maxLabel.innerText = formatCurrency(maxAmount);
+      maxLabel.className = maxAmount > 0 ? 'text-success' : 'text-danger';
+    }
+    if (submitBtn) {
+      submitBtn.disabled = isBlocked || maxAmount <= 0;
+    }
+    if (box) {
+      box.style.background = isBlocked ? '#fffbeb' : (elig.isExceptional ? '#eff6ff' : '#ecfdf5');
+      box.style.borderColor = isBlocked ? '#fde68a' : (elig.isExceptional ? '#bfdbfe' : '#a7f3d0');
+      box.innerHTML = `
+        <div class="d-flex justify-content-between align-items-center mb-1">
+          <span class="badge ${isBlocked ? 'bg-warning text-dark' : (elig.isExceptional ? 'bg-primary text-white' : 'bg-success text-white')}" style="font-weight: 700; font-size: 0.75rem;">
+            ${isBlocked ? '🔒 REPASSE BLOQUEADO (< ' + elig.minSalesPercent + '%)' : (elig.isExceptional ? '🛡️ EXCEÇÃO ADMINISTRATIVA AUTORIZADA' : '✓ REPASSE HABILITADO')}
+          </span>
+          <span class="fw-bold fs-xs text-dark">${elig.progressPercent}% vendido (${formatCurrency(elig.grossSales)})</span>
+        </div>
+        ${isBlocked ? `
+          <div class="text-amber-900 fs-xs mt-2" style="line-height: 1.35;">
+            <strong>Regra de liberação pendente:</strong> O evento atingiu ${elig.progressPercent}% de vendas da meta de ${formatCurrency(elig.salesTarget)}. Faltam <strong>${formatCurrency(elig.faltamVendas)}</strong> em vendas para liberar o primeiro repasse de ${elig.releasePercent}%.
+          </div>
+        ` : `
+          <div class="d-flex justify-content-between text-muted fs-xxs mt-2">
+            <span>Limite (${elig.releasePercent}%): <strong>${formatCurrency(elig.limiteBruto)}</strong></span>
+            <span>Deduções anteriores: <strong>-${formatCurrency(elig.totalDeductions)}</strong></span>
+          </div>
+          <div class="d-flex justify-content-between align-items-center mt-1 pt-1 border-top">
+            <span class="fw-bold text-dark fs-xs">Disponível para solicitar:</span>
+            <span class="fw-bold text-success fs-sm">${formatCurrency(elig.disponivelFinal)}</span>
+          </div>
+          ${elig.isExceptional && elig.activeException ? `
+            <div class="fs-xxs text-primary mt-1">★ Liberado por Exceção Administrativa: "${elig.activeException.reason}"</div>
+          ` : ''}
+        `}
+      `;
     }
   }
 
@@ -1347,6 +1458,144 @@ class LimitlessFinancialApp {
 
     this.closeModal();
     this.navigate('repasses');
+  }
+
+  onRepasseViewEventSelect(eventId) {
+    financialStore.state.selectedEventId = eventId;
+    this.navigate('repasses');
+  }
+
+  openExceptionalAuthorizationModal(defaultEventId = null) {
+    const state = financialStore.getState();
+    const events = state.data.events || [];
+    const selectedEvent = defaultEventId ? events.find(e => e.id === defaultEventId) : events[0];
+
+    const html = `
+      <div class="modal-card" style="max-width: 560px;">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="fw-bold mb-0 text-white">
+            <i class="ph-shield-plus me-2"></i> Autorizar Repasse Excepcional (Trava Humana)
+          </h5>
+          <button class="modal-close-btn text-white border-0 bg-transparent" onclick="window.app.closeModal()">&times;</button>
+        </div>
+        <div class="modal-body p-4">
+          <p class="fs-xs text-muted mb-3">
+            Emita uma autorização administrativa pontual para liberar repasse financeiro antes do gatilho de 50% de vendas ou com condições comerciais especiais acordadas pela Diretoria Disk.
+          </p>
+
+          <form onsubmit="window.app.handleExceptionalAuthorizationSubmit(event)">
+            <div class="mb-3">
+              <label class="form-label fw-bold fs-xs text-uppercase text-muted">Evento / Produtor Beneficiário</label>
+              <select class="form-select" id="authEventSelect" required onchange="window.app.onAuthEventSelect(this.value)">
+                ${events.map(ev => `
+                  <option value="${ev.id}" ${selectedEvent && ev.id === selectedEvent.id ? 'selected' : ''}>
+                    ${ev.name} &bull; ${ev.producerName} (Saldo: ${formatCurrency(ev.availableBalance)})
+                  </option>
+                `).join('')}
+              </select>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label fw-bold fs-xs text-uppercase text-muted">Valor Autorizado para o Repasse (R$)</label>
+              <input type="number" class="form-control fw-bold text-primary" id="authAmountInput" min="100" max="${selectedEvent ? selectedEvent.availableBalance : 500000}" value="${selectedEvent ? Math.min(50000, selectedEvent.availableBalance) : 25000}" required step="0.01">
+              <div class="form-text fs-xxs text-muted">Saldo financeiro disponível do evento: <strong id="authEventMaxAvailable" class="text-success">${formatCurrency(selectedEvent ? selectedEvent.availableBalance : 0)}</strong></div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label fw-bold fs-xs text-uppercase text-muted">
+                Justificativa Obrigatória &bull; Trilha de Auditoria
+              </label>
+              <textarea class="form-control fs-xs" id="authReasonInput" rows="3" placeholder="Ex: Adiantamento emergencial de cachê artístico acordado em comitê comercial Disk." required minlength="5"></textarea>
+              <div class="form-text fs-xxs text-muted">Esta justificativa fica registrada de forma imutável com seu usuário, IP e timestamp nos autos da operação.</div>
+            </div>
+
+            <div class="p-2 mb-3 bg-light border rounded text-muted fs-xxs">
+              🛡️ <strong>Segregação de Funções:</strong> A concessão desta autorização não liquida o repasse; ela apenas habilita o produtor a enviar o pedido para a esteira normal de conferência, assinaturas e tesouraria.
+            </div>
+
+            <div class="modal-footer px-0 pb-0 pt-2 d-flex justify-content-end gap-2">
+              <button type="button" class="btn btn-secondary btn-sm" onclick="window.app.closeModal()">Cancelar</button>
+              <button type="submit" class="btn btn-primary btn-sm fw-bold px-3">
+                <i class="ph-shield-check me-1"></i> Emitir Autorização Excepcional
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    `;
+
+    this.showModal(html);
+  }
+
+  onAuthEventSelect(eventId) {
+    const state = financialStore.getState();
+    const event = state.data.events.find(e => e.id === eventId);
+    if (event) {
+      const amountInput = document.getElementById('authAmountInput');
+      const maxLabel = document.getElementById('authEventMaxAvailable');
+      if (amountInput) {
+        amountInput.max = event.availableBalance;
+        amountInput.value = Math.min(50000, event.availableBalance);
+      }
+      if (maxLabel) {
+        maxLabel.innerText = formatCurrency(event.availableBalance);
+      }
+    }
+  }
+
+  handleExceptionalAuthorizationSubmit(e) {
+    e.preventDefault();
+    const eventId = document.getElementById('authEventSelect')?.value;
+    const amount = document.getElementById('authAmountInput')?.value;
+    const reason = document.getElementById('authReasonInput')?.value;
+
+    const auth = financialStore.authorizeExceptionalPayout({ eventId, amount, reason });
+    if (!auth) return;
+
+    this.closeModal();
+    this.navigate(this.currentView || 'diskPoliticaRepasse', this.currentFilterArg);
+  }
+
+  handleSaveGlobalPayoutPolicy(e) {
+    e.preventDefault();
+    const minSales = Number(document.getElementById('policyMinSales')?.value || 50);
+    const releasePercent = Number(document.getElementById('policyReleasePercent')?.value || 20);
+    const refunds = Boolean(document.getElementById('policyRefunds')?.checked);
+    const cb = Boolean(document.getElementById('policyChargebacks')?.checked);
+    const mdr = Boolean(document.getElementById('policyMdr')?.checked);
+    const bank = Boolean(document.getElementById('policyBank')?.checked);
+    const approval = Boolean(document.getElementById('policyApproval')?.checked);
+    const sig = Boolean(document.getElementById('policySignature')?.checked);
+    const exc = Boolean(document.getElementById('policyException')?.checked);
+
+    financialStore.updatePayoutPolicy({
+      scope: 'global',
+      policy: {
+        minSalesPercent: minSales,
+        releasePercent,
+        considerRefunds: refunds,
+        considerChargebacks: cb,
+        considerMdr: mdr,
+        requireValidatedBank: bank,
+        requireDiskApproval: approval,
+        requireDigitalSignature: sig,
+        allowAdministrativeException: exc
+      }
+    });
+
+    this.navigate(this.currentView || 'diskPoliticaRepasse', this.currentFilterArg);
+  }
+
+  cancelExceptionalAuthorization(authId) {
+    if (!confirm('Deseja realmente revogar esta autorização excepcional? O evento voltará à regra padrão da política.')) return;
+    const exc = (financialStore.data.exceptionalAuthorizations || []).find(e => e.id === authId);
+    if (exc) {
+      exc.status = 'CANCELADA';
+      financialStore.showToast('Autorização Cancelada', `Protocolo ${exc.protocol} revogado com sucesso.`, 'info');
+      financialStore.persist();
+      financialStore.notify();
+      this.navigate(this.currentView || 'diskPoliticaRepasse', this.currentFilterArg);
+    }
   }
 
   // Modal de Transferência entre Eventos (Gestão de Saldos do Produtor)
@@ -1622,8 +1871,13 @@ class LimitlessFinancialApp {
         case 'diskSaldos':
           viewHtml = renderDiskSaldos(state, this.diskBalanceTab || this.currentFilterArg || 'consolidado');
           break;
+        case 'diskPoliticaRepasse':
+          viewHtml = renderDiskPoliticaRepasse(state, this.currentFilterArg);
+          break;
         case 'diskRepasses':
-          viewHtml = renderDiskRepasses(state, this.currentFilterArg);
+          viewHtml = (this.currentFilterArg === 'politica'
+            ? renderDiskPoliticaRepasse(state, this.currentFilterArg)
+            : renderDiskRepasses(state, this.currentFilterArg));
           break;
         case 'diskAntecipacoes':
           viewHtml = renderDiskAntecipacoes(state, this.currentFilterArg);
@@ -2101,6 +2355,7 @@ class LimitlessFinancialApp {
       'diskAprovacoes': { title: 'Central de Aprovações', subtitle: 'Workflow transversal &bull; Governança Maker/Checker &bull; Assinaturas sequenciais &bull; SLA.' },
       'diskSaldos': { title: 'Saldos por Produtor & por Evento', subtitle: 'Consolidação de saldos disponíveis, a receber, bloqueios e reservas por produtor e evento.' },
       'diskRepasses': { title: 'Repasses & Liquidação Bancária', subtitle: 'Gestão do ciclo de repasses: análise, aprovação, programação e liquidação bancária.' },
+      'diskPoliticaRepasse': { title: 'Política de Repasse & Motor de Elegibilidade', subtitle: 'Parametrização dinâmica do gatilho de vendas (50%), liberação (20%), precedência de regras e autorizações excepcionais.' },
       'diskAntecipacoes': { title: 'Antecipações de Recebíveis', subtitle: 'Análise de elegibilidade de risco, simulações, taxas e contratação de antecipações.' },
       'diskRecebiveis': { title: 'Recebíveis & Liquidações', subtitle: 'Previsão de caixa futuro por adquirente, bandeira e método de pagamento (PIX e Cartão).' },
       'diskTaxas': { title: 'Taxas & Regras Comerciais', subtitle: 'Configuração de MDR, spread comercial Disk (1,22%), parcelamento e vigências contratuais.' },

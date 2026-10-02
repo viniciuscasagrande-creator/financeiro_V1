@@ -173,6 +173,7 @@ export const initialMockDatabase = {
       status: "Vendas Abertas",
       capacity: 5000,
       soldTickets: 4250,
+      salesTarget: 1000000.00,
       // Estrutura de fechamento exata citada na especificação do usuário:
       // Vendas brutas: R$ 500.000 | Cancelamentos: R$ 10.000 | Taxas: R$ 35.000 | Estornos/Chargebacks: R$ 5.000 -> Líquido R$ 450.000
       // Repassado: R$ 150.000 | A receber: R$ 80.000 | Bloqueado: R$ 20.000 -> Saldo Disponível: R$ 200.000,00
@@ -204,6 +205,7 @@ export const initialMockDatabase = {
       status: "Últimos Ingressos",
       capacity: 3000,
       soldTickets: 2800,
+      salesTarget: 600000.00,
       grossSales: 250000.00,
       cancellations: 5000.00,
       diskFees: 20000.00,
@@ -231,6 +233,7 @@ export const initialMockDatabase = {
       status: "Vendas Abertas",
       capacity: 1000,
       soldTickets: 850,
+      salesTarget: 200000.00,
       grossSales: 140000.00,
       cancellations: 2000.00,
       diskFees: 12000.00,
@@ -245,6 +248,34 @@ export const initialMockDatabase = {
       bannerColor: "#059669"
     },
     {
+      id: "evt-inverno",
+      producerId: "prod-abc",
+      producerName: "Produtora ABC Ltda.",
+      name: "Festival de Inverno 2026",
+      category: "Festival Musical",
+      date: "12/11/2026",
+      venue: "Pedreira Paulo Leminski - Curitiba/PR",
+      status: "Vendas Abertas",
+      capacity: 8000,
+      soldTickets: 4160,
+      salesTarget: 1000000.00,
+      grossSales: 520000.00,
+      cancellations: 10000.00,
+      diskFees: 36000.00,
+      chargebacks: 4000.00,
+      netRevenue: 470000.00,
+      payoutsDone: 40000.00,
+      futureReceivables: 60000.00,
+      financialBalance: 420000.00,
+      availableBalance: 420000.00,
+      reservedBalance: 0.00,
+      retainedBalance: 0.00,
+      blockedBalance: 10000.00,
+      totalBalance: 490000.00,
+      chargebackCases: 0,
+      bannerColor: "#0284c7"
+    },
+    {
       id: "evt-xyz-1",
       producerId: "prod-xyz",
       producerName: "Eventos XYZ Produções Artísticas",
@@ -255,6 +286,7 @@ export const initialMockDatabase = {
       status: "Vendas Abertas",
       capacity: 4000,
       soldTickets: 2100,
+      salesTarget: 700000.00,
       grossSales: 350000.00,
       cancellations: 8000.00,
       diskFees: 34000.00,
@@ -279,6 +311,7 @@ export const initialMockDatabase = {
       status: "Vendas Abertas",
       capacity: 8000,
       soldTickets: 6100,
+      salesTarget: 1500000.00,
       grossSales: 1200000.00,
       cancellations: 12000.00,
       diskFees: 102000.00,
@@ -673,6 +706,45 @@ export const initialMockDatabase = {
       netAmount: 8460.00,
       balanceAfter: 352236.50,
       status: "Liquidado"
+    }
+  ],
+
+  // Política Oficial de Repasse Disk (Parametrização Dinâmica & Precedência: Geral Disk → Produtor → Evento)
+  payoutPolicies: {
+    global: {
+      minSalesPercent: 50,
+      releasePercent: 20,
+      considerRefunds: true,
+      considerChargebacks: true,
+      considerMdr: true,
+      requireValidatedBank: true,
+      requireDiskApproval: true,
+      requireDigitalSignature: true,
+      allowAdministrativeException: true,
+      updatedAt: "2026-09-30 10:00:00",
+      updatedBy: "Diretoria Financeira Disk"
+    },
+    byProducer: {},
+    byEvent: {}
+  },
+
+  // Registro de Autorizações Excepcionais (A Trava Humana da Mesa Financeira Disk)
+  exceptionalAuthorizations: [
+    {
+      id: "AUT-2026-00088",
+      protocol: "AUT-2026-00088",
+      eventId: "evt-002",
+      eventName: "Show Artista A - Turnê Especial",
+      producerId: "prod-abc",
+      producerName: "Produtora ABC Ltda.",
+      amount: 45000.00,
+      reason: "Adiantamento emergencial de cachê artístico acordado em comitê comercial Disk.",
+      authorizedBy: "Karine Mendes (Financeiro Disk)",
+      createdAt: "2026-09-28T14:30:00.000Z",
+      createdDate: "28/09/2026 14:30",
+      status: "ATIVA",
+      consumed: false,
+      payoutId: null
     }
   ]
 };
