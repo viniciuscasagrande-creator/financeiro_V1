@@ -27,6 +27,7 @@ import { renderEstornos } from './views/estornos.js';
 import { renderBordero } from './views/bordero.js';
 import { renderRelatorios } from './views/relatorios.js';
 import { renderDadosBancarios } from './views/dadosBancarios.js';
+import { renderComprovantes } from './views/comprovantes.js';
 
 // Configuração oficial de menus dinâmicos por perfil
 import { menusPorPerfil } from './menuConfig.js';
@@ -99,7 +100,25 @@ class LimitlessFinancialApp {
 
   setupGlobalListeners() {
     window.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') this.closeModal();
+      if (e.key === 'Escape') {
+        this.closeModal();
+        this.closeAllSearchDropdowns();
+      }
+    });
+
+    document.addEventListener('click', (e) => {
+      // Close search dropdowns if clicked outside
+      const globalSearchBox = document.getElementById('global-search');
+      const globalSearchDropdown = document.getElementById('global-search-dropdown');
+      if (globalSearchDropdown && !globalSearchDropdown.contains(e.target) && e.target !== globalSearchBox) {
+        globalSearchDropdown.classList.add('d-none');
+      }
+
+      const localSearchBox = document.getElementById('producer-local-search');
+      const localSearchDropdown = document.getElementById('producer-local-search-results');
+      if (localSearchDropdown && !localSearchDropdown.contains(e.target) && e.target !== localSearchBox) {
+        localSearchDropdown.style.display = 'none';
+      }
     });
 
     // Close modal when clicking outside modal card
@@ -135,6 +154,192 @@ class LimitlessFinancialApp {
 
   selectProducerInDisk(producerId) {
     financialStore.setSelectedProducer(producerId);
+  }
+
+  searchProducerMaster(term) {
+    const q = String(term || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const state = financialStore.getState();
+    const found = (state.data.producers || []).find(p => {
+      const fields = [p.name, p.tradeName, p.cnpj, p.id].map(v => String(v || '').toLowerCase());
+      return fields.some(v => v.includes(String(term || '').toLowerCase()) || v.replace(/[^a-z0-9]/g, '').includes(q));
+    });
+    if (found) this.selectProducerInDisk(found.id);
+  }
+
+  addFinancialDocument(producerId) {
+    const state = financialStore.getState();
+    const producer = state.data.producers.find(p => p.id === producerId);
+    if (!producer) return;
+    const type = prompt('Tipo da operação (Repasse, Transferência, Pagamento, Estorno, Outro):', 'Repasse');
+    if (!type) return;
+    const amount = Number(String(prompt('Valor da transação (R$):', '0') || '0').replace('.', '').replace(',', '.')) || 0;
+    const eventId = prompt('ID do evento (deixe vazio para consolidado):', '') || null;
+    const evt = state.data.events.find(e => e.id === eventId);
+    const fileName = prompt('Nome do comprovante/arquivo:', `comprovante_${type.toLowerCase().replace(/\s+/g,'_')}.pdf`) || 'comprovante.pdf';
+    const reference = prompt('Referência/NSU/Protocolo:', '') || '';
+    const description = prompt('Descrição da transação:', '') || '';
+    const visible = confirm('Disponibilizar este comprovante ao Produtor agora?');
+    state.data.financialDocuments = state.data.financialDocuments || [];
+    state.data.financialDocuments.unshift({id:`DOC-FIN-${Date.now()}`,producerId,eventId,eventName:evt?.name||'Consolidado',type,amount,fileName,reference,description,date:new Date().toLocaleDateString('pt-BR'),visibleToProducer:visible,uploadedBy:'Financeiro Disk'});
+    financialStore.persist?.();
+    this.render(financialStore.getState());
+    financialStore.showToast('Documento financeiro', visible ? 'Transação anexada e disponibilizada ao produtor.' : 'Transação anexada como documento interno da Disk.', 'success');
+  }
+
+  toggleFinancialDocumentVisibility(id) {
+    const state = financialStore.getState();
+    const doc = (state.data.financialDocuments || []).find(d => d.id === id);
+    if (!doc) return;
+    doc.visibleToProducer = !doc.visibleToProducer;
+    financialStore.persist?.();
+    this.render(financialStore.getState());
+  }
+
+  downloadFinancialDocument(id) {
+    const state = financialStore.getState();
+    const d = (state.data.financialDocuments || []).find(x => x.id === id);
+    if (!d) return;
+    const content = `DISK INGRESSOS - COMPROVANTE FINANCEIRO\nOperação: ${d.type}\nData: ${d.date}\nEvento: ${d.eventName||'Consolidado'}\nReferência: ${d.reference||'-'}\nValor: R$ ${Number(d.amount||0).toFixed(2)}\nDescrição: ${d.description||'-'}\nArquivo de referência: ${d.fileName}`;
+    const blob = new Blob([content], {type:'text/plain;charset=utf-8'});
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=d.fileName?.replace(/\.pdf$/i,'.txt')||'comprovante.txt'; a.click(); URL.revokeObjectURL(a.href);
+  }
+
+  addSocietaryDocumentModal(producerId) {
+    const state = financialStore.getState();
+    const producer = (state.data.producers || []).find(p => p.id === producerId);
+    if (!producer) {
+      financialStore.showToast("Erro", "Produtor não localizado.", "danger");
+      return;
+    }
+    const html = `
+      <div class="modal-card" style="max-width: 620px;">
+        <div class="modal-header d-flex justify-content-between align-items-center bg-dark text-white p-3">
+          <div class="d-flex align-items-center gap-2">
+            <i class="ph-file-lock fs-4 text-warning"></i>
+            <div>
+              <h5 class="modal-title fs-sm fw-bold mb-0">Anexar Documento Societário / Compliance</h5>
+              <div class="fs-xxs text-white-50">${producer.name} &bull; ${producer.cnpj}</div>
+            </div>
+          </div>
+          <button class="modal-close-btn text-white" onclick="window.app.closeModal()">&times;</button>
+        </div>
+        <form class="modal-body p-4 bg-light" onsubmit="event.preventDefault(); window.app.saveSocietaryDocument('${producer.id}')">
+          <div class="mb-3">
+            <label class="form-label fs-xs fw-bold text-dark">Tipo de Documento <span class="text-danger">*</span></label>
+            <select class="form-select form-select-sm" id="socDocType" required>
+              <option value="Contrato Social / Estatuto">Contrato Social / Estatuto Vigente</option>
+              <option value="Cartão CNPJ">Cartão CNPJ Atualizado</option>
+              <option value="Procuração / Nomeação">Procuração / Nomeação de Administradores</option>
+              <option value="CND Federal / Receita">CND Federal (Receita Federal / PGFN)</option>
+              <option value="CND Estadual / Municipal">CND Estadual / Municipal</option>
+              <option value="Comprovante de Domicílio Bancário">Comprovante de Domicílio Bancário</option>
+              <option value="Outros / Compliance">Outros Documentos de Compliance</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fs-xs fw-bold text-dark">Título / Descrição do Documento <span class="text-danger">*</span></label>
+            <input type="text" class="form-control form-control-sm" id="socDocName" placeholder="Ex: Alteração Contratual Consolidada na Junta Comercial" required>
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col-7">
+              <label class="form-label fs-xs fw-bold text-dark">Nome do Arquivo / PDF</label>
+              <input type="text" class="form-control form-control-sm" id="socDocFileName" placeholder="contrato_social_consolidado.pdf">
+            </div>
+            <div class="col-5">
+              <label class="form-label fs-xs fw-bold text-dark">Status</label>
+              <select class="form-select form-select-sm" id="socDocStatus">
+                <option value="Válido" selected>Válido</option>
+                <option value="Em Análise">Em Análise</option>
+                <option value="Pendente de Renovação">Pendente de Renovação</option>
+              </select>
+            </div>
+          </div>
+          <div class="p-3 bg-white rounded border mb-3">
+            <div class="form-check form-switch mb-0">
+              <input class="form-check-input" type="checkbox" id="socDocVisibleToProducer">
+              <label class="form-check-label fs-xs fw-bold text-dark" for="socDocVisibleToProducer">
+                Disponibilizar ao Produtor no Portal
+              </label>
+            </div>
+            <div class="fs-xxs text-muted mt-1">
+              <i class="ph-shield-check text-primary me-1"></i> Regra de Governança: Por padrão, anexar não publica automaticamente. Deixe desmarcado para manter o documento como <strong>Interno Disk</strong>.
+            </div>
+          </div>
+          <div class="d-flex justify-content-end gap-2 mt-4">
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="window.app.closeModal()">Cancelar</button>
+            <button type="submit" class="btn btn-sm btn-primary fw-bold px-3">
+              <i class="ph-check me-1"></i> Salvar Documento
+            </button>
+          </div>
+        </form>
+      </div>
+    `;
+    this.showModal(html);
+  }
+
+  saveSocietaryDocument(producerId) {
+    const docType = document.getElementById('socDocType')?.value;
+    const docName = document.getElementById('socDocName')?.value;
+    const fileName = document.getElementById('socDocFileName')?.value || `${(docName || 'documento').toLowerCase().replace(/\s+/g, '_')}.pdf`;
+    const docStatus = document.getElementById('socDocStatus')?.value || 'Válido';
+    const visibleToProducer = document.getElementById('socDocVisibleToProducer')?.checked === true;
+
+    if (!docName || !docName.trim()) {
+      alert("Informe o título/descrição do documento.");
+      return;
+    }
+
+    financialStore.addProducerDocument(producerId, {
+      type: docType,
+      name: docName.trim(),
+      fileName: fileName.trim(),
+      status: docStatus,
+      visibleToProducer
+    });
+
+    this.closeModal();
+    financialStore.showToast(
+      "Documento Anexado",
+      `Documento "${docName}" inserido com sucesso. Visibilidade: ${visibleToProducer ? 'Disponível ao Produtor' : 'Interno Disk'}.`,
+      "success"
+    );
+    this.render(financialStore.getState());
+  }
+
+  toggleSocietaryDocumentVisibility(producerId, docId) {
+    financialStore.toggleProducerDocumentVisibility(producerId, docId);
+    const state = financialStore.getState();
+    const p = (state.data.producers || []).find(x => x.id === producerId);
+    const doc = (p?.documents || []).find(d => d.id === docId);
+    financialStore.showToast(
+      "Visibilidade Alterada",
+      `Documento agora está: ${doc?.visibleToProducer ? 'Disponível ao Produtor' : 'Restrito (Interno Disk)'}`,
+      "info"
+    );
+    this.render(state);
+  }
+
+  downloadSocietaryDocument(producerId, docId) {
+    const state = financialStore.getState();
+    const p = (state.data.producers || []).find(x => x.id === producerId);
+    const doc = (p?.documents || []).find(d => d.id === docId);
+    if (!doc) return;
+    const content = `DISK INGRESSOS - DOCUMENTO SOCIETÁRIO & COMPLIANCE\nProdutor: ${p?.name || '-'}\nCNPJ: ${p?.cnpj || '-'}\nTipo: ${doc.type}\nDocumento: ${doc.name}\nArquivo: ${doc.fileName}\nData de Upload: ${doc.uploadDate}\nStatus: ${doc.status}\nVisibilidade: ${doc.visibleToProducer ? 'Disponível ao Produtor' : 'Interno Disk'}`;
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = doc.fileName?.replace(/\.pdf$/i, '.txt') || 'documento.txt';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  searchProducerMaster(query) {
+    const q = (query || '').toLowerCase().trim();
+    const rows = document.querySelectorAll('#sec-dossie-resumo table tbody tr, #sec-dossie-resumo .list-group-item, #sec-dossie-resumo .table-responsive tbody tr');
+    rows.forEach(r => {
+      const text = r.innerText.toLowerCase();
+      r.style.display = text.includes(q) ? '' : 'none';
+    });
   }
 
   exportCurrentView(format = 'excel') {
@@ -269,14 +474,544 @@ class LimitlessFinancialApp {
     }
   }
 
+  closeAllSearchDropdowns() {
+    const globalDropdown = document.getElementById('global-search-dropdown');
+    if (globalDropdown) {
+      globalDropdown.style.display = 'none';
+      globalDropdown.classList.add('d-none');
+    }
+    const localDropdown = document.getElementById('producer-local-search-results');
+    if (localDropdown) {
+      localDropdown.style.display = 'none';
+    }
+  }
+
+  clearGlobalSearch() {
+    const input = document.getElementById('global-search');
+    if (input) input.value = '';
+    const clearBtn = document.getElementById('global-search-clear');
+    if (clearBtn) clearBtn.style.display = 'none';
+    this.closeAllSearchDropdowns();
+  }
+
   handleGlobalSearch(query) {
-    if (!query) return;
-    const q = query.toLowerCase();
-    const rows = document.querySelectorAll('table tbody tr');
-    rows.forEach(r => {
-      const text = r.innerText.toLowerCase();
-      r.style.display = text.includes(q) ? '' : 'none';
+    const clearBtn = document.getElementById('global-search-clear');
+    const dropdown = document.getElementById('global-search-dropdown');
+    if (!dropdown) return;
+
+    if (!query || query.trim().length === 0) {
+      if (clearBtn) clearBtn.style.display = 'none';
+      dropdown.style.display = 'none';
+      dropdown.classList.add('d-none');
+      return;
+    }
+
+    if (clearBtn) clearBtn.style.display = 'block';
+
+    if (query.trim().length < 2) {
+      dropdown.style.display = 'none';
+      dropdown.classList.add('d-none');
+      return;
+    }
+
+    const { producers, events } = financialStore.searchGlobalEntities(query);
+
+    let html = '';
+    if (producers.length > 0) {
+      html += `
+        <div class="px-3 py-2 bg-light border-bottom text-muted fw-bold fs-xxs text-uppercase">
+          <i class="ph-buildings me-1 text-primary"></i> Produtores Encontrados (${producers.length})
+        </div>
+      `;
+      producers.forEach(p => {
+        html += `
+          <a href="#" class="dropdown-item py-2 px-3 border-bottom d-flex align-items-center justify-content-between" onclick="window.app.focusProducer('${p.id}'); return false;">
+            <div>
+              <div class="fw-bold fs-xs text-dark">${p.tradeName || p.name}</div>
+              <div class="fs-xxs text-muted">CNPJ: <strong>${p.cnpj}</strong> &bull; ${p.name}</div>
+            </div>
+            <div class="text-end">
+              <span class="badge ${p.status === 'Ativo' ? 'bg-success-subtle text-success' : 'bg-warning-subtle text-warning'} fs-xxs">${p.status || 'Ativo'}</span>
+              <div class="fs-xxs text-muted mt-1">${p.rating || 'Tier B'}</div>
+            </div>
+          </a>
+        `;
+      });
+    }
+
+    if (events.length > 0) {
+      html += `
+        <div class="px-3 py-2 bg-light border-bottom text-muted fw-bold fs-xxs text-uppercase">
+          <i class="ph-ticket me-1 text-success"></i> Eventos Encontrados (${events.length})
+        </div>
+      `;
+      events.forEach(e => {
+        html += `
+          <a href="#" class="dropdown-item py-2 px-3 border-bottom d-flex align-items-center justify-content-between" onclick="window.app.focusEvent('${e.id}'); return false;">
+            <div>
+              <div class="fw-bold fs-xs text-dark">${e.name}</div>
+              <div class="fs-xxs text-muted">${e.venue || 'Local'} &bull; Produtor: ${e.producerName || '-'}</div>
+            </div>
+            <div class="text-end">
+              <span class="badge bg-primary-subtle text-primary fs-xxs">${e.id}</span>
+            </div>
+          </a>
+        `;
+      });
+    }
+
+    if (producers.length === 0 && events.length === 0) {
+      html = `
+        <div class="p-3 text-center text-muted fs-xs">
+          <i class="ph-magnifying-glass fs-3 d-block mb-1 opacity-50"></i>
+          Nenhum produtor, CNPJ ou evento encontrado para "<strong>${query.replace(/</g, '&lt;')}</strong>".
+        </div>
+      `;
+    }
+
+    dropdown.innerHTML = html;
+    dropdown.style.display = 'block';
+    dropdown.classList.remove('d-none');
+  }
+
+  handleProducerLocalSearch(query) {
+    const resultsContainer = document.getElementById('producer-local-search-results');
+    if (!resultsContainer) return;
+
+    if (!query || query.trim().length < 2) {
+      resultsContainer.style.display = 'none';
+      return;
+    }
+
+    const { producers } = financialStore.searchGlobalEntities(query);
+    if (!producers.length) {
+      resultsContainer.innerHTML = `<div class="p-3 text-center text-muted fs-xs">Nenhum produtor localizado para esta busca.</div>`;
+      resultsContainer.style.display = 'block';
+      return;
+    }
+
+    resultsContainer.innerHTML = producers.map(p => `
+      <div class="p-2 px-3 border-bottom hover-bg d-flex align-items-center justify-content-between" style="cursor: pointer;" onclick="window.app.focusProducer('${p.id}')">
+        <div>
+          <div class="fw-bold fs-xs text-dark">${p.tradeName || p.name}</div>
+          <div class="fs-xxs text-muted">CNPJ: <strong>${p.cnpj}</strong> &bull; ${p.name}</div>
+        </div>
+        <div class="text-end">
+          <span class="badge bg-primary-subtle text-primary fs-xxs">Selecionar</span>
+        </div>
+      </div>
+    `).join('');
+    resultsContainer.style.display = 'block';
+  }
+
+  focusProducer(producerId) {
+    this.closeAllSearchDropdowns();
+    const state = financialStore.getState();
+    const p = (state.data.producers || []).find(pr => pr.id === producerId);
+    if (!p) return;
+
+    financialStore.setProducerContext(producerId);
+
+    // Se estiver no ambiente Disk, navega para o Dossiê do produtor
+    if (state.viewMode === 'disk' || state.currentUser.role === 'admin') {
+      this.diskProdutoresTab = 'dossie';
+      this.navigate('diskProdutores', 'dossie');
+    } else {
+      this.render(financialStore.getState());
+    }
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    financialStore.showToast(
+      "Produtor Selecionado",
+      `Contexto ativado: ${p.tradeName || p.name} (CNPJ: ${p.cnpj}). Toda a navegação agora filtra por esta entidade.`,
+      "info"
+    );
+  }
+
+  focusEvent(eventId) {
+    this.closeAllSearchDropdowns();
+    const state = financialStore.getState();
+    const evt = (state.data.events || []).find(e => e.id === eventId);
+    if (!evt) return;
+
+    financialStore.setOperationalContext({
+      producerId: evt.producerId,
+      eventId: evt.id,
+      viewName: 'diskEventos'
     });
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    financialStore.showToast("Evento Selecionado", `Contexto operacional alterado para o evento: ${evt.name}`, "info");
+  }
+
+  clearProducerContext() {
+    this.clearGlobalSearch();
+    financialStore.setProducerContext('all');
+    financialStore.setSelectedEvent('all');
+    financialStore.showToast("Contexto Redefinido", "Visualizando todos os produtores e eventos consolidados.", "info");
+    this.render(financialStore.getState());
+  }
+
+  renderProducerContextBanner(state) {
+    const container = document.getElementById('producer-context-banner-container');
+    if (!container) return;
+
+    const isDisk = state.viewMode === 'disk' || state.currentUser.role === 'admin';
+    if (!isDisk || !state.selectedProducerId || state.selectedProducerId === 'all') {
+      container.innerHTML = '';
+      return;
+    }
+
+    const p = (state.data.producers || []).find(pr => pr.id === state.selectedProducerId);
+    if (!p) {
+      container.innerHTML = '';
+      return;
+    }
+
+    const summary = financialStore.getProducerSummary(p.id);
+
+    container.innerHTML = `
+      <div class="alert alert-primary bg-primary bg-opacity-10 border border-primary border-opacity-25 rounded-3 p-3 mb-3 d-flex flex-wrap align-items-center justify-content-between gap-3 shadow-sm">
+        <div class="d-flex align-items-center gap-3">
+          <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center fw-bold shadow-sm" style="width: 44px; height: 44px; font-size: 15px;">
+            ${(p.tradeName || p.name).substring(0, 2).toUpperCase()}
+          </div>
+          <div>
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+              <span class="badge bg-primary text-white fw-bold fs-xxs px-2 py-1"><i class="ph-funnel me-1"></i> CONTEXTO PERSISTENTE ATIVO</span>
+              <h6 class="mb-0 fw-bold text-dark fs-sm">${p.tradeName || p.name}</h6>
+              <span class="text-muted fs-xs">(${p.name})</span>
+            </div>
+            <div class="d-flex flex-wrap align-items-center gap-2 mt-1 text-muted fs-xs">
+              <span><strong>CNPJ:</strong> <span class="text-dark font-monospace">${p.cnpj}</span></span>
+              <span>&bull;</span>
+              <span><strong>Status:</strong> <span class="badge ${p.status === 'Ativo' ? 'bg-success-subtle text-success' : 'bg-warning-subtle text-warning'} fs-xxs">${p.status || 'Ativo'}</span></span>
+              <span>&bull;</span>
+              <span><strong>Gerente:</strong> ${p.accountManager || 'Carlos Menezes (Disk)'}</span>
+              <span>&bull;</span>
+              <span><strong>Disponível:</strong> <strong class="text-success">${formatCurrency(summary.availableBalance)}</strong></span>
+              <span>&bull;</span>
+              <span><strong>Repasses Pendentes:</strong> <strong class="text-warning">${formatCurrency(summary.pendingPayouts)}</strong></span>
+            </div>
+          </div>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+          <button class="btn btn-sm btn-outline-primary fw-semibold" onclick="window.app.navigate('diskProdutores', 'dossie')">
+            <i class="ph-identification-card me-1"></i> Ficha Mestre
+          </button>
+          <button class="btn btn-sm btn-outline-danger fw-semibold" onclick="window.app.clearProducerContext()" title="Limpar contexto e visualizar todos os produtores">
+            <i class="ph-x-circle me-1"></i> Limpar Filtro
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
+  openProducerMasterModal(producerId = null) {
+    const state = financialStore.getState();
+    const isEdit = Boolean(producerId);
+    const producer = isEdit ? (state.data.producers || []).find(p => p.id === producerId) : null;
+
+    if (isEdit && !producer) {
+      financialStore.showToast("Erro", "Produtor não localizado para edição.", "danger");
+      return;
+    }
+
+    const title = isEdit ? `Editar Cadastro Mestre — ${producer.tradeName || producer.name}` : `Novo Cadastro Mestre de Produtor`;
+    const subtitle = isEdit ? `CNPJ ${producer.cnpj} &bull; Registro Mestre Oficial Disk Ingressos` : `Homologação corporativa e contratual de produtor`;
+
+    const html = `
+      <div class="modal-card" style="max-width: 860px; max-height: 90vh; overflow-y: auto;">
+        <div class="modal-header d-flex justify-content-between align-items-center bg-dark text-white p-3 sticky-top" style="z-index: 10;">
+          <div class="d-flex align-items-center gap-2">
+            <i class="ph-buildings fs-4 text-warning"></i>
+            <div>
+              <h5 class="modal-title fs-sm fw-bold mb-0">${title}</h5>
+              <div class="fs-xxs text-white-50">${subtitle}</div>
+            </div>
+          </div>
+          <button class="modal-close-btn text-white" onclick="window.app.closeModal()">&times;</button>
+        </div>
+
+        <form class="modal-body p-4 bg-light" onsubmit="event.preventDefault(); window.app.saveProducerMaster()">
+          <input type="hidden" id="masterProdId" value="${isEdit ? producer.id : ''}">
+
+          <!-- Bloco 1: Dados Empresariais -->
+          <div class="card border-0 shadow-sm p-3 mb-3 bg-white">
+            <h6 class="fw-bold fs-xs text-uppercase text-primary mb-3">
+              <i class="ph-identification-card me-1"></i> 1. Dados Cadastrais &amp; Fiscais
+            </h6>
+            <div class="row g-2">
+              <div class="col-md-7">
+                <label class="form-label fs-xs fw-bold text-dark">Razão Social <span class="text-danger">*</span></label>
+                <input type="text" class="form-control form-control-sm" id="masterProdName" value="${isEdit ? producer.name : ''}" required placeholder="Ex: Arte &amp; Shows Entretenimento Ltda.">
+              </div>
+              <div class="col-md-5">
+                <label class="form-label fs-xs fw-bold text-dark">Nome Fantasia <span class="text-danger">*</span></label>
+                <input type="text" class="form-control form-control-sm" id="masterProdTradeName" value="${isEdit ? (producer.tradeName || producer.name) : ''}" required placeholder="Ex: Arte Shows">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fs-xs fw-bold text-dark">CNPJ (14 dígitos) <span class="text-danger">*</span></label>
+                <input type="text" class="form-control form-control-sm font-monospace" id="masterProdCNPJ" value="${isEdit ? producer.cnpj : ''}" required placeholder="00.000.000/0000-00">
+                <div class="form-text fs-xxs">Validação automática com impedimento de duplicidade.</div>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fs-xs fw-bold text-dark">Inscrição Estadual (IE)</label>
+                <input type="text" class="form-control form-control-sm" id="masterProdIE" value="${isEdit ? (producer.companyDetails?.stateRegistration || '') : ''}" placeholder="Ex: 90123456-78 ou Isento">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fs-xs fw-bold text-dark">Inscrição Municipal (IM)</label>
+                <input type="text" class="form-control form-control-sm" id="masterProdIM" value="${isEdit ? (producer.companyDetails?.municipalRegistration || '') : ''}" placeholder="Ex: 876543-2">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fs-xs fw-bold text-dark">Porte da Empresa</label>
+                <select class="form-select form-select-sm" id="masterProdSize">
+                  <option value="ME / EPP" ${isEdit && producer.companyDetails?.companySize === 'ME / EPP' ? 'selected' : ''}>Microempresa / EPP</option>
+                  <option value="Médio Porte" ${!isEdit || producer.companyDetails?.companySize === 'Médio Porte' ? 'selected' : ''}>Médio Porte</option>
+                  <option value="Grande Porte" ${isEdit && producer.companyDetails?.companySize === 'Grande Porte' ? 'selected' : ''}>Grande Porte / Corporativo</option>
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fs-xs fw-bold text-dark">Regime Tributário</label>
+                <select class="form-select form-select-sm" id="masterProdTaxRegime">
+                  <option value="Simples Nacional" ${isEdit && producer.companyDetails?.taxRegime === 'Simples Nacional' ? 'selected' : ''}>Simples Nacional</option>
+                  <option value="Lucro Presumido" ${!isEdit || producer.companyDetails?.taxRegime === 'Lucro Presumido' ? 'selected' : ''}>Lucro Presumido</option>
+                  <option value="Lucro Real" ${isEdit && producer.companyDetails?.taxRegime === 'Lucro Real' ? 'selected' : ''}>Lucro Real</option>
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fs-xs fw-bold text-dark">CNAE Principal</label>
+                <input type="text" class="form-control form-control-sm" id="masterProdCNAE" value="${isEdit ? (producer.companyDetails?.cnae || '90.01-9-02') : '90.01-9-02 - Produção musical e eventos'}">
+              </div>
+            </div>
+          </div>
+
+          <!-- Bloco 2: Governança, Contato & Endereço -->
+          <div class="card border-0 shadow-sm p-3 mb-3 bg-white">
+            <h6 class="fw-bold fs-xs text-uppercase text-primary mb-3">
+              <i class="ph-map-pin me-1"></i> 2. Endereço &amp; Governança
+            </h6>
+            <div class="row g-2">
+              <div class="col-md-6">
+                <label class="form-label fs-xs fw-bold text-dark">E-mail Corporativo</label>
+                <input type="email" class="form-control form-control-sm" id="masterProdEmail" value="${isEdit ? (producer.contactEmail || '') : ''}" placeholder="financeiro@empresa.com.br">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fs-xs fw-bold text-dark">Telefone / WhatsApp</label>
+                <input type="text" class="form-control form-control-sm" id="masterProdPhone" value="${isEdit ? (producer.phone || '') : ''}" placeholder="(41) 3300-0000">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fs-xs fw-bold text-dark">Logradouro / Bairro</label>
+                <input type="text" class="form-control form-control-sm" id="masterProdStreet" value="${isEdit ? (producer.address?.street || '') : ''}" placeholder="Rua / Avenida, Número, Bairro">
+              </div>
+              <div class="col-md-3">
+                <label class="form-label fs-xs fw-bold text-dark">Cidade</label>
+                <input type="text" class="form-control form-control-sm" id="masterProdCity" value="${isEdit ? (producer.address?.city || 'Curitiba') : 'Curitiba'}">
+              </div>
+              <div class="col-md-1">
+                <label class="form-label fs-xs fw-bold text-dark">UF</label>
+                <input type="text" class="form-control form-control-sm text-uppercase" id="masterProdState" value="${isEdit ? (producer.address?.state || 'PR') : 'PR'}" maxlength="2">
+              </div>
+              <div class="col-md-2">
+                <label class="form-label fs-xs fw-bold text-dark">CEP</label>
+                <input type="text" class="form-control form-control-sm font-monospace" id="masterProdZip" value="${isEdit ? (producer.address?.zipCode || '') : ''}" placeholder="80000-000">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fs-xs fw-bold text-dark">Status Operacional</label>
+                <select class="form-select form-select-sm" id="masterProdStatus">
+                  <option value="Ativo" ${!isEdit || producer.status === 'Ativo' ? 'selected' : ''}>Ativo</option>
+                  <option value="Em Homologação" ${isEdit && producer.status === 'Em Homologação' ? 'selected' : ''}>Em Homologação</option>
+                  <option value="Bloqueado" ${isEdit && producer.status === 'Bloqueado' ? 'selected' : ''}>Bloqueado</option>
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fs-xs fw-bold text-dark">Rating de Risco</label>
+                <select class="form-select form-select-sm" id="masterProdRating">
+                  <option value="Tier A - Estratégico" ${isEdit && producer.rating === 'Tier A - Estratégico' ? 'selected' : ''}>Tier A - Estratégico</option>
+                  <option value="Tier B - Padrão" ${!isEdit || producer.rating === 'Tier B - Padrão' ? 'selected' : ''}>Tier B - Padrão</option>
+                  <option value="Tier C - Alto Risco" ${isEdit && producer.rating === 'Tier C - Alto Risco' ? 'selected' : ''}>Tier C - Alto Risco</option>
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fs-xs fw-bold text-dark">Gerente de Conta Disk</label>
+                <input type="text" class="form-control form-control-sm" id="masterProdManager" value="${isEdit ? (producer.accountManager || 'Carlos Menezes (Disk Ingressos)') : 'Carlos Menezes (Disk Ingressos)'}">
+              </div>
+            </div>
+          </div>
+
+          <!-- Bloco 3: Representante & Contato Financeiro -->
+          <div class="card border-0 shadow-sm p-3 mb-3 bg-white">
+            <h6 class="fw-bold fs-xs text-uppercase text-primary mb-3">
+              <i class="ph-users me-1"></i> 3. Representante Legal &amp; Contato Financeiro
+            </h6>
+            <div class="row g-2">
+              <div class="col-md-4">
+                <label class="form-label fs-xs fw-bold text-dark">Representante Legal</label>
+                <input type="text" class="form-control form-control-sm" id="masterRepName" value="${isEdit ? (producer.legalRepresentatives?.[0]?.name || '') : ''}" placeholder="Nome do Administrador">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fs-xs fw-bold text-dark">CPF do Representante</label>
+                <input type="text" class="form-control form-control-sm font-monospace" id="masterRepCpf" value="${isEdit ? (producer.legalRepresentatives?.[0]?.cpf || '') : ''}" placeholder="000.000.000-00">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fs-xs fw-bold text-dark">Cargo / Função</label>
+                <input type="text" class="form-control form-control-sm" id="masterRepRole" value="${isEdit ? (producer.legalRepresentatives?.[0]?.role || 'Sócio Administrador') : 'Sócio Administrador'}">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fs-xs fw-bold text-dark">Contato Financeiro</label>
+                <input type="text" class="form-control form-control-sm" id="masterFinName" value="${isEdit ? (producer.financialContacts?.[0]?.name || '') : ''}" placeholder="Nome do Responsável Financeiro">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fs-xs fw-bold text-dark">E-mail Financeiro</label>
+                <input type="email" class="form-control form-control-sm" id="masterFinEmail" value="${isEdit ? (producer.financialContacts?.[0]?.email || '') : ''}" placeholder="financeiro@empresa.com">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fs-xs fw-bold text-dark">Telefone Direto</label>
+                <input type="text" class="form-control form-control-sm" id="masterFinPhone" value="${isEdit ? (producer.financialContacts?.[0]?.phone || '') : ''}" placeholder="(41) 99999-0000">
+              </div>
+            </div>
+          </div>
+
+          <!-- Bloco 4: Contrato Master & Regras Comerciais -->
+          <div class="card border-0 shadow-sm p-3 mb-3 bg-white">
+            <h6 class="fw-bold fs-xs text-uppercase text-primary mb-3">
+              <i class="ph-file-text me-1"></i> 4. Contrato Master &amp; Regras Comerciais Disk
+            </h6>
+            <div class="row g-2">
+              <div class="col-md-4">
+                <label class="form-label fs-xs fw-bold text-dark">Número do Contrato</label>
+                <input type="text" class="form-control form-control-sm font-monospace" id="masterContractNumber" value="${isEdit ? (producer.contract?.number || '') : ''}" placeholder="DISK-CTR-2026-001">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fs-xs fw-bold text-dark">Taxa Disk (%)</label>
+                <input type="number" step="0.1" class="form-control form-control-sm" id="masterContractFee" value="${isEdit ? (producer.contract?.diskFeePercent || 10.0) : 10.0}">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fs-xs fw-bold text-dark">Taxa de Processamento (%)</label>
+                <input type="number" step="0.1" class="form-control form-control-sm" id="masterProcessingFee" value="${isEdit ? (producer.contract?.processingFeePercent || 2.9) : 2.9}">
+              </div>
+              <div class="col-md-3">
+                <label class="form-label fs-xs fw-bold text-dark">Taxa de Antecipação (% a.m.)</label>
+                <input type="number" step="0.1" class="form-control form-control-sm" id="masterAnticipationRate" value="${isEdit ? (producer.contract?.anticipationRateMonthly || 2.0) : 2.0}">
+              </div>
+              <div class="col-md-3">
+                <label class="form-label fs-xs fw-bold text-dark">Reserva Retida Hold (%)</label>
+                <input type="number" step="0.5" class="form-control form-control-sm" id="masterReservePercent" value="${isEdit ? (producer.contract?.retainedReservePercent || 5.0) : 5.0}">
+              </div>
+              <div class="col-md-3">
+                <label class="form-label fs-xs fw-bold text-dark">Limite de Crédito Master (R$)</label>
+                <input type="number" step="1000" class="form-control form-control-sm" id="masterCreditLimit" value="${isEdit ? (producer.contract?.creditLimit || 100000.0) : 100000.0}">
+              </div>
+              <div class="col-md-3">
+                <label class="form-label fs-xs fw-bold text-dark">Regra de Liquidação Final</label>
+                <input type="text" class="form-control form-control-sm" id="masterSettlementRule" value="${isEdit ? (producer.contract?.settlementDaysRule || 'D+2 após evento') : 'D+2 após evento'}">
+              </div>
+            </div>
+          </div>
+
+          <div class="d-flex justify-content-end gap-2 mt-4 sticky-bottom bg-light p-2 border-top">
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="window.app.closeModal()">Cancelar</button>
+            <button type="submit" class="btn btn-sm btn-primary fw-bold px-4">
+              <i class="ph-check me-1"></i> ${isEdit ? 'Salvar Alterações no Cadastro Mestre' : 'Homologar Novo Produtor'}
+            </button>
+          </div>
+        </form>
+      </div>
+    `;
+    this.showModal(html);
+  }
+
+  saveProducerMaster() {
+    const producerId = document.getElementById('masterProdId')?.value;
+    const name = document.getElementById('masterProdName')?.value?.trim();
+    const tradeName = document.getElementById('masterProdTradeName')?.value?.trim() || name;
+    const cnpj = document.getElementById('masterProdCNPJ')?.value?.trim();
+    const status = document.getElementById('masterProdStatus')?.value || 'Ativo';
+    const rating = document.getElementById('masterProdRating')?.value || 'Tier B - Padrão';
+    const accountManager = document.getElementById('masterProdManager')?.value?.trim() || 'Carlos Menezes (Disk Ingressos)';
+    const contactEmail = document.getElementById('masterProdEmail')?.value?.trim() || '';
+    const phone = document.getElementById('masterProdPhone')?.value?.trim() || '';
+
+    if (!name) {
+      alert("A Razão Social é obrigatória.");
+      return;
+    }
+    if (!cnpj) {
+      alert("O CNPJ é obrigatório.");
+      return;
+    }
+
+    const cnpjValidation = financialStore.validateCNPJ(cnpj);
+    if (!cnpjValidation.valid) {
+      alert(`CNPJ inválido: ${cnpjValidation.error}`);
+      return;
+    }
+
+    const payload = {
+      name,
+      tradeName,
+      cnpj: cnpjValidation.formatted,
+      status,
+      rating,
+      accountManager,
+      contactEmail,
+      phone,
+      companyDetails: {
+        stateRegistration: document.getElementById('masterProdIE')?.value?.trim() || '',
+        municipalRegistration: document.getElementById('masterProdIM')?.value?.trim() || '',
+        companySize: document.getElementById('masterProdSize')?.value || 'Médio Porte',
+        taxRegime: document.getElementById('masterProdTaxRegime')?.value || 'Lucro Presumido',
+        cnae: document.getElementById('masterProdCNAE')?.value?.trim() || '90.01-9-02 - Produção musical e eventos'
+      },
+      address: {
+        street: document.getElementById('masterProdStreet')?.value?.trim() || '',
+        city: document.getElementById('masterProdCity')?.value?.trim() || 'Curitiba',
+        state: document.getElementById('masterProdState')?.value?.trim() || 'PR',
+        zipCode: document.getElementById('masterProdZip')?.value?.trim() || ''
+      },
+      legalRepresentatives: [
+        {
+          name: document.getElementById('masterRepName')?.value?.trim() || name,
+          cpf: document.getElementById('masterRepCpf')?.value?.trim() || '',
+          role: document.getElementById('masterRepRole')?.value?.trim() || 'Representante Legal',
+          email: contactEmail,
+          phone: phone
+        }
+      ],
+      financialContacts: [
+        {
+          name: document.getElementById('masterFinName')?.value?.trim() || tradeName,
+          role: document.getElementById('masterFinRole')?.value?.trim() || 'Financeiro Principal',
+          email: contactEmail,
+          phone: phone
+        }
+      ],
+      contract: {
+        number: document.getElementById('masterContractNumber')?.value?.trim() || `DISK-CTR-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`,
+        diskFeePercent: Number(document.getElementById('masterContractFee')?.value || 10.0),
+        processingFeePercent: Number(document.getElementById('masterProcessingFee')?.value || 2.9),
+        anticipationRateMonthly: Number(document.getElementById('masterAnticipationRate')?.value || 2.0),
+        settlementDaysRule: document.getElementById('masterSettlementRule')?.value?.trim() || 'D+2 após evento',
+        retainedReservePercent: Number(document.getElementById('masterReservePercent')?.value || 5.0),
+        creditLimit: Number(document.getElementById('masterCreditLimit')?.value || 100000.0)
+      }
+    };
+
+    let result;
+    if (producerId) {
+      result = financialStore.updateProducer(producerId, payload);
+      if (!result) return;
+      financialStore.showToast("Cadastro Atualizado", `Ficha Mestre de ${tradeName} atualizada com sucesso.`, "success");
+    } else {
+      result = financialStore.createProducer(payload);
+      if (!result) return;
+      financialStore.setProducerContext(result.id);
+      this.navigate('diskProdutores', 'dossie');
+      financialStore.showToast("Produtor Homologado", `Novo produtor ${tradeName} homologado com sucesso.`, "success");
+    }
+
+    this.closeModal();
+    this.render(financialStore.getState());
   }
 
   changeLanguage(lang) {
@@ -1792,6 +2527,9 @@ class LimitlessFinancialApp {
     // 3. Sincroniza Page Header
     this.renderPageHeader(state);
 
+    // 3.1 Sincroniza Banner de Contexto Persistente do Produtor
+    this.renderProducerContextBanner(state);
+
     // 4. Popula Notificações
     this.populateNotifications(state);
 
@@ -2059,6 +2797,9 @@ class LimitlessFinancialApp {
           break;
         case 'relatorios':
           viewHtml = renderRelatorios(state);
+          break;
+        case 'comprovantes':
+          viewHtml = renderComprovantes(state);
           break;
         case 'dadosBancarios':
           viewHtml = renderDadosBancarios(state);

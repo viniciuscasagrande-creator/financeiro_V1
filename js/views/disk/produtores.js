@@ -457,6 +457,7 @@ function renderTabDossieProdutor(state, activeProducer) {
   const eventEligibility = Object.fromEntries(producerEvents.map(e => [e.id, calculateEligibility(e.id)]));
   const producerApprovals = (state.data.approvalQueue || []).filter(a => a.producerId === activeProducer.id);
   const bankAccounts = activeProducer.bankAccounts || [];
+  const financialDocuments = (state.data.financialDocuments || []).filter(d => d.producerId === activeProducer.id);
   const activeTab = (typeof window !== 'undefined' && (window.app?.activeDossieTab || window.app?.dossieTab)) || 'sec-dossie-resumo';
 
   const dossieSpyItems = [
@@ -464,7 +465,8 @@ function renderTabDossieProdutor(state, activeProducer) {
     { id: 'sec-dossie-posicao', label: 'Posição Consolidada', icon: 'ph-wallet' },
     { id: 'sec-dossie-eventos', label: 'Eventos & Produções', icon: 'ph-calendar', badge: producerEvents.length },
     { id: 'sec-dossie-solicitacoes', label: 'Aprovações Pendentes', icon: 'ph-scales', badge: producerApprovals.length },
-    { id: 'sec-dossie-contas', label: 'Contas Homologadas', icon: 'ph-bank', badge: bankAccounts.length }
+    { id: 'sec-dossie-contas', label: 'Contas Homologadas', icon: 'ph-bank', badge: bankAccounts.length },
+    { id: 'sec-dossie-documentos', label: 'Comprovantes e Transações', icon: 'ph-files', badge: financialDocuments.length }
   ];
 
   return `
@@ -473,6 +475,19 @@ function renderTabDossieProdutor(state, activeProducer) {
       <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px;">
         <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
           <span style="font-size: 0.82rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Produtor em Análise:</span>
+          <div style="position:relative">
+            <i class="ph-magnifying-glass" style="position:absolute;left:10px;top:11px;color:#64748b"></i>
+            <input id="producer-local-search"
+                   class="form-control"
+                   style="width:300px;padding-left:34px"
+                   placeholder="Buscar nome, razão social ou CNPJ"
+                   oninput="window.app && window.app.handleProducerLocalSearch(this.value)"
+                   autocomplete="off">
+            <div id="producer-local-search-results"
+                 class="dropdown-menu shadow-lg p-0 border-0"
+                 style="position: absolute; top: 100%; left: 0; right: 0; margin-top: 4px; z-index: 1050; display: none; max-height: 380px; overflow-y: auto; border-radius: 8px; background: white;">
+            </div>
+          </div>
           <select class="form-control" style="width: 320px; font-weight: 700;" onchange="window.app.selectProducerInDisk(this.value)">
             ${producers.map(p => `
               <option value="${p.id}" ${p.id === activeProducer.id ? 'selected' : ''}>
@@ -482,6 +497,12 @@ function renderTabDossieProdutor(state, activeProducer) {
           </select>
         </div>
         <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+          <button class="btn btn-primary btn-sm fw-bold d-flex align-items-center gap-1 shadow-sm" onclick="window.app && window.app.openProducerMasterModal('${activeProducer.id}')">
+            <i class="ph-pencil-simple"></i> Editar Cadastro Mestre
+          </button>
+          <button class="btn btn-outline-primary btn-sm fw-bold d-flex align-items-center gap-1 shadow-sm" onclick="window.app && window.app.openProducerMasterModal()">
+            <i class="ph-user-plus"></i> + Novo Produtor
+          </button>
           <span class="badge badge-success">Status: ${activeProducer.status || 'Ativo'}</span>
           <span class="badge ${activeProducer.hasBlock ? 'badge-danger' : 'badge-neutral'}">
             ${activeProducer.hasBlock ? 'Possui Bloqueio Cautelar' : 'Sem Bloqueios Ativos'}
@@ -523,7 +544,12 @@ function renderTabDossieProdutor(state, activeProducer) {
             <h2>Cadastro & Homologação de ${activeProducer.name}</h2>
             <p class="card-subtitle">Ficha cadastral corporativa, compliance e contatos oficiais do produtor</p>
           </div>
-          <span class="badge badge-success fs-xs" style="padding: 6px 12px;">Homologação Concluída</span>
+          <div class="d-flex align-items-center gap-2">
+            <button class="btn btn-primary btn-sm fw-bold shadow-sm d-flex align-items-center gap-1" onclick="window.app && window.app.openProducerMasterModal('${activeProducer.id}')">
+              <i class="ph-pencil-simple"></i> Editar Cadastro Mestre
+            </button>
+            <span class="badge badge-success fs-xs" style="padding: 6px 12px;">Homologação Concluída</span>
+          </div>
         </div>
         <div class="card-body">
           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px;">
@@ -538,6 +564,22 @@ function renderTabDossieProdutor(state, activeProducer) {
             <div style="background: #f8fafc; padding: 14px 16px; border-radius: 8px; border: 1px solid #e2e8f0;">
               <div style="font-size: 0.72rem; text-transform: uppercase; color: #64748b; font-weight: 700;">CNPJ / Inscrição</div>
               <div style="font-size: 0.95rem; font-weight: 700; color: #2563eb; font-family: monospace; margin-top: 4px;">${maskCnpjCpf(activeProducer.cnpj)}</div>
+            </div>
+            <div style="background: #f8fafc; padding: 14px 16px; border-radius: 8px; border: 1px solid #e2e8f0;">
+              <div style="font-size: 0.72rem; text-transform: uppercase; color: #64748b; font-weight: 700;">Inscrição Estadual</div>
+              <div style="font-size: 0.95rem; font-weight: 600; color: #1e293b; margin-top: 4px;">${activeProducer.companyDetails?.stateRegistration || 'Isento'}</div>
+            </div>
+            <div style="background: #f8fafc; padding: 14px 16px; border-radius: 8px; border: 1px solid #e2e8f0;">
+              <div style="font-size: 0.72rem; text-transform: uppercase; color: #64748b; font-weight: 700;">Inscrição Municipal</div>
+              <div style="font-size: 0.95rem; font-weight: 600; color: #1e293b; margin-top: 4px;">${activeProducer.companyDetails?.municipalRegistration || '—'}</div>
+            </div>
+            <div style="background: #f8fafc; padding: 14px 16px; border-radius: 8px; border: 1px solid #e2e8f0;">
+              <div style="font-size: 0.72rem; text-transform: uppercase; color: #64748b; font-weight: 700;">Porte &amp; Regime Tributário</div>
+              <div style="font-size: 0.95rem; font-weight: 600; color: #1e293b; margin-top: 4px;">${activeProducer.companyDetails?.companySize || 'Médio Porte'} &bull; ${activeProducer.companyDetails?.taxRegime || 'Lucro Presumido'}</div>
+            </div>
+            <div style="background: #f8fafc; padding: 14px 16px; border-radius: 8px; border: 1px solid #e2e8f0;">
+              <div style="font-size: 0.72rem; text-transform: uppercase; color: #64748b; font-weight: 700;">CNAE Principal</div>
+              <div style="font-size: 0.85rem; font-weight: 600; color: #1e293b; margin-top: 4px;">${activeProducer.companyDetails?.cnae || '90.01-9-02 - Produção musical e eventos'}</div>
             </div>
             <div style="background: #f8fafc; padding: 14px 16px; border-radius: 8px; border: 1px solid #e2e8f0;">
               <div style="font-size: 0.72rem; text-transform: uppercase; color: #64748b; font-weight: 700;">E-mail Financeiro Oficial</div>
@@ -563,8 +605,90 @@ function renderTabDossieProdutor(state, activeProducer) {
         </div>
       </div>
 
+      <!-- Card de Representantes Legais & Contatos Financeiros -->
+      <div class="card-panel mb-4">
+        <div class="card-header-bar">
+          <div class="card-title-group">
+            <h2>Representantes Legais & Contatos Financeiros</h2>
+            <p class="card-subtitle">Sócios administradores, procuradores e contatos operacionais</p>
+          </div>
+          <button class="btn btn-outline-primary btn-sm" onclick="window.app && window.app.openProducerMasterModal('${activeProducer.id}')">
+            <i class="ph-pencil-simple me-1"></i> Atualizar Contatos
+          </button>
+        </div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <h6 class="fw-bold text-dark fs-xs text-uppercase mb-2"><i class="ph-user-circle me-1 text-primary"></i> Representantes Legais (Quadro Societário)</h6>
+              <div class="table-responsive">
+                <table class="table table-sm">
+                  <thead>
+                    <tr><th>Nome</th><th>CPF</th><th>Cargo / Função</th></tr>
+                  </thead>
+                  <tbody>
+                    ${(activeProducer.legalRepresentatives || []).length ? (activeProducer.legalRepresentatives || []).map(r => `
+                      <tr>
+                        <td><strong>${r.name}</strong><div class="text-muted fs-xxs">${r.email || ''}</div></td>
+                        <td class="font-monospace">${r.cpf || '—'}</td>
+                        <td><span class="badge badge-info">${r.role || 'Sócio'}</span></td>
+                      </tr>
+                    `).join('') : `
+                      <tr><td colspan="3" class="text-muted fs-xs">Nenhum representante societário cadastrado.</td></tr>
+                    `}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <h6 class="fw-bold text-dark fs-xs text-uppercase mb-2"><i class="ph-phone-call me-1 text-success"></i> Contatos Operacionais Financeiros</h6>
+              <div class="table-responsive">
+                <table class="table table-sm">
+                  <thead>
+                    <tr><th>Contato</th><th>Cargo</th><th>Telefone / E-mail</th></tr>
+                  </thead>
+                  <tbody>
+                    ${(activeProducer.financialContacts || []).length ? (activeProducer.financialContacts || []).map(c => `
+                      <tr>
+                        <td><strong>${c.name}</strong></td>
+                        <td>${c.role || 'Financeiro'}</td>
+                        <td><div>${c.phone || ''}</div><div class="text-muted fs-xxs">${c.email || ''}</div></td>
+                      </tr>
+                    `).join('') : `
+                      <tr><td colspan="3" class="text-muted fs-xs">Nenhum contato operacional cadastrado.</td></tr>
+                    `}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card do Endereço da Sede -->
+      <div class="card-panel mb-4">
+        <div class="card-header-bar">
+          <div class="card-title-group">
+            <h2>Endereço Corporativo da Sede</h2>
+            <p class="card-subtitle">Endereço fiscal e domicílio principal homologado</p>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="d-flex align-items-center gap-3">
+            <div class="d-flex align-items-center justify-content-center bg-primary-subtle text-primary rounded-circle" style="width: 44px; height: 44px; flex-shrink: 0;">
+              <i class="ph-map-pin fs-4"></i>
+            </div>
+            <div>
+              <div class="fw-bold fs-sm text-dark">${activeProducer.address?.street || 'Rua Comendador Araújo, 510, Conj. 801'}</div>
+              <div class="text-muted fs-xs">
+                ${activeProducer.address?.neighborhood || 'Batel'} &bull; ${activeProducer.address?.city || 'Curitiba'} / ${activeProducer.address?.state || 'PR'} &bull; CEP: <span class="font-monospace text-dark">${activeProducer.address?.zipCode || '80420-000'}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Card do Contrato Master -->
-      <div class="card-panel">
+      <div class="card-panel mb-4">
         <div class="card-header-bar">
           <div class="card-title-group">
             <h2>Termos Contratuais & Regras Comerciais Vigentes</h2>
@@ -602,6 +726,95 @@ function renderTabDossieProdutor(state, activeProducer) {
           <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px 18px; font-size: 0.82rem; color: #475569; line-height: 1.6;">
             <strong>Regras Específicas do Contrato:</strong> Liberação máxima de 20% das vendas brutas em repasses pré-evento mediante alcance mínimo de 50% da meta de vendas do evento. Saldo remanescente de 80% liquidado em D+2 pós-evento, deduzidas retenções cautelares e estornos. Todos os repasses exigem conta bancária homologada em nome de <strong>${activeProducer.name}</strong>.
           </div>
+        </div>
+      </div>
+
+      <!-- Card de Documentos Societários & Compliance -->
+      <div class="card-panel mb-4">
+        <div class="card-header-bar">
+          <div class="card-title-group">
+            <h2>Documentos Societários & Compliance</h2>
+            <p class="card-subtitle">Contrato Social, Cartão CNPJ, Procurações e Certidões do Produtor</p>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="window.app && window.app.addSocietaryDocumentModal('${activeProducer.id}')">
+            <i class="ph-file-arrow-up me-1"></i> + Anexar Documento Societário
+          </button>
+        </div>
+        <div class="table-responsive">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Tipo Documento</th>
+                <th>Nome / Descrição</th>
+                <th>Data Envio</th>
+                <th>Arquivo</th>
+                <th>Status</th>
+                <th>Visibilidade</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${(activeProducer.documents || []).length ? (activeProducer.documents || []).map(d => `
+                <tr>
+                  <td><span class="badge badge-info">${d.type}</span></td>
+                  <td><strong>${d.name}</strong></td>
+                  <td>${d.uploadDate || '—'}</td>
+                  <td><i class="ph-file-pdf text-danger me-1"></i>${d.fileName}</td>
+                  <td><span class="badge badge-success">${d.status || 'Válido'}</span></td>
+                  <td>
+                    <span class="badge ${d.visibleToProducer ? 'badge-success' : 'badge-neutral'}">
+                      ${d.visibleToProducer ? 'Disponível ao Produtor' : 'Interno Disk'}
+                    </span>
+                  </td>
+                  <td>
+                    <button class="btn btn-xs btn-outline-primary" onclick="window.app.toggleSocietaryDocumentVisibility('${activeProducer.id}', '${d.id}')">
+                      ${d.visibleToProducer ? 'Tornar interno' : 'Publicar'}
+                    </button>
+                    <button class="btn btn-xs btn-light" onclick="window.app.downloadSocietaryDocument('${activeProducer.id}', '${d.id}')">
+                      <i class="ph-download-simple"></i>
+                    </button>
+                  </td>
+                </tr>
+              `).join('') : `
+                <tr><td colspan="7" class="text-center text-muted py-4">Nenhum documento societário anexado.</td></tr>
+              `}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Card de Histórico de Alterações / Auditoria Cadastral -->
+      <div class="card-panel">
+        <div class="card-header-bar">
+          <div class="card-title-group">
+            <h2>Histórico de Alterações & Auditoria Cadastral</h2>
+            <p class="card-subtitle">Trilha de auditoria das modificações realizadas no Cadastro Mestre</p>
+          </div>
+          <span class="badge badge-neutral"><i class="ph-shield-check me-1 text-success"></i> Trilha Imutável</span>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-sm">
+            <thead>
+              <tr>
+                <th>Timestamp</th>
+                <th>Usuário Responsável</th>
+                <th>Operação</th>
+                <th>Resumo das Modificações</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${(activeProducer.auditLog || []).length ? (activeProducer.auditLog || []).map(a => `
+                <tr>
+                  <td class="font-monospace fs-xs">${a.timestamp}</td>
+                  <td><strong>${a.user}</strong></td>
+                  <td><span class="badge badge-info">${a.action}</span></td>
+                  <td class="fs-xs">${a.summary}</td>
+                </tr>
+              `).join('') : `
+                <tr><td colspan="4" class="text-center text-muted py-3">Nenhum registro de auditoria cadastral encontrado.</td></tr>
+              `}
+            </tbody>
+          </table>
         </div>
       </div>
     </section>
@@ -907,6 +1120,16 @@ function renderTabDossieProdutor(state, activeProducer) {
             </table>
           </div>
         </div>
+      </div>
+    </section>
+
+    <!-- ABA 6: COMPROVANTES E TRANSAÇÕES -->
+    <section id="sec-dossie-documentos" class="dossie-tab-panel mb-4" data-tab="sec-dossie-documentos" style="display: ${activeTab === 'sec-dossie-documentos' ? 'block' : 'none'};">
+      <div class="card-panel">
+        <div class="card-header-bar"><div class="card-title-group"><h2>Comprovantes e Transações de ${activeProducer.name}</h2><p class="card-subtitle">Documentos vinculados ao CNPJ, evento e operação financeira. A publicação ao produtor é sempre explícita.</p></div><button class="btn btn-primary btn-sm" onclick="window.app.addFinancialDocument('${activeProducer.id}')"><i class="ph-paperclip"></i> Anexar transação/comprovante</button></div>
+        <div class="table-responsive"><table class="table"><thead><tr><th>Data</th><th>Operação</th><th>Evento</th><th>Referência</th><th>Valor</th><th>Arquivo</th><th>Visibilidade</th><th>Ações</th></tr></thead><tbody>
+        ${financialDocuments.length ? financialDocuments.map(d => `<tr><td>${d.date}</td><td><strong>${d.type}</strong><div class="text-muted fs-xs">${d.description || ''}</div></td><td>${d.eventName || 'Consolidado'}</td><td>${d.reference || '—'}</td><td><strong>${formatCurrency(d.amount || 0)}</strong></td><td>${d.fileName}</td><td><span class="badge ${d.visibleToProducer ? 'badge-success' : 'badge-neutral'}">${d.visibleToProducer ? 'Disponível ao Produtor' : 'Interno Disk'}</span></td><td><button class="btn btn-xs btn-outline-primary" onclick="window.app.toggleFinancialDocumentVisibility('${d.id}')">${d.visibleToProducer ? 'Tornar interno' : 'Publicar'}</button> <button class="btn btn-xs btn-light" onclick="window.app.downloadFinancialDocument('${d.id}')"><i class="ph-download-simple"></i></button></td></tr>`).join('') : `<tr><td colspan="8" class="text-center text-muted py-4">Nenhuma transação/comprovante anexado.</td></tr>`}
+        </tbody></table></div>
       </div>
     </section>
   `;

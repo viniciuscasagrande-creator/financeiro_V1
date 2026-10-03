@@ -76,6 +76,11 @@ export const menuProdutor = [
     icon: 'ph-file-text'
   },
   {
+    id: 'comprovantes',
+    label: 'Comprovantes e Transações',
+    icon: 'ph-files'
+  },
+  {
     id: 'dadosBancarios',
     label: 'Dados Bancários',
     icon: 'ph-credit-card'

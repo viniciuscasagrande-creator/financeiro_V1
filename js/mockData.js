@@ -4,6 +4,10 @@
  */
 
 export const initialMockDatabase = {
+  financialDocuments: [
+    { id: "DOC-FIN-001", producerId: "prod-abc", eventId: "evt-001", eventName: "Festival Curitiba 2026", type: "Repasse", amount: 50000, date: "30/09/2026", reference: "REP-2026-00128", description: "Comprovante de liquidação de repasse", fileName: "comprovante_repasse_00128.pdf", visibleToProducer: true, uploadedBy: "Financeiro Disk" },
+    { id: "DOC-FIN-002", producerId: "prod-abc", eventId: "evt-001", eventName: "Festival Curitiba 2026", type: "Pagamento", amount: 12000, date: "01/10/2026", reference: "PAG-ECAD-001", description: "Documento interno de obrigação do evento", fileName: "pagamento_ecad.pdf", visibleToProducer: false, uploadedBy: "Financeiro Disk" }
+  ],
   // Lista de Produtores Homologados na Plataforma Disk
   producers: [
     {
@@ -19,13 +23,85 @@ export const initialMockDatabase = {
       riskScore: "Baixo Risco (Score 94/100)",
       hasBlock: false,
       blockedAmount: 20000.00,
+      companyDetails: {
+        stateRegistration: "908.765.432-11",
+        municipalRegistration: "7.654.321-0",
+        cnae: "90.01-9-01 - Produção de espetáculos teatrais e musicais",
+        companySize: "Médio Porte (EPP)",
+        taxRegime: "Lucro Real",
+        openedAt: "10/05/2015"
+      },
+      address: {
+        street: "Rua Comendador Araújo, 510, Conj. 801",
+        neighborhood: "Batel",
+        city: "Curitiba",
+        state: "PR",
+        zipCode: "80420-000"
+      },
+      legalRepresentatives: [
+        {
+          name: "João Silva",
+          cpf: "223.445.667-89",
+          role: "Diretor Geral / Sócio Administrador (60%)",
+          email: "joao@produtoraabc.com.br",
+          phone: "(41) 98877-6655"
+        }
+      ],
+      financialContacts: [
+        {
+          name: "Ana Beatriz",
+          role: "Gerente Financeira",
+          email: "financeiro@produtoraabc.com.br",
+          phone: "(41) 3315-0800"
+        }
+      ],
       contract: {
         number: "DISK-CTR-2025-089",
         diskFeePercent: 10.0,
         processingFeePercent: 2.9,
         anticipationRateMonthly: 2.0,
-        settlementDaysRule: "D+2 após evento ou liberação sob demanda"
+        settlementDaysRule: "D+2 após evento ou liberação sob demanda",
+        retainedReservePercent: 5.0,
+        creditLimit: 150000.00
       },
+      documents: [
+        {
+          id: "DOC-SOC-ABC-01",
+          type: "Contrato Social",
+          name: "Contrato Social Consolidado 2025",
+          fileName: "contrato_social_abc.pdf",
+          uploadDate: "10/01/2026",
+          status: "Válido",
+          visibleToProducer: true
+        },
+        {
+          id: "DOC-SOC-ABC-02",
+          type: "Cartão CNPJ",
+          name: "Comprovante de Inscrição RFB",
+          fileName: "cartao_cnpj_abc.pdf",
+          uploadDate: "10/01/2026",
+          status: "Válido",
+          visibleToProducer: true
+        },
+        {
+          id: "DOC-SOC-ABC-03",
+          type: "Certidão Negativa",
+          name: "CND Municipal Curitiba",
+          fileName: "cnd_municipal_curitiba.pdf",
+          uploadDate: "05/02/2026",
+          status: "Válido",
+          visibleToProducer: false
+        }
+      ],
+      auditLog: [
+        {
+          id: "AUD-ABC-01",
+          timestamp: "10/01/2026 14:00",
+          user: "Carlos Menezes (Disk Ingressos)",
+          action: "Renovação Contratual",
+          summary: "Renovação do Contrato Master DISK-CTR-2025-089 para temporada 2026."
+        }
+      ],
       // Números alinhados com a simulação do Festival Curitiba 2026
       totals: {
         grossSales: 890000.00,
@@ -68,10 +144,10 @@ export const initialMockDatabase = {
     },
     {
       id: "prod-xyz",
-      name: "Eventos XYZ Produções Artísticas",
-      tradeName: "XYZ Live",
-      cnpj: "22.418.990/0001-44",
-      contactEmail: "pagamentos@xyzlive.com.br",
+      name: "XYZ Produções Artísticas e Eventos Ltda.",
+      tradeName: "XYZ Produções",
+      cnpj: "12.345.678/0001-90",
+      contactEmail: "pagamentos@xyzproducoes.com.br",
       phone: "(11) 3044-9900",
       accountManager: "Mariana Souza (Disk Ingressos)",
       rating: "Tier B - Padrão",
@@ -79,13 +155,85 @@ export const initialMockDatabase = {
       riskScore: "Médio Risco (Score 78/100)",
       hasBlock: false,
       blockedAmount: 10000.00,
+      companyDetails: {
+        stateRegistration: "109.876.543.210",
+        municipalRegistration: "8.765.432-1",
+        cnae: "90.01-9-02 - Produção musical e eventos",
+        companySize: "Médio Porte (EPP)",
+        taxRegime: "Lucro Presumido",
+        openedAt: "14/08/2018"
+      },
+      address: {
+        street: "Av. Brigadeiro Faria Lima, 2000, 10º andar",
+        neighborhood: "Itaim Bibi",
+        city: "São Paulo",
+        state: "SP",
+        zipCode: "01452-000"
+      },
+      legalRepresentatives: [
+        {
+          name: "Roberto Souza",
+          cpf: "112.334.556-78",
+          role: "Sócio Administrador (80%)",
+          email: "roberto@xyzproducoes.com.br",
+          phone: "(11) 99876-5432"
+        }
+      ],
+      financialContacts: [
+        {
+          name: "Carla Pires",
+          role: "Coordenadora Financeira",
+          email: "carla.pires@xyzproducoes.com.br",
+          phone: "(11) 98765-4321"
+        }
+      ],
       contract: {
         number: "DISK-CTR-2025-112",
         diskFeePercent: 12.0,
         processingFeePercent: 3.1,
         anticipationRateMonthly: 2.4,
-        settlementDaysRule: "D+2 após evento"
+        settlementDaysRule: "D+2 após evento",
+        retainedReservePercent: 5.0,
+        creditLimit: 80000.00
       },
+      documents: [
+        {
+          id: "DOC-SOC-XYZ-01",
+          type: "Contrato Social",
+          name: "5ª Alteração Contratual Consolidada",
+          fileName: "contrato_social_xyz_2025.pdf",
+          uploadDate: "15/01/2026",
+          status: "Válido",
+          visibleToProducer: true
+        },
+        {
+          id: "DOC-SOC-XYZ-02",
+          type: "Cartão CNPJ",
+          name: "Comprovante de Inscrição RFB",
+          fileName: "cartao_cnpj_rfb_2026.pdf",
+          uploadDate: "02/02/2026",
+          status: "Válido",
+          visibleToProducer: true
+        },
+        {
+          id: "DOC-SOC-XYZ-03",
+          type: "Certidão Negativa",
+          name: "CND Federal / Previdenciária",
+          fileName: "cnd_receita_federal_2026.pdf",
+          uploadDate: "10/03/2026",
+          status: "Válido",
+          visibleToProducer: false
+        }
+      ],
+      auditLog: [
+        {
+          id: "AUD-XYZ-01",
+          timestamp: "15/01/2026 10:30",
+          user: "Karine Santos (Controladoria Disk)",
+          action: "Homologação Cadastral",
+          summary: "Homologação do Cadastro Mestre concluída com parecer favorável."
+        }
+      ],
       totals: {
         grossSales: 350000.00,
         netSales: 308000.00,
@@ -103,9 +251,9 @@ export const initialMockDatabase = {
           accountType: "Conta Corrente PJ",
           agency: "2234",
           accountNumber: "77812-4",
-          holderName: "Eventos XYZ Produções Artísticas",
-          cnpj: "22.418.990/0001-44",
-          pixKey: "22.418.990/0001-44",
+          holderName: "XYZ Produções Artísticas e Eventos Ltda.",
+          cnpj: "12.345.678/0001-90",
+          pixKey: "12.345.678/0001-90",
           isDefault: true,
           status: "Validada & Ativa",
           validatedAt: "10/02/2025"
@@ -125,13 +273,67 @@ export const initialMockDatabase = {
       riskScore: "Baixo Risco (Score 96/100)",
       hasBlock: false,
       blockedAmount: 0.00,
+      companyDetails: {
+        stateRegistration: "258.963.147",
+        municipalRegistration: "147.258-9",
+        cnae: "90.01-9-02 - Produção musical e eventos",
+        companySize: "Grande Porte",
+        taxRegime: "Lucro Real",
+        openedAt: "12/03/2010"
+      },
+      address: {
+        street: "Rodovia Maurício Sirotsky Sobrinho, 5000",
+        neighborhood: "Jurerê Internacional",
+        city: "Florianópolis",
+        state: "SC",
+        zipCode: "88053-700"
+      },
+      legalRepresentatives: [
+        {
+          name: "Eduardo Camargo",
+          cpf: "334.556.778-90",
+          role: "Presidente Executivo",
+          email: "eduardo@premiumshows.com.br",
+          phone: "(48) 99988-7766"
+        }
+      ],
+      financialContacts: [
+        {
+          name: "Juliana Mendes",
+          role: "Diretora Financeira",
+          email: "juliana@premiumshows.com.br",
+          phone: "(48) 3221-5000"
+        }
+      ],
       contract: {
         number: "DISK-CTR-2024-045",
         diskFeePercent: 9.5,
         processingFeePercent: 2.8,
         anticipationRateMonthly: 1.9,
-        settlementDaysRule: "D+1 após evento"
+        settlementDaysRule: "D+1 após evento",
+        retainedReservePercent: 3.0,
+        creditLimit: 300000.00
       },
+      documents: [
+        {
+          id: "DOC-SOC-PREM-01",
+          type: "Contrato Social",
+          name: "Estatuto Social Consolidado",
+          fileName: "estatuto_social_premium.pdf",
+          uploadDate: "05/11/2024",
+          status: "Válido",
+          visibleToProducer: true
+        }
+      ],
+      auditLog: [
+        {
+          id: "AUD-PREM-01",
+          timestamp: "05/11/2024 11:00",
+          user: "Carlos Menezes (Disk Ingressos)",
+          action: "Homologação Tier A",
+          summary: "Classificação Tier A - Premium aprovada pela Controladoria."
+        }
+      ],
       totals: {
         grossSales: 1200000.00,
         netSales: 1086000.00,

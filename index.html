@@ -92,13 +92,17 @@
         </div>
 
         <!-- Global Search Box -->
-        <div class="flex-grow-1 mx-3" style="max-width: 480px;">
+        <div class="flex-grow-1 mx-3 position-relative" style="max-width: 480px;">
           <div class="position-relative">
-            <input type="text" id="global-search" class="form-control bg-transparent rounded-pill text-white ps-5" style="border: 1px solid rgba(255,255,255,0.2); font-size: 13px;" placeholder="Pesquisa global (eventos, produtores, pedidos, repasses...)" aria-label="Pesquisa global" oninput="window.app && window.app.handleGlobalSearch(this.value)">
+            <input type="text" id="global-search" class="form-control bg-transparent rounded-pill text-white ps-5 pe-4" style="border: 1px solid rgba(255,255,255,0.2); font-size: 13px;" placeholder="🔍 Buscar produtor, CNPJ ou evento..." aria-label="Pesquisa global" oninput="window.app && window.app.handleGlobalSearch(this.value)" onfocus="window.app && window.app.handleGlobalSearch(this.value)">
             <div class="position-absolute" style="left: 14px; top: 50%; transform: translateY(-50%); pointer-events: none; color: rgba(255,255,255,0.5);">
               <i class="ph-magnifying-glass fs-5"></i>
             </div>
+            <button id="global-search-clear" type="button" class="btn btn-sm text-white-50 position-absolute" style="right: 8px; top: 50%; transform: translateY(-50%); display: none; padding: 2px 6px; background: transparent; border: 0;" onclick="window.app && window.app.clearGlobalSearch()">
+              <i class="ph-x"></i>
+            </button>
           </div>
+          <div id="global-search-dropdown" class="dropdown-menu shadow-lg border-0 w-100 mt-1" style="display: none; position: absolute; top: 100%; left: 0; z-index: 1050; max-height: 400px; overflow-y: auto; border-radius: 8px;"></div>
         </div>
 
         <!-- Right Header Items: Idioma, Notificações e Usuário -->
@@ -203,6 +207,7 @@
 
         <!-- Dynamic View Container -->
         <div class="content p-3 p-lg-4 flex-grow-1" id="main-content">
+          <div id="producer-context-banner-container"></div>
           <div id="view-container">
             <!-- Dynamic View content rendered by app.js -->
           </div>

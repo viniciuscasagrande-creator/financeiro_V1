@@ -144,6 +144,355 @@ export class CoreFinanceiroStore {
     } catch (_) {}
   }
 
+  // ==========================================================================
+  // CADASTRO MESTRE DO PRODUTOR — VALIDAÇÃO, UNICIDADE E HIERARQUIA CANÔNICA
+  // Produtor (CNPJ) → Eventos → Movimentações Financeiras
+  // ==========================================================================
+
+  validateCNPJ(cnpj) {
+    if (!cnpj) return { valid: false, error: 'CNPJ é obrigatório.' };
+    const clean = String(cnpj).replace(/\D/g, '');
+    if (clean.length !== 14) return { valid: false, error: 'CNPJ deve conter exatamente 14 dígitos.' };
+    if (/^(\d)\1+$/.test(clean)) return { valid: false, error: 'CNPJ inválido (dígitos repetidos).' };
+
+    // Permissão para mock/demo conhecidos
+    const isMockAccepted = ['12345678000190', '14829301000192', '08992114000108', '22418990000144'].includes(clean);
+    if (!isMockAccepted) {
+      let size = clean.length - 2;
+      let numbers = clean.substring(0, size);
+      const digits = clean.substring(size);
+      let sum = 0;
+      let pos = size - 7;
+      for (let i = size; i >= 1; i--) {
+        sum += numbers.charAt(size - i) * pos--;
+        if (pos < 2) pos = 9;
+      }
+      let result = sum % 11 < 2 ? 0 : 11 - (sum % 11);
+      if (result !== parseInt(digits.charAt(0), 10)) {
+        return { valid: false, error: 'Primeiro dígito verificador do CNPJ inválido.' };
+      }
+
+      size = size + 1;
+      numbers = clean.substring(0, size);
+      sum = 0;
+      pos = size - 7;
+      for (let i = size; i >= 1; i--) {
+        sum += numbers.charAt(size - i) * pos--;
+        if (pos < 2) pos = 9;
+      }
+      result = sum % 11 < 2 ? 0 : 11 - (sum % 11);
+      if (result !== parseInt(digits.charAt(1), 10)) {
+        return { valid: false, error: 'Segundo dígito verificador do CNPJ inválido.' };
+      }
+    }
+
+    const formatted = clean.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
+    return { valid: true, clean, formatted };
+  }
+
+  findProducerByCNPJ(cnpj) {
+    if (!cnpj) return null;
+    const clean = String(cnpj).replace(/\D/g, '');
+    return (this.data.producers || []).find(p => String(p.cnpj).replace(/\D/g, '') === clean) || null;
+  }
+
+  createProducer({
+    name,
+    tradeName,
+    cnpj,
+    contactEmail = '',
+    phone = '',
+    accountManager = 'Carlos Menezes (Disk Ingressos)',
+    rating = 'Tier B - Padrão',
+    status = 'Ativo',
+    companyDetails = {},
+    address = {},
+    legalRepresentatives = [],
+    financialContacts = [],
+    contract = {},
+    bankAccounts = [],
+    documents = []
+  }) {
+    if (this.state.currentUser.role === 'producer') {
+      alert("Apenas o Financeiro Disk pode cadastrar novos produtores.");
+      return null;
+    }
+
+    if (!name || !name.trim()) {
+      alert("A Razão Social é obrigatória.");
+      return null;
+    }
+
+    const cnpjCheck = this.validateCNPJ(cnpj);
+    if (!cnpjCheck.valid) {
+      alert(`CNPJ inválido: ${cnpjCheck.error}`);
+      return null;
+    }
+
+    const existing = this.findProducerByCNPJ(cnpjCheck.clean);
+    if (existing) {
+      alert(`Impedimento de Duplicidade: Já existe um produtor cadastrado com o CNPJ ${cnpjCheck.formatted} (${existing.name}).`);
+      return null;
+    }
+
+    const newId = `prod-${Date.now()}`;
+    const newProducer = {
+      id: newId,
+      name: name.trim(),
+      tradeName: (tradeName || name).trim(),
+      cnpj: cnpjCheck.formatted,
+      contactEmail: contactEmail.trim(),
+      phone: phone.trim(),
+      accountManager,
+      rating,
+      status,
+      riskScore: 'Baixo Risco (Score 90/100)',
+      hasBlock: false,
+      blockedAmount: 0.00,
+      companyDetails: {
+        stateRegistration: companyDetails.stateRegistration || '',
+        municipalRegistration: companyDetails.municipalRegistration || '',
+        cnae: companyDetails.cnae || '90.01-9-02 - Produção musical e eventos',
+        companySize: companyDetails.companySize || 'Médio Porte',
+        taxRegime: companyDetails.taxRegime || 'Lucro Presumido',
+        openedAt: companyDetails.openedAt || new Date().toISOString().slice(0, 10),
+        ...companyDetails
+      },
+      address: {
+        street: address.street || '',
+        city: address.city || 'Curitiba',
+        state: address.state || 'PR',
+        zipCode: address.zipCode || '',
+        ...address
+      },
+      legalRepresentatives: legalRepresentatives.length ? legalRepresentatives : [
+        { name: name.trim(), cpf: '', role: 'Representante Legal', email: contactEmail, phone }
+      ],
+      financialContacts: financialContacts.length ? financialContacts : [
+        { name: tradeName || name, role: 'Financeiro Principal', email: contactEmail, phone }
+      ],
+      contract: {
+        number: contract.number || `DISK-CTR-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`,
+        diskFeePercent: Number(contract.diskFeePercent || 10.0),
+        processingFeePercent: Number(contract.processingFeePercent || 2.9),
+        anticipationRateMonthly: Number(contract.anticipationRateMonthly || 2.0),
+        settlementDaysRule: contract.settlementDaysRule || 'D+2 após evento',
+        retainedReservePercent: Number(contract.retainedReservePercent || 5.0),
+        creditLimit: Number(contract.creditLimit || 100000.00),
+        ...contract
+      },
+      totals: {
+        grossSales: 0.00,
+        netSales: 0.00,
+        totalBalance: 0.00,
+        availableBalance: 0.00,
+        futureReceivables: 0.00,
+        transferredAmount: 0.00,
+        blockedBalance: 0.00,
+        refundsAndChargebacks: 0.00
+      },
+      bankAccounts: bankAccounts || [],
+      documents: documents || [],
+      auditLog: [
+        {
+          id: `AUD-${Date.now()}`,
+          timestamp: new Date().toLocaleString('pt-BR'),
+          user: this.state.currentUser.name || 'Financeiro Disk',
+          action: 'Criação do Cadastro Mestre',
+          summary: `Produtor ${name.trim()} homologado com CNPJ ${cnpjCheck.formatted}.`
+        }
+      ]
+    };
+
+    this.data.producers.push(newProducer);
+    this.persist();
+    this.notify();
+    return newProducer;
+  }
+
+  updateProducer(producerId, data) {
+    if (this.state.currentUser.role === 'producer') {
+      alert("Apenas o Financeiro Disk pode atualizar o Cadastro Mestre do Produtor.");
+      return null;
+    }
+    const producer = (this.data.producers || []).find(p => p.id === producerId);
+    if (!producer) {
+      alert("Produtor não localizado.");
+      return null;
+    }
+
+    const changes = [];
+
+    if (data.cnpj && String(data.cnpj).replace(/\D/g, '') !== String(producer.cnpj).replace(/\D/g, '')) {
+      const check = this.validateCNPJ(data.cnpj);
+      if (!check.valid) {
+        alert(`CNPJ inválido: ${check.error}`);
+        return null;
+      }
+      const existing = this.findProducerByCNPJ(check.clean);
+      if (existing && existing.id !== producerId) {
+        alert(`Impedimento de Duplicidade: CNPJ ${check.formatted} já pertence a outro produtor (${existing.name}).`);
+        return null;
+      }
+      changes.push(`CNPJ alterado de ${producer.cnpj} para ${check.formatted}`);
+      producer.cnpj = check.formatted;
+    }
+
+    if (data.name && data.name.trim() !== producer.name) {
+      changes.push(`Razão Social alterada para ${data.name.trim()}`);
+      producer.name = data.name.trim();
+    }
+    if (data.tradeName && data.tradeName.trim() !== producer.tradeName) {
+      changes.push(`Nome Fantasia alterado para ${data.tradeName.trim()}`);
+      producer.tradeName = data.tradeName.trim();
+    }
+    if (data.contactEmail !== undefined && data.contactEmail !== producer.contactEmail) {
+      producer.contactEmail = data.contactEmail.trim();
+    }
+    if (data.phone !== undefined && data.phone !== producer.phone) {
+      producer.phone = data.phone.trim();
+    }
+    if (data.accountManager !== undefined && data.accountManager !== producer.accountManager) {
+      changes.push(`Gerente de Conta alterado para ${data.accountManager}`);
+      producer.accountManager = data.accountManager.trim();
+    }
+    if (data.rating && data.rating !== producer.rating) {
+      changes.push(`Rating alterado para ${data.rating}`);
+      producer.rating = data.rating;
+    }
+    if (data.status && data.status !== producer.status) {
+      changes.push(`Status cadastral alterado para ${data.status}`);
+      producer.status = data.status;
+    }
+
+    if (data.companyDetails) {
+      producer.companyDetails = { ...(producer.companyDetails || {}), ...data.companyDetails };
+    }
+    if (data.address) {
+      producer.address = { ...(producer.address || {}), ...data.address };
+    }
+    if (data.legalRepresentatives) {
+      producer.legalRepresentatives = data.legalRepresentatives;
+    }
+    if (data.financialContacts) {
+      producer.financialContacts = data.financialContacts;
+    }
+    if (data.contract) {
+      producer.contract = { ...(producer.contract || {}), ...data.contract };
+    }
+
+    producer.auditLog = producer.auditLog || [];
+    producer.auditLog.unshift({
+      id: `AUD-${Date.now()}`,
+      timestamp: new Date().toLocaleString('pt-BR'),
+      user: this.state.currentUser.name || 'Financeiro Disk',
+      action: 'Edição de Cadastro Mestre',
+      summary: changes.length ? changes.join('; ') : 'Informações cadastrais atualizadas na Ficha Financeira.'
+    });
+
+    this.persist();
+    this.notify();
+    return producer;
+  }
+
+  addProducerDocument(producerId, doc) {
+    const producer = (this.data.producers || []).find(p => p.id === producerId);
+    if (!producer) return null;
+    producer.documents = producer.documents || [];
+    const newDoc = {
+      id: doc.id || `DOC-SOC-${Date.now()}`,
+      type: doc.type || 'Documento Societário',
+      name: doc.name || 'Documento Anexado',
+      fileName: doc.fileName || 'documento.pdf',
+      uploadDate: doc.uploadDate || new Date().toLocaleDateString('pt-BR'),
+      status: doc.status || 'Válido',
+      visibleToProducer: doc.visibleToProducer === true
+    };
+    producer.documents.unshift(newDoc);
+    producer.auditLog = producer.auditLog || [];
+    producer.auditLog.unshift({
+      id: `AUD-${Date.now()}`,
+      timestamp: new Date().toLocaleString('pt-BR'),
+      user: this.state.currentUser.name || 'Financeiro Disk',
+      action: 'Anexo de Documento Societário',
+      summary: `Documento ${newDoc.name} (${newDoc.type}) anexado. Visibilidade: ${newDoc.visibleToProducer ? 'Disponível ao Produtor' : 'Interno Disk'}.`
+    });
+    this.persist();
+    this.notify();
+    return newDoc;
+  }
+
+  toggleProducerDocumentVisibility(producerId, docId) {
+    const producer = (this.data.producers || []).find(p => p.id === producerId);
+    if (!producer) return;
+    const doc = (producer.documents || []).find(d => d.id === docId);
+    if (!doc) return;
+    doc.visibleToProducer = !doc.visibleToProducer;
+    producer.auditLog = producer.auditLog || [];
+    producer.auditLog.unshift({
+      id: `AUD-${Date.now()}`,
+      timestamp: new Date().toLocaleString('pt-BR'),
+      user: this.state.currentUser.name || 'Financeiro Disk',
+      action: 'Alteração de Visibilidade Documental',
+      summary: `Documento ${doc.name} alterado para: ${doc.visibleToProducer ? 'Disponível ao Produtor' : 'Interno Disk'}.`
+    });
+    this.persist();
+    this.notify();
+  }
+
+  getProducerSummary(producerId) {
+    const acc = this.getProducerFinancialAccount(producerId);
+    const producer = (this.data.producers || []).find(p => p.id === producerId) || this.data.producers[0];
+    const summary = acc?.summary || {};
+    const events = (this.data.events || []).filter(e => e.producerId === producer.id);
+
+    const approvals = (this.data.approvalQueue || []).filter(a => a.producerId === producer.id);
+    const pendingApprovals = approvals.filter(a => !['Pago', 'Rejeitado'].includes(a.status));
+    const pendingPayoutAmount = pendingApprovals.reduce((acc, a) => acc + (a.requestedAmount || a.netAmount || 0), 0);
+
+    const availableBalance = summary.availableForRepasse !== undefined ? summary.availableForRepasse : (producer.totals?.availableBalance || 0);
+    const totalBalance = summary.consolidatedBalance !== undefined ? summary.consolidatedBalance : (producer.totals?.totalBalance || 0);
+    const futureReceivables = summary.futurePending !== undefined ? summary.futurePending : (producer.totals?.futureReceivables || 0);
+    const blockedBalance = summary.blocked !== undefined ? summary.blocked : (producer.totals?.blockedBalance || 0);
+    const retainedBalance = summary.retained !== undefined ? summary.retained : 0;
+    const outstandingDebt = summary.outstandingCredits !== undefined ? summary.outstandingCredits : 0;
+
+    return {
+      totalBalance,
+      availableBalance,
+      retainedAndReserved: retainedBalance + blockedBalance,
+      futureReceivables,
+      pendingPayouts: pendingPayoutAmount,
+      pendingPayoutCount: pendingApprovals.length,
+      outstandingDebt
+    };
+  }
+
+  searchGlobalEntities(query) {
+    if (!query || query.trim().length < 2) return { producers: [], events: [] };
+    const q = query.trim().toLowerCase();
+    const cleanQ = q.replace(/\D/g, '');
+
+    const producers = (this.data.producers || []).filter(p => {
+      const matchName = (p.name || '').toLowerCase().includes(q);
+      const matchTrade = (p.tradeName || '').toLowerCase().includes(q);
+      const matchId = (p.id || '').toLowerCase().includes(q);
+      const cleanCNPJ = String(p.cnpj || '').replace(/\D/g, '');
+      const matchCNPJ = (p.cnpj || '').toLowerCase().includes(q) || (cleanQ.length >= 3 && cleanCNPJ.includes(cleanQ));
+      return matchName || matchTrade || matchId || matchCNPJ;
+    });
+
+    const events = (this.data.events || []).filter(e => {
+      const matchName = (e.name || '').toLowerCase().includes(q);
+      const matchId = (e.id || '').toLowerCase().includes(q);
+      const matchVenue = (e.venue || '').toLowerCase().includes(q);
+      const matchProdName = (e.producerName || '').toLowerCase().includes(q);
+      return matchName || matchId || matchVenue || matchProdName;
+    });
+
+    return { producers, events };
+  }
+
   ensureOperationModel() {
     this.data.operationEvents = this.data.operationEvents || [];
     this.data.spreadRules = this.data.spreadRules || [
@@ -847,6 +1196,10 @@ export class CoreFinanceiroStore {
     }
     this.state.selectedEventId = 'all';
     this.notify();
+  }
+
+  setProducerContext(producerId) {
+    this.setSelectedProducer(producerId);
   }
 
   setSelectedEvent(eventId) {

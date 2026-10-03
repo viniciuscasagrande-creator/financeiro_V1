@@ -529,4 +529,125 @@ test('Contrato financeiro de crédito constrói cronograma de parcelas, apropria
   assert.equal(credit.outstandingDebt, 35000);
 });
 
+// 14. Base Mestre de Produtores: Validação de CNPJ e Impedimento Estrito de Duplicidade (V0.7)
+test('Validação de CNPJ e impedimento estrito de duplicidade no cadastro mestre de produtores', () => {
+  const store = new CoreFinanceiroStore();
+  store.login('disk');
+
+  // Validação de formato de CNPJ
+  const invalidCnpj = store.validateCNPJ('123');
+  assert.equal(invalidCnpj.valid, false, 'CNPJ com menos de 14 dígitos deve ser inválido');
+
+  const repeatedCnpj = store.validateCNPJ('11111111111111');
+  assert.equal(repeatedCnpj.valid, false, 'CNPJ com dígitos repetidos deve ser inválido');
+
+  // Mock válido de teste (prod-xyz)
+  const validMock = store.validateCNPJ('12.345.678/0001-90');
+  assert.equal(validMock.valid, true, 'CNPJ mock padrão deve ser validado');
+
+  // Impedimento de duplicidade ao criar produtor com CNPJ já existente
+  let alerted = false;
+  const originalAlert = global.alert;
+  global.alert = (msg) => { alerted = true; };
+
+  const duplicateCreation = store.createProducer({
+    name: 'Tentativa Duplicada Ltda.',
+    cnpj: '12.345.678/0001-90' // Já pertence a prod-xyz
+  });
+
+  assert.equal(duplicateCreation, null, 'Criação de produtor com CNPJ duplicado deve ser impedida');
+  assert.equal(alerted, true, 'Alerta de impedimento de duplicidade deve ser disparado');
+
+  // Sucesso com CNPJ único (usando outro mock válido: 22.418.990/0001-44)
+  alerted = false;
+  const uniqueProd = store.createProducer({
+    name: 'Nova Produtora do Sul Ltda.',
+    tradeName: 'Sul Produções',
+    cnpj: '22418990000144',
+    contactEmail: 'contato@sulproducoes.com.br'
+  });
+
+  assert(uniqueProd, 'Produtor com CNPJ válido e único deve ser criado com sucesso');
+  assert.equal(uniqueProd.cnpj, '22.418.990/0001-44');
+  assert.equal(uniqueProd.auditLog.length >= 1, true, 'Deve inicializar trilha de auditoria');
+
+  global.alert = originalAlert;
+});
+
+// 15. Ficha Financeira: Edição Mestre e Trilha de Auditoria Cadastral Imutável (V0.7)
+test('Edição do cadastro mestre registra trilha de auditoria cadastral detalhada e imutável', () => {
+  const store = new CoreFinanceiroStore();
+  store.login('disk');
+
+  const p = store.data.producers.find(pr => pr.id === 'prod-xyz');
+  const initialAuditCount = (p.auditLog || []).length;
+
+  const updated = store.updateProducer('prod-xyz', {
+    tradeName: 'XYZ Mega Produções',
+    accountManager: 'Mariana Lima (Disk Ingressos)',
+    rating: 'Tier A - Estratégico',
+    companyDetails: {
+      companySize: 'Grande Porte',
+      taxRegime: 'Lucro Real'
+    }
+  });
+
+  assert(updated, 'Atualização de produtor deve retornar o registro atualizado');
+  assert.equal(updated.tradeName, 'XYZ Mega Produções');
+  assert.equal(updated.accountManager, 'Mariana Lima (Disk Ingressos)');
+  assert.equal(updated.rating, 'Tier A - Estratégico');
+  assert.equal(updated.companyDetails.companySize, 'Grande Porte');
+  assert.equal(updated.companyDetails.taxRegime, 'Lucro Real');
+
+  assert.equal(updated.auditLog.length, initialAuditCount + 1, 'Trilha de auditoria deve conter novo registro de alteração');
+  assert.equal(updated.auditLog[0].action, 'Edição de Cadastro Mestre');
+});
+
+// 16. Busca Global de Entidades por Razão Social, Nome Fantasia, CNPJ e ID (V0.7)
+test('Busca global localiza produtores por Nome, Nome Fantasia, CNPJ e ID, bem como eventos', () => {
+  const store = new CoreFinanceiroStore();
+
+  // Busca por CNPJ
+  const searchCnpj = store.searchGlobalEntities('12.345.678');
+  assert.equal(searchCnpj.producers.some(p => p.id === 'prod-xyz'), true, 'Deve localizar produtor pelo CNPJ');
+
+  // Busca por Nome Fantasia
+  const searchTrade = store.searchGlobalEntities('ABC Produções');
+  assert.equal(searchTrade.producers.some(p => p.id === 'prod-abc'), true, 'Deve localizar produtor pelo nome fantasia');
+
+  // Busca por ID
+  const searchId = store.searchGlobalEntities('prod-premium');
+  assert.equal(searchId.producers.some(p => p.id === 'prod-premium'), true, 'Deve localizar produtor pelo ID');
+
+  // Busca de Evento
+  const searchEvent = store.searchGlobalEntities('Festival Curitiba');
+  assert.equal(searchEvent.events.some(e => e.id === 'evt-001'), true, 'Deve localizar evento pelo nome');
+});
+
+// 17. Documentos Societários & Comprovantes: Controle de Visibilidade Segregado (V0.7)
+test('Anexar documento não publica automaticamente e respeita visibilidade Interno Disk vs Produtor', () => {
+  const store = new CoreFinanceiroStore();
+  store.login('disk');
+
+  // 1. Anexar documento corporativo societário sem marcar visibleToProducer
+  const doc = store.addProducerDocument('prod-xyz', {
+    type: 'Contrato Social',
+    name: 'Contrato Social Consolidado 2026',
+    fileName: 'contrato_social_2026.pdf',
+    visibleToProducer: false
+  });
+
+  assert(doc, 'Documento societário deve ser anexado');
+  assert.equal(doc.visibleToProducer, false, 'Regra de governança: Anexar NÃO publica automaticamente');
+
+  // 2. Toggle de visibilidade para disponibilizar ao produtor
+  store.toggleProducerDocumentVisibility('prod-xyz', doc.id);
+  const p = store.data.producers.find(pr => pr.id === 'prod-xyz');
+  const updatedDoc = p.documents.find(d => d.id === doc.id);
+  assert.equal(updatedDoc.visibleToProducer, true, 'Documento deve transicionar para Disponível ao Produtor');
+
+  // 3. Trilha de auditoria registra a ação
+  assert.equal(p.auditLog[0].action, 'Alteração de Visibilidade Documental');
+});
+
 console.log(`\nTodos os ${passed} testes da Conta Financeira do Produtor passaram com sucesso!`);

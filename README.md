@@ -240,3 +240,6 @@ Ajuste da implementação utilizada no protótipo web (`js/views/disk/produtores
 Correção definitiva do motor de elegibilidade para evitar vazamento de deduções consolidadas do produtor sobre eventos individuais. O **Festival Curitiba 2026 (`evt-001`)** passa a refletir com exatidão: **Vendas R$ 500.000 (50%) → Limite 20% (R$ 100.000,00) → Deduções do Evento (R$ 0,00) → Disponível para Repasse (R$ 100.000,00 - HABILITADO)**. O formulário de solicitação de repasse fica 100% liberado com sugestão de R$ 80.000,00 e submissão validada. Suíte com 78 testes automatizados aprovados. Consulte `docs/V0.6.2.3_CORRECAO_DEFINITIVA_PRODUTORES_ELEGIBILIDADE_REPASSE.md`.
 
 
+
+## Evolução V0.7 — Base Mestre de Produtores
+Inclui busca por nome/CNPJ no Dossiê e fluxo de Comprovantes e Transações com publicação controlada para o portal do Produtor. Consulte `docs/BASE_MESTRE_PRODUTORES_COMPROVANTES_V0.7.md`.
