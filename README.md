@@ -7,7 +7,8 @@ Este projeto implementa de uma única vez o ambiente demonstrativo completo do *
 
 ### 1. Acesso Imediato à Demonstração
 
-- **URL no Navegador:** [http://localhost:3000](http://localhost:3000) (Servidor Node.js nativo ativo)
+- **URL Oficial (Vercel):** [https://financeirov1-phi.vercel.app/](https://financeirov1-phi.vercel.app/)
+- **URL Local no Navegador:** [http://localhost:3000](http://localhost:3000) (Servidor Node.js nativo ativo)
 - **Diretório no VS Code:** `C:\Users\vinad\OneDrive\Desktop\Modulo_Financeiro_v1`
 - **Comando para abrir no VS Code:**
   ```powershell

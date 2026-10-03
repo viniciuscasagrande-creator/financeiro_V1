@@ -1,6 +1,15 @@
-server.js
+node_modules/
+archives/
+*.zip
+*.bundle
+tests/
+docs/
+scratch/
 backend/
 database/
 prisma/
-scratch/
+server.js
+.git/
+.vscode/
 *.png
+*.log
