@@ -1,5 +1,9 @@
 import assert from 'node:assert/strict';
 import { CoreFinanceiroStore } from '../js/state.js';
+import { renderDiskSolicitacoes } from '../js/views/disk/solicitacoes.js';
+import { renderDiskAprovacoes } from '../js/views/disk/aprovacoes.js';
+import { renderDiskLedger } from '../js/views/disk/ledger.js';
+import { renderDiskEventos } from '../js/views/disk/enterpriseViews.js';
 
 // Mock de alert para ambiente Node.js de teste
 globalThis.alert = (msg) => { /* no-op em testes automatizados */ };
@@ -648,6 +652,64 @@ test('Anexar documento não publica automaticamente e respeita visibilidade Inte
 
   // 3. Trilha de auditoria registra a ação
   assert.equal(p.auditLog[0].action, 'Alteração de Visibilidade Documental');
+});
+
+// 18. Contexto Financeiro Persistente do Produtor (V0.9)
+test('Contexto persistente do produtor selecionado filtra transversalmente Eventos, Repasses, Aprovações e Ledger', () => {
+  const store = new CoreFinanceiroStore();
+  store.login('disk');
+
+  // 1. Contexto inicial sem produtor selecionado ('all')
+  store.setProducerContext('all');
+  assert.equal(store.state.selectedProducerId, 'all');
+
+  const solicitacoesAllHtml = renderDiskSolicitacoes(store.getState());
+  assert(solicitacoesAllHtml.includes('REP-00291'), 'Visão global deve conter REP-00291 (prod-abc)');
+  assert(solicitacoesAllHtml.includes('REP-00290'), 'Visão global deve conter REP-00290 (prod-xyz)');
+
+  const aprovacoesAllHtml = renderDiskAprovacoes(store.getState());
+  assert(aprovacoesAllHtml.includes('REP-00291'), 'Aprovações global deve conter REP-00291');
+  assert(aprovacoesAllHtml.includes('REP-00290'), 'Aprovações global deve conter REP-00290');
+
+  // 2. Ativa contexto persistente para prod-xyz (Eventos XYZ Produções Artísticas)
+  store.setProducerContext('prod-xyz');
+  assert.equal(store.state.selectedProducerId, 'prod-xyz');
+  assert.equal(store.state.currentProducerId, 'prod-xyz');
+
+  const stateXyz = store.getState();
+
+  // A) Solicitacoes deve filtrar apenas solicitações de prod-xyz
+  const solicitacoesXyzHtml = renderDiskSolicitacoes(stateXyz);
+  assert(solicitacoesXyzHtml.includes('REP-00290'), 'Solicitações deve exibir repasse de prod-xyz');
+  assert(!solicitacoesXyzHtml.includes('REP-00291'), 'Solicitações NÃO deve exibir repasse de prod-abc quando prod-xyz está ativo');
+  assert(solicitacoesXyzHtml.includes('Contexto Ativo'), 'Deve exibir banner de contexto ativo');
+
+  // B) Aprovações deve filtrar apenas aprovações de prod-xyz
+  const aprovacoesXyzHtml = renderDiskAprovacoes(stateXyz);
+  assert(aprovacoesXyzHtml.includes('REP-00290'), 'Aprovações deve exibir item de prod-xyz');
+  assert(!aprovacoesXyzHtml.includes('REP-00291'), 'Aprovações NÃO deve exibir item de prod-abc');
+  assert(aprovacoesXyzHtml.includes('Fila Filtrada'), 'Deve exibir indicador de fila filtrada');
+
+  // C) Eventos transversal deve filtrar apenas eventos de prod-xyz
+  const eventosXyzHtml = renderDiskEventos(stateXyz);
+  assert(eventosXyzHtml.includes('Show Nacional de Rock Curitiba'), 'Eventos deve exibir evento de prod-xyz');
+  assert(!eventosXyzHtml.includes('Festival Curitiba 2026'), 'Eventos NÃO deve exibir evento de prod-abc');
+
+  // D) Ledger contábil deve filtrar lançamentos de prod-abc quando prod-abc for ativado
+  store.setProducerContext('prod-abc');
+  const stateAbc = store.getState();
+  const ledgerAbcHtml = renderDiskLedger(stateAbc);
+  assert(ledgerAbcHtml.includes('LEDG-89104'), 'Ledger deve conter lançamentos de prod-abc');
+  assert(ledgerAbcHtml.includes('Ledger Filtrado'), 'Deve exibir indicador de Ledger filtrado');
+
+  // 3. Limpar contexto (restaurar visão consolidada de todos)
+  store.setProducerContext('all');
+  const stateReset = store.getState();
+  assert.equal(stateReset.selectedProducerId, 'all');
+
+  const solicitacoesResetHtml = renderDiskSolicitacoes(stateReset);
+  assert(solicitacoesResetHtml.includes('REP-00291'), 'Após limpar filtro, deve exibir prod-abc novamente');
+  assert(solicitacoesResetHtml.includes('REP-00290'), 'Após limpar filtro, deve exibir prod-xyz novamente');
 });
 
 console.log(`\nTodos os ${passed} testes da Conta Financeira do Produtor passaram com sucesso!`);

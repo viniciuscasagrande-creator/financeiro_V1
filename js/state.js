@@ -65,7 +65,29 @@ export class CoreFinanceiroStore {
       }
     }
 
+    // V0.9: restaura o contexto operacional do Financeiro Disk entre telas e recargas.
+    if (this.state.viewMode === 'disk' && typeof localStorage !== 'undefined') {
+      try {
+        const ctx = JSON.parse(localStorage.getItem('disk-financeiro-context-v09') || 'null');
+        if (ctx?.producerId && (ctx.producerId === 'all' || this.data.producers.some(p => p.id === ctx.producerId))) {
+          this.state.selectedProducerId = ctx.producerId;
+          const eventOk = ctx.eventId === 'all' || this.data.events.some(e => e.id === ctx.eventId && (ctx.producerId === 'all' || e.producerId === ctx.producerId));
+          this.state.selectedEventId = eventOk ? (ctx.eventId || 'all') : 'all';
+        }
+      } catch (_) {}
+    }
+
     this.listeners = [];
+  }
+
+  persistOperationalContext() {
+    if (typeof localStorage === 'undefined' || this.state.viewMode !== 'disk') return;
+    try {
+      localStorage.setItem('disk-financeiro-context-v09', JSON.stringify({
+        producerId: this.state.selectedProducerId || 'all',
+        eventId: this.state.selectedEventId || 'all'
+      }));
+    } catch (_) {}
   }
 
   // Enriquece itens da fila com modelo formal de assinaturas e trilha de auditoria
@@ -1196,10 +1218,16 @@ export class CoreFinanceiroStore {
     if (this.state.currentUser.role === 'producer') {
       // Regra de segurança: Produtor NUNCA pode trocar de produtor!
       this.state.selectedProducerId = this.state.currentUser.producerId;
+      this.state.currentProducerId = this.state.currentUser.producerId;
     } else {
       this.state.selectedProducerId = producerId;
+      if (producerId && producerId !== 'all') {
+        this.state.currentProducerId = producerId;
+      }
     }
     this.state.selectedEventId = 'all';
+    this.persistOperationalContext();
+    this.persist?.();
     this.notify();
   }
 
@@ -1208,7 +1236,12 @@ export class CoreFinanceiroStore {
   }
 
   setSelectedEvent(eventId) {
+    if (eventId !== 'all' && this.state.selectedProducerId !== 'all') {
+      const evt = (this.data.events || []).find(e => e.id === eventId);
+      if (!evt || evt.producerId !== this.state.selectedProducerId) eventId = 'all';
+    }
     this.state.selectedEventId = eventId;
+    this.persistOperationalContext();
     this.notify();
   }
 

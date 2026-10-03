@@ -5,7 +5,15 @@
 import { formatCurrency, createStatusBadge } from '../../formatters.js';
 
 export function renderDiskAprovacoes(state, filterType = 'all') {
-  let items = state.data.approvalQueue;
+  const selectedProducer = (state.selectedProducerId && state.selectedProducerId !== 'all')
+    ? (state.data.producers || []).find(p => p.id === state.selectedProducerId)
+    : null;
+
+  let items = state.data.approvalQueue || [];
+
+  if (selectedProducer) {
+    items = items.filter(i => i.producerId === selectedProducer.id);
+  }
 
   if (filterType && filterType !== 'all') {
     items = items.filter(i => i.type.toLowerCase().includes(filterType.toLowerCase()));
@@ -42,6 +50,18 @@ export function renderDiskAprovacoes(state, filterType = 'all') {
           <strong>Regra de Encadeamento Automático:</strong> Toda aprovação de repasse ou antecipação aciona imediatamente o lançamento em partidas dobradas no <strong>Ledger</strong>, decrementa a obrigação e prepara a linha de pagamento na remessa bancária <strong>CNAB 240</strong>.
         </div>
       </div>
+
+      ${selectedProducer ? `
+        <div class="alert alert-primary d-flex align-items-center justify-content-between p-2 px-3 mb-3 shadow-sm rounded-3">
+          <div class="d-flex align-items-center gap-2">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
+            <span class="fs-xs text-dark">
+              Fila Filtrada: <strong>${selectedProducer.tradeName || selectedProducer.name}</strong> (CNPJ: ${selectedProducer.cnpj}) &bull; ${items.length} solicitações encontradas.
+            </span>
+          </div>
+          <button class="btn btn-xs btn-outline-primary fw-semibold" onclick="window.app.clearProducerContext()">Ver Todas</button>
+        </div>
+      ` : ''}
 
       <!-- Card Table com Fila Unificada -->
       <div class="card-panel">

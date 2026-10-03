@@ -5,7 +5,14 @@
 import { formatCurrency } from '../../formatters.js';
 
 export function renderDiskLedger(state) {
-  const entries = state.data.ledgerEntries;
+  const selectedProducer = (state.selectedProducerId && state.selectedProducerId !== 'all')
+    ? (state.data.producers || []).find(p => p.id === state.selectedProducerId)
+    : null;
+
+  let entries = state.data.ledgerEntries || [];
+  if (selectedProducer) {
+    entries = entries.filter(l => l.producerId === selectedProducer.id);
+  }
 
   return `
     <!-- Header -->
@@ -39,6 +46,18 @@ export function renderDiskLedger(state) {
         </div>
       </div>
 
+      ${selectedProducer ? `
+        <div class="alert alert-primary d-flex align-items-center justify-content-between p-2 px-3 mb-3 shadow-sm rounded-3">
+          <div class="d-flex align-items-center gap-2">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
+            <span class="fs-xs text-dark">
+              Ledger Filtrado: <strong>${selectedProducer.tradeName || selectedProducer.name}</strong> (CNPJ: ${selectedProducer.cnpj}) &bull; ${entries.length} lançamentos contabilizados.
+            </span>
+          </div>
+          <button class="btn btn-xs btn-outline-primary fw-semibold" onclick="window.app.clearProducerContext()">Ver Todos os Lançamentos</button>
+        </div>
+      ` : ''}
+
       <!-- Tabela do Ledger -->
       <div class="card-panel">
         <div class="card-header-bar">
@@ -64,7 +83,7 @@ export function renderDiskLedger(state) {
                 </tr>
               </thead>
               <tbody>
-                ${entries.map(l => `
+                ${entries.length ? entries.map(l => `
                   <tr>
                     <td style="font-size: 0.8rem; color: var(--text-muted);">${l.timestamp}</td>
                     <td style="font-family: monospace; font-weight: 700; color: var(--primary);">${l.id}</td>
@@ -84,7 +103,11 @@ export function renderDiskLedger(state) {
                       <span class="badge badge-success">✓ Conciliado</span>
                     </td>
                   </tr>
-                `).join('')}
+                `).join('') : `
+                  <tr>
+                    <td colspan="8" class="text-center text-muted py-4">Nenhum lançamento no Ledger registrado para ${selectedProducer?.tradeName || selectedProducer?.name || 'este produtor'}.</td>
+                  </tr>
+                `}
               </tbody>
             </table>
           </div>

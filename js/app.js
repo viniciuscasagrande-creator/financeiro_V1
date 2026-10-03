@@ -156,6 +156,28 @@ class LimitlessFinancialApp {
     financialStore.setSelectedProducer(producerId);
   }
 
+  applyGlobalProducerSearch(value) {
+    const st = financialStore.getState();
+    const term = String(value || '').trim().toLowerCase();
+    const digits = term.replace(/\D/g, '');
+    const p = (st.data.producers || []).find(x =>
+      String(x.id || '').toLowerCase() === term ||
+      String(x.name || '').toLowerCase() === term ||
+      String(x.tradeName || '').toLowerCase() === term ||
+      (digits && String(x.cnpj || '').replace(/\D/g, '') === digits)
+    ) || (st.data.producers || []).find(x =>
+      String(x.name || '').toLowerCase().includes(term) ||
+      String(x.tradeName || '').toLowerCase().includes(term) ||
+      (digits.length >= 4 && String(x.cnpj || '').replace(/\D/g, '').includes(digits))
+    );
+    if (!p) {
+      financialStore.showToast('Produtor não encontrado', 'Busque por nome, nome fantasia, CNPJ ou ID.', 'warning');
+      return;
+    }
+    financialStore.setSelectedProducer(p.id);
+    this.render(financialStore.getState());
+  }
+
   searchProducerMaster(term) {
     const q = String(term || '').toLowerCase().replace(/[^a-z0-9]/g, '');
     const state = financialStore.getState();
@@ -822,42 +844,163 @@ class LimitlessFinancialApp {
     }
 
     const summary = financialStore.getProducerSummary(p.id);
+    const account = financialStore.getProducerFinancialAccount(p.id);
+    const events = (state.data.events || []).filter(e => e.producerId === p.id);
+    const primaryAccount = (p.bankAccounts || []).find(b => b.isPrimary) || (p.bankAccounts || [])[0];
+    const respName = p.responsibles?.[0]?.name || p.financialContacts?.[0]?.name || p.accountManager || 'Carlos Menezes (Disk Ingressos)';
+    const accountDisplay = primaryAccount
+      ? `${primaryAccount.bankName || primaryAccount.bank} Ag ${primaryAccount.agency} C/C ${primaryAccount.accountNumber || primaryAccount.account}`
+      : (p.pixKeys?.[0]?.key ? `PIX: ${p.pixKeys[0].key}` : 'Conta em validação');
+
+    const totalBalance = account?.summary?.consolidatedBalance ?? summary?.totalBalance ?? 0;
+    const available = account?.summary?.availableForRepasse ?? summary?.availableBalance ?? 0;
+    const retido = ((account?.summary?.blocked || 0) + (account?.summary?.obligationsReserved || 0) + (account?.summary?.retained || 0)) || summary?.blockedBalance || 0;
+    const receivable = account?.summary?.futurePending ?? summary?.futureReceivables ?? 0;
+    const pendingPayouts = summary?.pendingPayouts ?? 0;
+    const creditDebt = account?.summary?.outstandingCredits ?? 0;
 
     container.innerHTML = `
-      <div class="alert alert-primary bg-primary bg-opacity-10 border border-primary border-opacity-25 rounded-3 p-3 mb-3 d-flex flex-wrap align-items-center justify-content-between gap-3 shadow-sm">
-        <div class="d-flex align-items-center gap-3">
-          <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center fw-bold shadow-sm" style="width: 44px; height: 44px; font-size: 15px;">
-            ${(p.tradeName || p.name).substring(0, 2).toUpperCase()}
+      <div class="producer-context-persistent-card mb-4" style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); border-radius: 12px; border: 1px solid #3b82f6; box-shadow: 0 4px 15px rgba(0,0,0,0.15); color: #f8fafc; padding: 16px 20px;">
+        <!-- Linha 1: Cabeçalho com Identificação e Governança -->
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 12px; margin-bottom: 12px;">
+          <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+            <div style="width: 44px; height: 44px; border-radius: 8px; background: #2563eb; color: white; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 16px; box-shadow: 0 2px 6px rgba(37,99,235,0.4);">
+              ${(p.tradeName || p.name).substring(0, 2).toUpperCase()}
+            </div>
+            <div>
+              <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                <span class="badge" style="background: #2563eb; color: white; font-weight: 700; font-size: 10px; padding: 3px 8px; border-radius: 4px;">
+                  <i class="ph-funnel me-1"></i> CONTEXTO PERSISTENTE ATIVO
+                </span>
+                <h2 style="margin: 0; font-size: 1.15rem; font-weight: 800; color: #ffffff;">
+                  ${p.tradeName || p.name}
+                </h2>
+                <span style="color: #94a3b8; font-size: 0.85rem;">| ${p.name}</span>
+                <span style="color: #60a5fa; font-family: monospace; font-size: 0.85rem; font-weight: 600;">| CNPJ: ${p.cnpj}</span>
+              </div>
+              <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-top: 4px; font-size: 0.78rem; color: #cbd5e1;">
+                <span><strong>Status:</strong> <span class="badge ${p.status === 'Ativo' ? 'badge-success' : 'badge-warning'}" style="font-size: 10px;">${p.status || 'Ativo'}</span></span>
+                <span>&bull;</span>
+                <span><strong>Responsável:</strong> ${respName}</span>
+                <span>&bull;</span>
+                <span><strong>Conta Homologada:</strong> <span style="font-family: monospace; color: #a5f3fc;">${accountDisplay}</span></span>
+              </div>
+            </div>
           </div>
-          <div>
-            <div class="d-flex align-items-center gap-2 flex-wrap">
-              <span class="badge bg-primary text-white fw-bold fs-xxs px-2 py-1"><i class="ph-funnel me-1"></i> CONTEXTO PERSISTENTE ATIVO</span>
-              <h6 class="mb-0 fw-bold text-dark fs-sm">${p.tradeName || p.name}</h6>
-              <span class="text-muted fs-xs">(${p.name})</span>
-            </div>
-            <div class="d-flex flex-wrap align-items-center gap-2 mt-1 text-muted fs-xs">
-              <span><strong>CNPJ:</strong> <span class="text-dark font-monospace">${p.cnpj}</span></span>
-              <span>&bull;</span>
-              <span><strong>Status:</strong> <span class="badge ${p.status === 'Ativo' ? 'bg-success-subtle text-success' : 'bg-warning-subtle text-warning'} fs-xxs">${p.status || 'Ativo'}</span></span>
-              <span>&bull;</span>
-              <span><strong>Gerente:</strong> ${p.accountManager || 'Carlos Menezes (Disk)'}</span>
-              <span>&bull;</span>
-              <span><strong>Disponível:</strong> <strong class="text-success">${formatCurrency(summary.availableBalance)}</strong></span>
-              <span>&bull;</span>
-              <span><strong>Repasses Pendentes:</strong> <strong class="text-warning">${formatCurrency(summary.pendingPayouts)}</strong></span>
-            </div>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <button class="btn btn-sm btn-outline-primary" style="color: #93c5fd; border-color: #3b82f6;" onclick="window.app.openProducerMasterModal('${p.id}')">
+              <i class="ph-pencil-simple me-1"></i> Ficha Mestre
+            </button>
+            <button class="btn btn-sm btn-outline-danger" style="color: #fca5a5; border-color: #ef4444;" onclick="window.app.clearProducerContext()" title="Limpar contexto do produtor e visualizar todos">
+              <i class="ph-x-circle me-1"></i> Limpar Contexto (Ver Todos)
+            </button>
           </div>
         </div>
-        <div class="d-flex align-items-center gap-2">
-          <button class="btn btn-sm btn-outline-primary fw-semibold" onclick="window.app.navigate('diskProdutores', 'dossie')">
-            <i class="ph-identification-card me-1"></i> Ficha Mestre
+
+        <!-- Linha 2: Cards de Saldo do Produtor (6 Cards Canônicos) -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 12px;">
+          <div style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 8px 12px;">
+            <span style="font-size: 10px; font-weight: 700; color: #94a3b8; text-transform: uppercase;">Saldo Total</span>
+            <div style="font-size: 15px; font-weight: 800; color: #ffffff; margin-top: 2px;">${formatCurrency(totalBalance)}</div>
+          </div>
+          <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 8px; padding: 8px 12px;">
+            <span style="font-size: 10px; font-weight: 700; color: #34d399; text-transform: uppercase;">Disponível</span>
+            <div style="font-size: 15px; font-weight: 800; color: #34d399; margin-top: 2px;">${formatCurrency(available)}</div>
+          </div>
+          <div style="background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.25); border-radius: 8px; padding: 8px 12px;">
+            <span style="font-size: 10px; font-weight: 700; color: #f87171; text-transform: uppercase;">Retido / Reservado</span>
+            <div style="font-size: 15px; font-weight: 800; color: #f87171; margin-top: 2px;">${formatCurrency(retido)}</div>
+          </div>
+          <div style="background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.25); border-radius: 8px; padding: 8px 12px;">
+            <span style="font-size: 10px; font-weight: 700; color: #60a5fa; text-transform: uppercase;">A Receber</span>
+            <div style="font-size: 15px; font-weight: 800; color: #60a5fa; margin-top: 2px;">${formatCurrency(receivable)}</div>
+          </div>
+          <div style="background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.25); border-radius: 8px; padding: 8px 12px;">
+            <span style="font-size: 10px; font-weight: 700; color: #fbbf24; text-transform: uppercase;">Repasses Pendentes</span>
+            <div style="font-size: 15px; font-weight: 800; color: #fbbf24; margin-top: 2px;">${formatCurrency(pendingPayouts)}</div>
+          </div>
+          <div style="background: rgba(168, 85, 247, 0.08); border: 1px solid rgba(168, 85, 247, 0.25); border-radius: 8px; padding: 8px 12px;">
+            <span style="font-size: 10px; font-weight: 700; color: #c084fc; text-transform: uppercase;">Crédito em Aberto</span>
+            <div style="font-size: 15px; font-weight: 800; color: #c084fc; margin-top: 2px;">${formatCurrency(creditDebt)}</div>
+          </div>
+        </div>
+
+        <!-- Linha 3: Barra de Navegação Contextual Rápida -->
+        <div style="display: flex; gap: 6px; flex-wrap: wrap; align-items: center; background: rgba(0,0,0,0.25); padding: 8px 12px; border-radius: 8px;">
+          <span style="font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; margin-right: 4px;">Ir Direto:</span>
+          <button class="btn btn-xs ${state.currentView === 'diskProdutores' && (this.activeDossieTab === 'sec-dossie-resumo' || !this.activeDossieTab) ? 'btn-primary' : 'btn-dark'}" onclick="window.app.navigateToProducerTab('sec-dossie-resumo')">
+            <i class="ph-identification-card me-1"></i> Visão Geral &amp; Contrato
           </button>
-          <button class="btn btn-sm btn-outline-danger fw-semibold" onclick="window.app.clearProducerContext()" title="Limpar contexto e visualizar todos os produtores">
-            <i class="ph-x-circle me-1"></i> Limpar Filtro
+          <button class="btn btn-xs ${state.currentView === 'diskProdutores' && this.activeDossieTab === 'sec-dossie-eventos' ? 'btn-primary' : 'btn-dark'}" onclick="window.app.navigateToProducerTab('sec-dossie-eventos')">
+            <i class="ph-ticket me-1"></i> Eventos (${(events || []).length})
+          </button>
+          <button class="btn btn-xs ${state.currentView === 'diskProdutores' && this.activeDossieTab === 'sec-dossie-contas' ? 'btn-primary' : 'btn-dark'}" onclick="window.app.navigateToProducerTab('sec-dossie-contas')">
+            <i class="ph-bank me-1"></i> Contas &amp; PIX
+          </button>
+          <button class="btn btn-xs ${state.currentView === 'diskSolicitacoes' ? 'btn-primary' : 'btn-dark'}" onclick="window.app.navigate('diskSolicitacoes')">
+            <i class="ph-hand-coins me-1"></i> Repasses
+          </button>
+          <button class="btn btn-xs ${state.currentView === 'diskAprovacoes' ? 'btn-primary' : 'btn-dark'}" onclick="window.app.navigate('diskAprovacoes')">
+            <i class="ph-scales me-1"></i> Aprovações
+          </button>
+          <button class="btn btn-xs ${state.currentView === 'diskContaFinanceira' ? 'btn-primary' : 'btn-dark'}" onclick="window.app.navigateToProducerAccountTab('retencoes')">
+            <i class="ph-lock-key me-1"></i> Retenções
+          </button>
+          <button class="btn btn-xs ${state.currentView === 'diskContaFinanceira' ? 'btn-primary' : 'btn-dark'}" onclick="window.app.navigateToProducerAccountTab('creditos')">
+            <i class="ph-credit-card me-1"></i> Créditos
+          </button>
+          <button class="btn btn-xs ${state.currentView === 'diskProdutores' && this.activeDossieTab === 'sec-dossie-comprovantes' ? 'btn-primary' : 'btn-dark'}" onclick="window.app.navigateToProducerTab('sec-dossie-comprovantes')">
+            <i class="ph-files me-1"></i> Comprovantes
+          </button>
+          <button class="btn btn-xs ${state.currentView === 'diskLedger' ? 'btn-primary' : 'btn-dark'}" onclick="window.app.navigate('diskLedger')">
+            <i class="ph-book-open me-1"></i> Ledger
           </button>
         </div>
       </div>
     `;
+  }
+
+  navigateToProducerTab(tabKey) {
+    const keyMap = {
+      'resumo': 'sec-dossie-resumo',
+      'sec-dossie-resumo': 'sec-dossie-resumo',
+      'posicao': 'sec-dossie-posicao',
+      'sec-dossie-posicao': 'sec-dossie-posicao',
+      'eventos': 'sec-dossie-eventos',
+      'sec-dossie-eventos': 'sec-dossie-eventos',
+      'solicitacoes': 'sec-dossie-solicitacoes',
+      'sec-dossie-solicitacoes': 'sec-dossie-solicitacoes',
+      'contas': 'sec-dossie-contas',
+      'sec-dossie-contas': 'sec-dossie-contas',
+      'documentos': 'sec-dossie-documentos',
+      'sec-dossie-documentos': 'sec-dossie-documentos',
+      'comprovantes': 'sec-dossie-comprovantes',
+      'sec-dossie-comprovantes': 'sec-dossie-comprovantes'
+    };
+    const target = keyMap[tabKey] || tabKey || 'sec-dossie-resumo';
+    this.activeDossieTab = target;
+    this.diskProdutoresTab = 'dossie';
+    this.navigate('diskProdutores', 'dossie');
+    setTimeout(() => {
+      this.setDossieTab(target);
+    }, 50);
+  }
+
+  navigateToProducerAccountTab(tabKey) {
+    const anchorMap = {
+      'conta': 'sec-conta',
+      'retencoes': 'sec-retencoes',
+      'obrigacoes': 'sec-obrigacoes',
+      'creditos': 'sec-creditos',
+      'estornos': 'sec-estornos',
+      'ledger': 'sec-ledger'
+    };
+    const targetAnchor = anchorMap[tabKey] || tabKey || 'sec-conta';
+    this.navigate('diskContaFinanceira');
+    setTimeout(() => {
+      const el = document.getElementById(targetAnchor);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
   }
 
   openProducerMasterModal(producerId = null) {

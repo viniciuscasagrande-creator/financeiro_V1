@@ -1,12 +1,21 @@
 import { formatCurrency, createStatusBadge } from '../../formatters.js';
 
 export function renderDiskSolicitacoes(state, filterType = 'all') {
+  const selectedProducer = (state.selectedProducerId && state.selectedProducerId !== 'all')
+    ? (state.data.producers || []).find(p => p.id === state.selectedProducerId)
+    : null;
+
   let items = state.data.approvalQueue || [];
+  if (selectedProducer) {
+    items = items.filter(i => i.producerId === selectedProducer.id);
+  }
   if (filterType && filterType !== 'all') {
     items = items.filter(i => i.type.toLowerCase().includes(filterType.toLowerCase()));
   }
 
-  const allItems = state.data.approvalQueue || [];
+  const allItems = selectedProducer
+    ? (state.data.approvalQueue || []).filter(i => i.producerId === selectedProducer.id)
+    : (state.data.approvalQueue || []);
   const pending = allItems.filter(i => !['Pago', 'Rejeitado'].includes(i.status));
   const reservedAmount = pending.reduce((acc, i) => acc + (i.requestedAmount || i.netAmount || 0), 0);
   const paidCount = allItems.filter(i => i.status === 'Pago').length;
@@ -47,6 +56,18 @@ export function renderDiskSolicitacoes(state, filterType = 'all') {
           <strong>Fluxo Operacional Produtor &rarr; Financeiro Disk:</strong> Toda solicitação feita pelo produtor reserva o saldo automaticamente no evento de origem para evitar duplo resgate. O Financeiro Disk audita os dados e decide na Central de Aprovações.
         </div>
       </div>
+
+      ${selectedProducer ? `
+        <div class="alert alert-primary d-flex align-items-center justify-content-between p-2 px-3 mb-3 shadow-sm rounded-3">
+          <div class="d-flex align-items-center gap-2">
+            <i class="ph-funnel text-primary fs-5"></i>
+            <span class="fs-xs text-dark">
+              Contexto Ativo: <strong>${selectedProducer.tradeName || selectedProducer.name}</strong> (CNPJ: ${selectedProducer.cnpj}) &bull; Exibindo solicitações e repasses exclusivos deste produtor.
+            </span>
+          </div>
+          <button class="btn btn-xs btn-outline-primary fw-semibold" onclick="window.app.clearProducerContext()">Ver Todas</button>
+        </div>
+      ` : ''}
 
       <!-- Métricas da Central de Solicitações -->
       <div class="kpi-grid">
