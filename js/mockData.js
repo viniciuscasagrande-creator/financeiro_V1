@@ -21,6 +21,10 @@ export const initialMockDatabase = {
       rating: "Tier A - Premium",
       status: "Ativo",
       riskScore: "Baixo Risco (Score 94/100)",
+      governance: { registrationStatus: "Completo", homologationStatus: "Homologação Concluída", lastReview: "03/10/2026" },
+      responsibles: [{ name: "Ana Martins", role: "Financeiro", email: "financeiro@produtoraabc.com.br", phone: "(41) 3315-0800" }],
+      financialDocuments: [{ id:"fin-doc-abc-1", date:"02/10/2026", type:"Repasse", eventName:"Festival Curitiba 2026", amount:85000, fileName:"comprovante-repasse-85000.pdf", visibleToProducer:true }],
+      auditHistory: [{ at:"03/10/2026 10:00", by:"Financeiro Disk", action:"Revisão cadastral e homologação confirmadas" }],
       hasBlock: false,
       blockedAmount: 20000.00,
       companyDetails: {
@@ -153,6 +157,10 @@ export const initialMockDatabase = {
       rating: "Tier B - Padrão",
       status: "Ativo",
       riskScore: "Médio Risco (Score 78/100)",
+      governance: { registrationStatus: "Completo", homologationStatus: "Homologação Concluída", lastReview: "03/10/2026" },
+      responsibles: [{ name: "Paulo Lima", role: "Administrativo Financeiro", email: "pagamentos@xyzproducoes.com.br", phone: "(11) 3044-9900" }],
+      financialDocuments: [],
+      auditHistory: [],
       hasBlock: false,
       blockedAmount: 10000.00,
       companyDetails: {
@@ -271,6 +279,10 @@ export const initialMockDatabase = {
       rating: "Tier A - Premium",
       status: "Ativo",
       riskScore: "Baixo Risco (Score 96/100)",
+      governance: { registrationStatus: "Completo", homologationStatus: "Homologação Concluída", lastReview: "03/10/2026" },
+      responsibles: [{ name: "Luciana Duarte", role: "Diretora Financeira", email: "adm@premiumshows.com.br", phone: "(48) 3221-5000" }],
+      financialDocuments: [],
+      auditHistory: [],
       hasBlock: false,
       blockedAmount: 0.00,
       companyDetails: {

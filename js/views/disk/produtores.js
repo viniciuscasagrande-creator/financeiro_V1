@@ -466,7 +466,8 @@ function renderTabDossieProdutor(state, activeProducer) {
     { id: 'sec-dossie-eventos', label: 'Eventos & Produções', icon: 'ph-calendar', badge: producerEvents.length },
     { id: 'sec-dossie-solicitacoes', label: 'Aprovações Pendentes', icon: 'ph-scales', badge: producerApprovals.length },
     { id: 'sec-dossie-contas', label: 'Contas Homologadas', icon: 'ph-bank', badge: bankAccounts.length },
-    { id: 'sec-dossie-documentos', label: 'Comprovantes e Transações', icon: 'ph-files', badge: financialDocuments.length }
+    { id: 'sec-dossie-documentos', label: 'Documentos & Governança', icon: 'ph-files', badge: (activeProducer.documents || []).length },
+    { id: 'sec-dossie-comprovantes', label: 'Comprovantes & Transações', icon: 'ph-receipt', badge: (activeProducer.financialDocuments || []).length || financialDocuments.length }
   ];
 
   return `
@@ -477,18 +478,18 @@ function renderTabDossieProdutor(state, activeProducer) {
           <span style="font-size: 0.82rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Produtor em Análise:</span>
           <div style="position:relative">
             <i class="ph-magnifying-glass" style="position:absolute;left:10px;top:11px;color:#64748b"></i>
-            <input id="producer-local-search"
+            <input id="masterProducerSearch"
                    class="form-control"
-                   style="width:300px;padding-left:34px"
-                   placeholder="Buscar nome, razão social ou CNPJ"
-                   oninput="window.app && window.app.handleProducerLocalSearch(this.value)"
+                   style="width:280px;padding-left:34px;font-weight:600;"
+                   placeholder="Nome, fantasia, CNPJ ou ID"
+                   oninput="window.app && (window.app.filterMasterProducers ? window.app.filterMasterProducers(this.value) : window.app.handleProducerLocalSearch(this.value))"
                    autocomplete="off">
             <div id="producer-local-search-results"
                  class="dropdown-menu shadow-lg p-0 border-0"
                  style="position: absolute; top: 100%; left: 0; right: 0; margin-top: 4px; z-index: 1050; display: none; max-height: 380px; overflow-y: auto; border-radius: 8px; background: white;">
             </div>
           </div>
-          <select class="form-control" style="width: 320px; font-weight: 700;" onchange="window.app.selectProducerInDisk(this.value)">
+          <select id="masterProducerSelect" class="form-control" style="width: 320px; font-weight: 700;" onchange="window.app.selectProducerInDisk(this.value)">
             ${producers.map(p => `
               <option value="${p.id}" ${p.id === activeProducer.id ? 'selected' : ''}>
                 ${p.name} (${p.cnpj})
@@ -1123,13 +1124,93 @@ function renderTabDossieProdutor(state, activeProducer) {
       </div>
     </section>
 
-    <!-- ABA 6: COMPROVANTES E TRANSAÇÕES -->
+    <!-- ABA 6: DOCUMENTOS & GOVERNANÇA -->
     <section id="sec-dossie-documentos" class="dossie-tab-panel mb-4" data-tab="sec-dossie-documentos" style="display: ${activeTab === 'sec-dossie-documentos' ? 'block' : 'none'};">
       <div class="card-panel">
-        <div class="card-header-bar"><div class="card-title-group"><h2>Comprovantes e Transações de ${activeProducer.name}</h2><p class="card-subtitle">Documentos vinculados ao CNPJ, evento e operação financeira. A publicação ao produtor é sempre explícita.</p></div><button class="btn btn-primary btn-sm" onclick="window.app.addFinancialDocument('${activeProducer.id}')"><i class="ph-paperclip"></i> Anexar transação/comprovante</button></div>
-        <div class="table-responsive"><table class="table"><thead><tr><th>Data</th><th>Operação</th><th>Evento</th><th>Referência</th><th>Valor</th><th>Arquivo</th><th>Visibilidade</th><th>Ações</th></tr></thead><tbody>
-        ${financialDocuments.length ? financialDocuments.map(d => `<tr><td>${d.date}</td><td><strong>${d.type}</strong><div class="text-muted fs-xs">${d.description || ''}</div></td><td>${d.eventName || 'Consolidado'}</td><td>${d.reference || '—'}</td><td><strong>${formatCurrency(d.amount || 0)}</strong></td><td>${d.fileName}</td><td><span class="badge ${d.visibleToProducer ? 'badge-success' : 'badge-neutral'}">${d.visibleToProducer ? 'Disponível ao Produtor' : 'Interno Disk'}</span></td><td><button class="btn btn-xs btn-outline-primary" onclick="window.app.toggleFinancialDocumentVisibility('${d.id}')">${d.visibleToProducer ? 'Tornar interno' : 'Publicar'}</button> <button class="btn btn-xs btn-light" onclick="window.app.downloadFinancialDocument('${d.id}')"><i class="ph-download-simple"></i></button></td></tr>`).join('') : `<tr><td colspan="8" class="text-center text-muted py-4">Nenhuma transação/comprovante anexado.</td></tr>`}
-        </tbody></table></div>
+        <div class="card-header-bar">
+          <div class="card-title-group">
+            <h2>Documentos &amp; Governança de ${activeProducer.name}</h2>
+            <p class="card-subtitle">Cadastro mestre, responsáveis, documentos societários e trilha de alterações</p>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="window.app && window.app.openProducerMasterModal('${activeProducer.id}')">
+            <i class="ph-pencil-simple me-1"></i> Editar ficha mestre
+          </button>
+        </div>
+        <div class="card-body">
+          <div class="kpi-grid">
+            <div class="kpi-card"><div class="kpi-title">Status cadastral</div><div class="kpi-value" style="font-size:1.1rem">${activeProducer.governance?.registrationStatus || 'Completo'}</div></div>
+            <div class="kpi-card"><div class="kpi-title">Responsáveis</div><div class="kpi-value">${(activeProducer.responsibles || []).length}</div></div>
+            <div class="kpi-card"><div class="kpi-title">Documentos</div><div class="kpi-value">${(activeProducer.documents || []).length}</div></div>
+            <div class="kpi-card"><div class="kpi-title">Última revisão</div><div class="kpi-value" style="font-size:1rem">${activeProducer.governance?.lastReview || 'Pendente'}</div></div>
+          </div>
+          <h3 style="margin-top:20px; font-size: 1.05rem; font-weight: 700;">Responsáveis e contatos</h3>
+          <div class="table-responsive">
+            <table class="limitless-table">
+              <thead><tr><th>Nome</th><th>Função</th><th>E-mail</th><th>Telefone</th></tr></thead>
+              <tbody>${(activeProducer.responsibles || []).map(r=>`<tr><td><strong>${r.name}</strong></td><td>${r.role}</td><td>${r.email}</td><td>${r.phone}</td></tr>`).join('') || '<tr><td colspan="4" class="text-muted">Nenhum responsável cadastrado.</td></tr>'}</tbody>
+            </table>
+          </div>
+          <h3 style="margin-top:20px; font-size: 1.05rem; font-weight: 700;">Documentos cadastrais &amp; societários</h3>
+          <div class="table-responsive">
+            <table class="limitless-table">
+              <thead><tr><th>Documento</th><th>Status</th><th>Validade</th><th>Atualização</th><th>Ações</th></tr></thead>
+              <tbody>${(activeProducer.documents || []).map(d=>`<tr><td><strong>${d.name}</strong></td><td><span class="badge badge-success">${d.status}</span></td><td>${d.validUntil || '—'}</td><td>${d.updatedAt || '—'}</td><td><button class="btn btn-outline-primary btn-xs" onclick="window.app && window.app.toggleSocietaryDocumentVisibility('${activeProducer.id}', '${d.id}')">${d.visibleToProducer ? 'Disponível ao Produtor' : 'Interno Disk'}</button></td></tr>`).join('') || '<tr><td colspan="5" class="text-muted">Nenhum documento cadastrado.</td></tr>'}</tbody>
+            </table>
+          </div>
+          <h3 style="margin-top:20px; font-size: 1.05rem; font-weight: 700;">Histórico de alterações</h3>
+          <div class="table-responsive">
+            <table class="limitless-table">
+              <thead><tr><th>Data</th><th>Usuário</th><th>Alteração</th></tr></thead>
+              <tbody>${((activeProducer.auditHistory && activeProducer.auditHistory.length) ? activeProducer.auditHistory : (activeProducer.auditLog || [])).map(a=>`<tr><td>${a.at || a.timestamp}</td><td>${a.by || a.user}</td><td>${a.action}: ${a.summary || ''}</td></tr>`).join('') || '<tr><td colspan="3" class="text-muted">Sem alterações registradas.</td></tr>'}</tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ABA 7: COMPROVANTES & TRANSAÇÕES -->
+    <section id="sec-dossie-comprovantes" class="dossie-tab-panel mb-4" data-tab="sec-dossie-comprovantes" style="display: ${activeTab === 'sec-dossie-comprovantes' ? 'block' : 'none'};">
+      <div class="card-panel">
+        <div class="card-header-bar">
+          <div class="card-title-group">
+            <h2>Comprovantes e Transações de ${activeProducer.name}</h2>
+            <p class="card-subtitle">Arquivos financeiros vinculados ao produtor. Anexar não publica automaticamente.</p>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="window.app && (window.app.openFinancialDocumentModal ? window.app.openFinancialDocumentModal('${activeProducer.id}') : window.app.addFinancialDocument('${activeProducer.id}'))">
+            <i class="ph-paperclip me-1"></i> + Anexar transação
+          </button>
+        </div>
+        <div class="card-body card-body-no-padding">
+          <div class="table-responsive">
+            <table class="limitless-table">
+              <thead>
+                <tr><th>Data</th><th>Tipo</th><th>Evento</th><th>Valor</th><th>Arquivo</th><th>Visibilidade</th><th>Ações</th></tr>
+              </thead>
+              <tbody>
+                ${(financialDocuments.length || (activeProducer.financialDocuments || []).length) ? ((activeProducer.financialDocuments && activeProducer.financialDocuments.length) ? activeProducer.financialDocuments : financialDocuments).map(d => `
+                  <tr>
+                    <td>${d.date}</td>
+                    <td><strong>${d.type}</strong><div class="text-muted fs-xxs">${d.description || d.reference || ''}</div></td>
+                    <td>${d.eventName || 'Geral do produtor'}</td>
+                    <td style="font-weight: 700;">${formatCurrency(d.amount || 0)}</td>
+                    <td>${d.fileName}</td>
+                    <td><span class="badge ${d.visibleToProducer ? 'badge-success' : 'badge-neutral'}">${d.visibleToProducer ? 'Disponível ao Produtor' : 'Interno Disk'}</span></td>
+                    <td>
+                      <button class="btn btn-outline-primary btn-xs" onclick="window.app && window.app.toggleFinancialDocumentVisibility('${activeProducer.id}','${d.id}')">
+                        ${d.visibleToProducer ? 'Retirar publicação' : 'Disponibilizar ao Produtor'}
+                      </button>
+                      <button class="btn btn-light btn-xs" onclick="window.app && window.app.downloadFinancialDocument('${d.id}')" title="Baixar comprovante">
+                        <i class="ph-download-simple"></i>
+                      </button>
+                    </td>
+                  </tr>
+                `).join('') : `
+                  <tr><td colspan="7" class="text-center text-muted py-4">Nenhum comprovante ou transação anexado.</td></tr>
+                `}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </section>
   `;

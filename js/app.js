@@ -186,12 +186,150 @@ class LimitlessFinancialApp {
     financialStore.showToast('Documento financeiro', visible ? 'Transação anexada e disponibilizada ao produtor.' : 'Transação anexada como documento interno da Disk.', 'success');
   }
 
-  toggleFinancialDocumentVisibility(id) {
+  toggleFinancialDocumentVisibility(producerIdOrDocId, maybeDocId) {
+    const docId = maybeDocId || producerIdOrDocId;
+    const producerId = maybeDocId ? producerIdOrDocId : null;
     const state = financialStore.getState();
-    const doc = (state.data.financialDocuments || []).find(d => d.id === id);
-    if (!doc) return;
-    doc.visibleToProducer = !doc.visibleToProducer;
+
+    // Check in root financialDocuments
+    const doc = (state.data.financialDocuments || []).find(d => d.id === docId);
+    if (doc) {
+      doc.visibleToProducer = !doc.visibleToProducer;
+    }
+
+    // Check in producer's financialDocuments / documents
+    const p = producerId
+      ? (state.data.producers || []).find(x => x.id === producerId)
+      : (state.data.producers || []).find(x => (x.financialDocuments || []).some(d => d.id === docId) || (x.documents || []).some(d => d.id === docId));
+
+    if (p) {
+      const pDoc = (p.financialDocuments || []).find(d => d.id === docId) || (p.documents || []).find(d => d.id === docId);
+      if (pDoc) {
+        pDoc.visibleToProducer = !pDoc.visibleToProducer;
+        p.auditHistory = p.auditHistory || [];
+        p.auditHistory.unshift({
+          at: new Date().toLocaleString('pt-BR'),
+          by: state.currentUser?.name || 'Financeiro Disk',
+          action: `${pDoc.visibleToProducer ? 'Publicado no portal' : 'Retirado do portal'}: ${pDoc.fileName || pDoc.name}`
+        });
+      }
+    }
+
     financialStore.persist?.();
+    financialStore.notify?.();
+    financialStore.showToast("Visibilidade Alterada", "Controle de visibilidade documental atualizado com sucesso.", "info");
+    this.render(financialStore.getState());
+  }
+
+  openFinancialDocumentModal(producerId) {
+    const st = financialStore.getState();
+    const p = (st.data.producers || []).find(x => x.id === producerId) || (st.data.producers || [])[0];
+    const events = (st.data.events || []).filter(e => e.producerId === p.id);
+    const html = `
+      <div class="modal-card" style="max-width: 680px;">
+        <div class="modal-header d-flex justify-content-between align-items-center bg-dark text-white p-3">
+          <div class="d-flex align-items-center gap-2">
+            <i class="ph-file-text fs-4 text-warning"></i>
+            <div>
+              <h5 class="modal-title fs-sm fw-bold mb-0">Anexar Comprovante / Transação</h5>
+              <div class="fs-xxs text-white-50">${p.name} &bull; ${p.cnpj}</div>
+            </div>
+          </div>
+          <button class="modal-close-btn text-white" onclick="window.app.closeModal()">&times;</button>
+        </div>
+        <form class="modal-body p-4 bg-light" onsubmit="window.app.saveFinancialDocument(event, '${p.id}')">
+          <div class="row g-2 mb-3">
+            <div class="col-md-6">
+              <label class="form-label fs-xs fw-bold text-dark">Tipo de Operação <span class="text-danger">*</span></label>
+              <select class="form-select form-select-sm" name="type" required>
+                <option value="Repasse">Repasse Bancário</option>
+                <option value="Transferência">Transferência entre Eventos</option>
+                <option value="Estorno">Estorno / Devolução</option>
+                <option value="Pagamento de Obrigação">Pagamento de Obrigação</option>
+                <option value="Outro">Outro Comprovante</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fs-xs fw-bold text-dark">Evento Vinculado</label>
+              <select class="form-select form-select-sm" name="eventId">
+                <option value="">Geral do Produtor (Consolidado)</option>
+                ${events.map(e => `<option value="${e.id}">${e.name}</option>`).join('')}
+              </select>
+            </div>
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col-md-6">
+              <label class="form-label fs-xs fw-bold text-dark">Valor da Transação (R$) <span class="text-danger">*</span></label>
+              <input class="form-control form-control-sm" name="amount" type="number" step="0.01" placeholder="0,00" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fs-xs fw-bold text-dark">Arquivo / Nome de Referência <span class="text-danger">*</span></label>
+              <input class="form-control form-control-sm" name="fileName" placeholder="comprovante_transacao.pdf" required>
+            </div>
+          </div>
+          <div class="p-3 bg-white rounded border mb-3">
+            <div class="form-check form-switch mb-0">
+              <input class="form-check-input" type="checkbox" name="visibleToProducer" id="chkVisibleToProd">
+              <label class="form-check-label fs-xs fw-bold text-dark" for="chkVisibleToProd">
+                Disponibilizar ao Produtor no Portal
+              </label>
+            </div>
+            <div class="fs-xxs text-muted mt-1">
+              <i class="ph-shield-check text-primary me-1"></i> Regra de Governança: Anexar não publica automaticamente. Deixe desmarcado para manter interno.
+            </div>
+          </div>
+          <div class="d-flex justify-content-end gap-2 mt-4">
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="window.app.closeModal()">Cancelar</button>
+            <button type="submit" class="btn btn-sm btn-primary fw-bold px-3">
+              <i class="ph-check me-1"></i> Salvar Comprovante
+            </button>
+          </div>
+        </form>
+      </div>
+    `;
+    this.openModal(html);
+  }
+
+  saveFinancialDocument(event, producerId) {
+    if (event && typeof event.preventDefault === 'function') event.preventDefault();
+    const f = event?.target ? Object.fromEntries(new FormData(event.target)) : {};
+    const st = financialStore.getState();
+    const p = (st.data.producers || []).find(x => x.id === producerId);
+    if (!p) return;
+    const ev = (st.data.events || []).filter(e => e.id === f.eventId)[0];
+
+    const newDoc = {
+      id: 'fd-' + Date.now(),
+      date: new Date().toLocaleDateString('pt-BR'),
+      type: f.type || 'Repasse',
+      eventId: f.eventId || null,
+      eventName: ev?.name || 'Geral do produtor',
+      amount: Number(f.amount || 0),
+      fileName: f.fileName || 'comprovante.pdf',
+      visibleToProducer: f.visibleToProducer === 'on' || f.visibleToProducer === true
+    };
+
+    p.financialDocuments = p.financialDocuments || [];
+    p.financialDocuments.unshift(newDoc);
+
+    st.data.financialDocuments = st.data.financialDocuments || [];
+    st.data.financialDocuments.unshift({
+      ...newDoc,
+      producerId: p.id,
+      uploadedBy: 'Financeiro Disk'
+    });
+
+    p.auditHistory = p.auditHistory || [];
+    p.auditHistory.unshift({
+      at: new Date().toLocaleString('pt-BR'),
+      by: st.currentUser?.name || 'Financeiro Disk',
+      action: `Comprovante anexado: ${newDoc.fileName} (${newDoc.visibleToProducer ? 'Disponível ao Produtor' : 'Interno Disk'})`
+    });
+
+    financialStore.persist?.();
+    financialStore.notify?.();
+    this.closeModal();
+    financialStore.showToast("Comprovante Anexado", `Comprovante ${newDoc.fileName} registrado com sucesso.`, "success");
     this.render(financialStore.getState());
   }
 
@@ -574,6 +712,21 @@ class LimitlessFinancialApp {
     dropdown.classList.remove('d-none');
   }
 
+  filterMasterProducers(term = '') {
+    const q = String(term).toLowerCase().replace(/[^a-z0-9]/g, '');
+    const select = document.getElementById('masterProducerSelect');
+    if (select) {
+      const producers = financialStore.getState().data.producers || [];
+      const currentVal = select.value;
+      const filtered = producers.filter(p => {
+        const hay = [p.id, p.name, p.tradeName, p.cnpj].join(' ').toLowerCase();
+        return !q || hay.replace(/[^a-z0-9]/g, '').includes(q);
+      });
+      select.innerHTML = filtered.map(p => `<option value="${p.id}" ${p.id === currentVal ? 'selected' : ''}>${p.name} (${p.cnpj})</option>`).join('');
+    }
+    this.handleProducerLocalSearch(term);
+  }
+
   handleProducerLocalSearch(query) {
     const resultsContainer = document.getElementById('producer-local-search-results');
     if (!resultsContainer) return;
@@ -921,8 +1074,46 @@ class LimitlessFinancialApp {
     this.showModal(html);
   }
 
-  saveProducerMaster() {
-    const producerId = document.getElementById('masterProdId')?.value;
+  saveProducerMaster(event, maybeProducerId) {
+    if (event && typeof event.preventDefault === 'function') event.preventDefault();
+    const st = financialStore.getState();
+
+    if (event && event.target && event.target.elements && (maybeProducerId || event.target.elements.name)) {
+      const f = Object.fromEntries(new FormData(event.target));
+      const producerId = maybeProducerId || f.producerId || document.getElementById('masterProdId')?.value;
+      const p = (st.data.producers || []).find(x => x.id === producerId);
+      if (p) {
+        Object.assign(p, {
+          name: f.name || p.name,
+          tradeName: f.tradeName || p.tradeName || f.name || p.name,
+          cnpj: f.cnpj || p.cnpj,
+          contactEmail: f.contactEmail || p.contactEmail,
+          phone: f.phone || p.phone,
+          status: f.status || p.status
+        });
+        const auditEntry = {
+          at: new Date().toLocaleString('pt-BR'),
+          timestamp: new Date().toLocaleString('pt-BR'),
+          by: st.currentUser?.name || 'Financeiro Disk',
+          user: st.currentUser?.name || 'Financeiro Disk',
+          action: 'Cadastro mestre do produtor atualizado',
+          summary: `Ficha mestre salva com trilha de auditoria: ${p.name}`
+        };
+        p.auditHistory = p.auditHistory || [];
+        p.auditHistory.unshift(auditEntry);
+        p.auditLog = p.auditLog || [];
+        p.auditLog.unshift(auditEntry);
+
+        financialStore.persist?.();
+        this.closeModal();
+        financialStore.notify?.();
+        financialStore.showToast('Cadastro atualizado', 'Ficha mestre salva com trilha de auditoria.', 'success');
+        this.render(financialStore.getState());
+        return;
+      }
+    }
+
+    const producerId = maybeProducerId || document.getElementById('masterProdId')?.value;
     const name = document.getElementById('masterProdName')?.value?.trim();
     const tradeName = document.getElementById('masterProdTradeName')?.value?.trim() || name;
     const cnpj = document.getElementById('masterProdCNPJ')?.value?.trim();

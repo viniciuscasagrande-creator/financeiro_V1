@@ -382,13 +382,18 @@ export class CoreFinanceiroStore {
     }
 
     producer.auditLog = producer.auditLog || [];
-    producer.auditLog.unshift({
+    const auditEntry = {
       id: `AUD-${Date.now()}`,
       timestamp: new Date().toLocaleString('pt-BR'),
+      at: new Date().toLocaleString('pt-BR'),
       user: this.state.currentUser.name || 'Financeiro Disk',
+      by: this.state.currentUser.name || 'Financeiro Disk',
       action: 'Edição de Cadastro Mestre',
       summary: changes.length ? changes.join('; ') : 'Informações cadastrais atualizadas na Ficha Financeira.'
-    });
+    };
+    producer.auditLog.unshift(auditEntry);
+    producer.auditHistory = producer.auditHistory || [];
+    producer.auditHistory.unshift(auditEntry);
 
     this.persist();
     this.notify();
