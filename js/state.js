@@ -1177,6 +1177,7 @@ export class CoreFinanceiroStore {
 
     return {
       ...this.state,
+      db: this.data,
       data: {
         ...this.data,
         producer: activeProd,

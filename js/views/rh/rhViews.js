@@ -3861,7 +3861,7 @@ export function renderDiskRHModulo(state, filterArg = 'aprovacoes') {
         </div>
         <div class="d-flex gap-2 flex-wrap">
           ${acoes.map((a, i) => `
-            <button class="btn btn-sm ${i === 0 ? 'btn-primary' : 'btn-outline-primary'}" onclick="${rhV2Action(a, titulo)}">
+            <button class="btn btn-sm ${i === 0 ? 'btn-primary' : 'btn-outline-primary'}" onclick="${i === 0 ? `window.LimitlessApp.abrirModalModuloRH('${key}', '${a}')` : rhV2Action(a, titulo)}">
               <i class="ph ${i === 0 ? 'ph-plus-circle' : 'ph-play'} me-1"></i>${a}
             </button>
           `).join('')}

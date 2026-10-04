@@ -170,10 +170,15 @@ class LimitlessFinancialApp {
       }
     });
 
-    // Close modal when clicking outside modal card
+    // Close modal when clicking outside modal card or pressing Escape
     if (this.modalOverlay) {
       this.modalOverlay.addEventListener('click', (e) => {
         if (e.target === this.modalOverlay) {
+          this.closeModal();
+        }
+      });
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && this.modalOverlay.classList.contains('active')) {
           this.closeModal();
         }
       });
@@ -2909,13 +2914,17 @@ class LimitlessFinancialApp {
   }
 
   showModal(html) {
+    if (!this.modalOverlay || !this.modalContent) return;
     this.modalContent.innerHTML = html;
     this.modalOverlay.classList.add('active');
+    try { document.body.style.overflow = 'hidden'; } catch (_) {}
   }
 
   closeModal() {
+    if (!this.modalOverlay || !this.modalContent) return;
     this.modalOverlay.classList.remove('active');
     this.modalContent.innerHTML = '';
+    try { document.body.style.overflow = ''; } catch (_) {}
   }
 
   // ==========================================================================
@@ -10268,6 +10277,271 @@ window.LimitlessApp = {
 
   baixarHolerite(id) {
     financialStore.showToast("✓ Holerite Baixado", `Comprovante de rendimentos ${id} assinado digitalmente ICP-Brasil.`, "success");
+  },
+
+  abrirModalModuloRH(moduloKey, acao) {
+    const db = financialStore.getState().db || {};
+    const colaboradores = db.rhColaboradores || [];
+    const colabOptions = colaboradores.length > 0
+      ? colaboradores.map(c => `<option value="${c.id}">${c.nome} (${c.cargoNome || c.cargo || 'Operações'})</option>`).join('')
+      : '<option value="colab-001">Lucas Ferreira dos Santos (Bilheteria)</option><option value="colab-002">Mariana Lima (Financeiro)</option>';
+
+    let formFields = '';
+    let icon = 'ph-file-plus';
+    let tituloModal = `${acao} • ${moduloKey.toUpperCase()}`;
+
+    if (moduloKey === 'onboarding') {
+      icon = 'ph-user-check';
+      tituloModal = 'Novo Processo de Onboarding';
+      formFields = `
+        <div class="mb-3">
+          <label class="form-label fw-bold small">Colaborador em Integração *</label>
+          <select class="form-select" name="colaboradorId" required>${colabOptions}</select>
+        </div>
+        <div class="row g-2 mb-3">
+          <div class="col-md-6">
+            <label class="form-label fw-bold small">Data de Início</label>
+            <input type="date" class="form-control" name="dataInicio" value="${new Date().toISOString().split('T')[0]}">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-bold small">Mentor / Padrinho RH</label>
+            <input type="text" class="form-control" name="mentor" placeholder="Ex: Karine (RH/People)">
+          </div>
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-bold small">Checklist Inicial Obrigatório</label>
+          <div class="form-check"><input class="form-check-input" type="checkbox" checked id="chk1"><label class="form-check-label small" for="chk1">Assinatura de Contrato e Termo de Confidencialidade</label></div>
+          <div class="form-check"><input class="form-check-input" type="checkbox" checked id="chk2"><label class="form-check-label small" for="chk2">Entrega de Crachá, E-mail e Acessos ao Sistema</label></div>
+          <div class="form-check"><input class="form-check-input" type="checkbox" checked id="chk3"><label class="form-check-label small" for="chk3">Treinamento Institucional e Segurança de Eventos</label></div>
+        </div>
+      `;
+    } else if (moduloKey === 'ausencias') {
+      icon = 'ph-calendar-x';
+      tituloModal = 'Registrar Ausência ou Afastamento';
+      formFields = `
+        <div class="mb-3">
+          <label class="form-label fw-bold small">Colaborador *</label>
+          <select class="form-select" name="colaboradorId" required>${colabOptions}</select>
+        </div>
+        <div class="row g-2 mb-3">
+          <div class="col-md-6">
+            <label class="form-label fw-bold small">Tipo de Ausência *</label>
+            <select class="form-select" name="tipoAusencia">
+              <option value="LICENCA_MEDICA">Licença Médica / Tratamento</option>
+              <option value="LICENCA_MATERNIDADE_PATERNIDADE">Licença Maternidade / Paternidade</option>
+              <option value="FOLGA_COMPENSATORIA">Folga Compensatória / Banco de Horas</option>
+              <option value="FALTA_JUSTIFICADA">Falta Justificada Legal</option>
+              <option value="FALTA_INJUSTIFICADA">Falta Injustificada</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label fw-bold small">Data Início</label>
+            <input type="date" class="form-control" name="dataInicio" value="${new Date().toISOString().split('T')[0]}">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label fw-bold small">Data Fim</label>
+            <input type="date" class="form-control" name="dataFim" value="${new Date().toISOString().split('T')[0]}">
+          </div>
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-bold small">Motivo / Justificativa</label>
+          <textarea class="form-control" name="motivo" rows="2" placeholder="Descreva os detalhes da ausência..."></textarea>
+        </div>
+      `;
+    } else if (moduloKey === 'folha_completa') {
+      icon = 'ph-calculator';
+      tituloModal = 'Apuração e Fechamento da Folha Completa';
+      formFields = `
+        <div class="row g-2 mb-3">
+          <div class="col-md-6">
+            <label class="form-label fw-bold small">Competência de Cálculo *</label>
+            <input type="month" class="form-control" name="competencia" value="2026-10" required>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-bold small">Data de Pagamento</label>
+            <input type="date" class="form-control" name="dataPagamento" value="${new Date().toISOString().split('T')[0]}">
+          </div>
+        </div>
+        <div class="p-3 bg-light rounded mb-3">
+          <div class="d-flex justify-content-between mb-1 small"><span>Colaboradores no Cálculo:</span><strong>${colaboradores.length || 5} ativos</strong></div>
+          <div class="d-flex justify-content-between mb-1 small"><span>Provisão INSS Patronal:</span><strong>20,0%</strong></div>
+          <div class="d-flex justify-content-between mb-1 small"><span>FGTS Competência:</span><strong>8,0%</strong></div>
+          <div class="d-flex justify-content-between small text-success"><span>Integração Automática:</span><strong>Fila PIX da Tesouraria</strong></div>
+        </div>
+      `;
+    } else if (moduloKey === 'decimo') {
+      icon = 'ph-money';
+      tituloModal = 'Cálculo e Liquidação do 13º Salário';
+      formFields = `
+        <div class="row g-2 mb-3">
+          <div class="col-md-6">
+            <label class="form-label fw-bold small">Etapa do 13º *</label>
+            <select class="form-select" name="etapaDecimo">
+              <option value="1_PARCELA">1ª Parcela (50% adiantamento - sem descontos)</option>
+              <option value="2_PARCELA">2ª Parcela (Saldo final com INSS/IRRF)</option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-bold small">Exercício / Ano</label>
+            <input type="number" class="form-control" name="anoExercicio" value="2026" min="2025" max="2030">
+          </div>
+        </div>
+        <div class="alert alert-info py-2 small mb-3">
+          <i class="ph-info me-1"></i> A 1ª parcela deve ser liquidada até 30 de novembro e a 2ª até 20 de dezembro conforme CLT.
+        </div>
+      `;
+    } else if (moduloKey === 'rescisoes') {
+      icon = 'ph-user-minus';
+      tituloModal = 'Cálculo de Rescisão Trabalhista';
+      formFields = `
+        <div class="mb-3">
+          <label class="form-label fw-bold small">Colaborador a Desligar *</label>
+          <select class="form-select" name="colaboradorId" required>${colabOptions}</select>
+        </div>
+        <div class="row g-2 mb-3">
+          <div class="col-md-6">
+            <label class="form-label fw-bold small">Tipo de Rescisão *</label>
+            <select class="form-select" name="tipoRescisao">
+              <option value="DISPENSA_SEM_JUSTA_CAUSA">Dispensa sem Justa Causa (com multa 40% FGTS)</option>
+              <option value="PEDIDO_DEMISSAO">Pedido de Demissão pelo Colaborador</option>
+              <option value="ACORDO_MUTUO">Acordo Mútuo (Art. 484-A CLT)</option>
+              <option value="TERMINO_CONTRATO">Término de Contrato / Experiência</option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-bold small">Data de Afastamento</label>
+            <input type="date" class="form-control" name="dataDesligamento" value="${new Date().toISOString().split('T')[0]}">
+          </div>
+        </div>
+        <div class="form-check mb-3">
+          <input class="form-check-input" type="checkbox" checked id="chkAviso">
+          <label class="form-check-label small" for="chkAviso">Aviso Prévio Indenizado</label>
+        </div>
+      `;
+    } else if (moduloKey === 'epis') {
+      icon = 'ph-hard-hat';
+      tituloModal = 'Registro de Entrega de EPI e Segurança';
+      formFields = `
+        <div class="mb-3">
+          <label class="form-label fw-bold small">Colaborador *</label>
+          <select class="form-select" name="colaboradorId" required>${colabOptions}</select>
+        </div>
+        <div class="row g-2 mb-3">
+          <div class="col-md-6">
+            <label class="form-label fw-bold small">Equipamento de Proteção (EPI) *</label>
+            <input type="text" class="form-control" name="epiNome" required placeholder="Ex: Protetor Auricular Tipo Plug">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-bold small">Número do CA (MTE) *</label>
+            <input type="text" class="form-control" name="numeroCa" required placeholder="Ex: CA 14.850">
+          </div>
+        </div>
+        <div class="row g-2 mb-3">
+          <div class="col-md-6">
+            <label class="form-label fw-bold small">Data de Entrega</label>
+            <input type="date" class="form-control" name="dataEntrega" value="${new Date().toISOString().split('T')[0]}">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-bold small">Prazo de Validade</label>
+            <input type="date" class="form-control" name="dataValidade" value="2027-10-01">
+          </div>
+        </div>
+      `;
+    } else if (moduloKey === 'centro_custos') {
+      icon = 'ph-folders';
+      tituloModal = 'Cadastrar Centro de Custos de RH';
+      formFields = `
+        <div class="mb-3">
+          <label class="form-label fw-bold small">Nome do Centro de Custos *</label>
+          <input type="text" class="form-control" name="nomeCentro" required placeholder="Ex: CC-010 Operações Bilheteria Arena">
+        </div>
+        <div class="row g-2 mb-3">
+          <div class="col-md-6">
+            <label class="form-label fw-bold small">Código Contábil / DRE *</label>
+            <input type="text" class="form-control" name="codigoDre" required placeholder="Ex: 3.1.02.001">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-bold small">Gestor Responsável</label>
+            <input type="text" class="form-control" name="gestor" placeholder="Ex: Coordenação de Eventos">
+          </div>
+        </div>
+      `;
+    } else if (moduloKey === 'relatorios') {
+      icon = 'ph-chart-pie';
+      tituloModal = 'Gerar Relatório de People Analytics';
+      formFields = `
+        <div class="mb-3">
+          <label class="form-label fw-bold small">Tipo de Relatório *</label>
+          <select class="form-select" name="tipoRelatorio">
+            <option value="TURNOVER">Turnover e Rotatividade de Colaboradores</option>
+            <option value="ABSENTEISMO">Índice de Absenteísmo e Atestados</option>
+            <option value="HORAS_EXTRAS">Horas Extras vs Banco de Horas</option>
+            <option value="CUSTO_EVENTOS">Custo de Pessoal Rateado por Show/Evento</option>
+            <option value="FOLHA_CONSOLIDADA">Consolidado Financeiro de Encargos e Folha</option>
+          </select>
+        </div>
+        <div class="row g-2 mb-3">
+          <div class="col-md-6">
+            <label class="form-label fw-bold small">Formato de Exportação</label>
+            <select class="form-select" name="formato"><option value="PDF">PDF Executivo Oficial</option><option value="EXCEL">Planilha Excel (.xlsx)</option></select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-bold small">Período</label>
+            <select class="form-select" name="periodo"><option value="MES_ATUAL">Mês Atual (Outubro/2026)</option><option value="TRIMESTRE">Último Trimestre</option><option value="ANO">Ano Vigente (2026)</option></select>
+          </div>
+        </div>
+      `;
+    } else if (moduloKey === 'configuracoes') {
+      icon = 'ph-gear';
+      tituloModal = 'Configurações de Parâmetros de RH';
+      formFields = `
+        <div class="mb-3">
+          <label class="form-label fw-bold small">Nome do Parâmetro Corporativo *</label>
+          <input type="text" class="form-control" name="paramNome" required value="Tolerância de Ponto Portaria 671 MTE">
+        </div>
+        <div class="row g-2 mb-3">
+          <div class="col-md-6">
+            <label class="form-label fw-bold small">Escopo de Aplicação</label>
+            <select class="form-select" name="escopo"><option value="GLOBAL">Corporativo Geral Disk</option><option value="SEDE">Sede Curitiba</option><option value="EVENTOS">Equipes de Arenas/Shows</option></select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-bold small">Valor / Regra</label>
+            <input type="text" class="form-control" name="valorRegra" value="10 minutos diários (Art. 58 CLT)">
+          </div>
+        </div>
+      `;
+    } else {
+      formFields = `
+        <div class="mb-3">
+          <label class="form-label fw-bold small">Descrição da Operação</label>
+          <input type="text" class="form-control" name="descricao" value="${acao}" required>
+        </div>
+      `;
+    }
+
+    const html = `
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title fw-bold"><i class="ph ${icon} me-2"></i>${tituloModal}</h5>
+        <button type="button" class="btn-close btn-close-white" onclick="window.app.closeModal()"></button>
+      </div>
+      <div class="modal-body p-4">
+        <form onsubmit="window.LimitlessApp.salvarModalModuloRH(event, '${moduloKey}', '${acao}')">
+          ${formFields}
+          <div class="d-flex justify-content-end gap-2 pt-3 border-top mt-3">
+            <button type="button" class="btn btn-light" onclick="window.app.closeModal()">Cancelar</button>
+            <button type="submit" class="btn btn-primary fw-bold"><i class="ph-check me-1"></i> Confirmar &amp; Salvar</button>
+          </div>
+        </form>
+      </div>
+    `;
+    window.app.openModal(html);
+  },
+
+  salvarModalModuloRH(event, moduloKey, acao) {
+    event.preventDefault();
+    financialStore.showToast("✓ Operação Concluída", `Ação "${acao}" do módulo [${moduloKey}] registrada com sucesso no RH Disk.`, "success");
+    window.app.closeModal();
+    window.app.refreshData();
   }
 };
 
@@ -10288,6 +10562,18 @@ window.toggleSubmenu = function(event, element, itemId) {
 window.toggleSidebar = function() {
   if (window.app && typeof window.app.toggleSidebar === 'function') {
     return window.app.toggleSidebar();
+  }
+};
+
+window.closeModal = function() {
+  if (window.app && typeof window.app.closeModal === 'function') {
+    return window.app.closeModal();
+  }
+};
+
+window.openModal = function(html) {
+  if (window.app && typeof window.app.openModal === 'function') {
+    return window.app.openModal(html);
   }
 };
 
