@@ -40,6 +40,17 @@ import { renderDiskCentralTrabalho } from '../js/views/disk/diskCentralTrabalho.
 import { renderDiskFinanceiroAvancado } from '../js/views/disk/diskFinanceiroAvancado.js';
 import { renderDiskPoliticaRepasse } from '../js/views/disk/diskPoliticaRepasse.js';
 import { renderDiskContaFinanceira } from '../js/views/disk/diskContaFinanceira.js';
+import {
+  renderDiskRHVisaoGeral,
+  renderDiskRHColaboradores,
+  renderDiskRHOrganograma,
+  renderDiskRHPonto,
+  renderDiskRHGeofences,
+  renderDiskRHEquipesEvento,
+  renderDiskRHCustosEvento,
+  renderDiskRHFolha,
+  renderDiskRHAuditoria
+} from '../js/views/rh/rhViews.js';
 
 let passed = 0;
 function test(name, fn) {
@@ -114,7 +125,16 @@ const diskViews = [
   ['Disk: governanca', () => renderDiskGovernanca(stateDisk, 'visao')],
   ['Disk: centralTrabalho', () => renderDiskCentralTrabalho(stateDisk, 'central')],
   ['Disk: politicaRepasse', () => renderDiskPoliticaRepasse(stateDisk)],
-  ['Disk: contaFinanceira', () => renderDiskContaFinanceira(stateDisk)]
+  ['Disk: contaFinanceira', () => renderDiskContaFinanceira(stateDisk)],
+  ['Disk: RH Visao Geral', () => renderDiskRHVisaoGeral(stateDisk)],
+  ['Disk: RH Colaboradores', () => renderDiskRHColaboradores(stateDisk)],
+  ['Disk: RH Organograma', () => renderDiskRHOrganograma(stateDisk)],
+  ['Disk: RH Ponto e Jornada', () => renderDiskRHPonto(stateDisk)],
+  ['Disk: RH Geofences', () => renderDiskRHGeofences(stateDisk)],
+  ['Disk: RH Equipes Evento', () => renderDiskRHEquipesEvento(stateDisk)],
+  ['Disk: RH Custos Evento', () => renderDiskRHCustosEvento(stateDisk)],
+  ['Disk: RH Folha', () => renderDiskRHFolha(stateDisk)],
+  ['Disk: RH Auditoria & LGPD', () => renderDiskRHAuditoria(stateDisk)]
 ];
 
 for (const [name, fn] of diskViews) {

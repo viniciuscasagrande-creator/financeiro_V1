@@ -13,7 +13,7 @@
  * 9. Auditoria e LGPD (Logs imutáveis e consentimentos)
  */
 
-import { formatCurrency } from '../../utils/formatters.js';
+import { formatCurrency } from '../../formatters.js';
 
 export function renderDiskRHVisaoGeral(state, filterArg = 'visao') {
   const db = state.db || {};
