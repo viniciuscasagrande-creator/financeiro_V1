@@ -1,5 +1,6 @@
 // ============================================================================
 // RH DISK V1 + DISK PONTO - PACOTE DE TIPOS COMPARTILHADOS (SHARED TYPES)
+// FASE 4: GESTÃO COMPLETA DE PONTO E JORNADA
 // ============================================================================
 
 export type Perfil = 'ADMINISTRADOR' | 'RH' | 'GESTOR' | 'COLABORADOR';
@@ -13,6 +14,10 @@ export type StatusBatida =
   | 'OFFLINE_SINCRONIZADA';
 
 export type StatusAjuste = 'PENDENTE' | 'APROVADO' | 'REPROVADO';
+
+export type StatusFechamento = 'ABERTO' | 'EM_ANALISE' | 'FECHADO' | 'REABERTO';
+
+export type StatusDispositivo = 'PENDENTE' | 'AUTORIZADO' | 'BLOQUEADO';
 
 export interface UsuarioDTO {
   id: string;
@@ -31,6 +36,9 @@ export interface ColaboradorDTO {
   matricula: string;
   cargo: string;
   departamento: string;
+  gestorId?: string;
+  centroCusto?: string;
+  cargaHorariaSemanal?: number;
   ativo: boolean;
   telefone?: string;
   email?: string;
@@ -59,6 +67,7 @@ export interface JornadaDTO {
   fimIntervalo?: string;     // "13:00"
   saida: string;             // "17:48"
   toleranciaMinutos?: number;
+  cargaMinutos?: number;     // 480
 }
 
 export interface EscalaDTO {
@@ -72,6 +81,7 @@ export interface EscalaDTO {
   data: string;              // "YYYY-MM-DD"
   eventoId?: string;
   eventoNome?: string;
+  observacao?: string;
 }
 
 export interface BatidaPontoDTO {
@@ -108,13 +118,54 @@ export interface AjustePontoDTO {
   dataPonto: string;
   tipoBatida: TipoBatida;
   horarioCorreto: string;
-  motivo: string;
+  motivo?: string;
   justificativa: string;
   status: StatusAjuste;
   solicitadoEm: string;
   analisadoEm?: string;
   analisadoPor?: string;
   parecer?: string;
+}
+
+export interface BancoHorasDTO {
+  id: string;
+  colaboradorId: string;
+  colaboradorNome?: string;
+  competencia: string; // YYYY-MM
+  minutosSaldo: number;
+  minutosExtras: number;
+  minutosDebito: number;
+  atualizadoEm: string;
+}
+
+export interface FechamentoPontoDTO {
+  id: string;
+  competencia: string; // YYYY-MM
+  status: StatusFechamento;
+  fechadoEm?: string;
+  fechadoPor?: string;
+  observacao?: string;
+  criadoEm: string;
+}
+
+export interface DispositivoDTO {
+  id: string;
+  colaboradorId: string;
+  colaboradorNome?: string;
+  identificador: string;
+  nome?: string;
+  plataforma?: string;
+  status: StatusDispositivo;
+  ultimoAcesso?: string;
+  criadoEm: string;
+}
+
+export interface EspelhoPontoDTO {
+  competencia: string;
+  colaborador: ColaboradorDTO;
+  escalas: EscalaDTO[];
+  batidas: BatidaPontoDTO[];
+  saldo?: BancoHorasDTO;
 }
 
 export interface AuditoriaDTO {
@@ -131,12 +182,14 @@ export interface AuditoriaDTO {
 
 export interface DashboardMetricsDTO {
   colaboradoresAtivos: number;
-  emFerias: number;
+  trabalhandoAgora: number;
+  emIntervalo: number;
   batidasHoje: number;
   pendencias: number;
   horasExtrasMes: number;
   locaisAtivos: number;
   escalasHoje: number;
+  saldoBancoGeralMinutos: number;
 }
 
 export interface RegistrarPontoInput {
@@ -150,6 +203,7 @@ export interface RegistrarPontoInput {
   localId?: string;
   eventoId?: string;
   offline?: boolean;
+  mockLocationSuspeita?: boolean;
 }
 
 export interface ValidarGeofenceResponse {

@@ -1,104 +1,197 @@
-generator client { provider = "prisma-client-js" }
-datasource db { provider = "postgresql" url = env("DATABASE_URL") }
+generator client {
+  provider = "prisma-client-js"
+}
 
-enum Perfil { ADMINISTRADOR RH GESTOR COLABORADOR }
-enum TipoBatida { ENTRADA INICIO_INTERVALO FIM_INTERVALO SAIDA }
-enum StatusBatida { VALIDADA FORA_DA_AREA PENDENTE_ANALISE OFFLINE_SINCRONIZADA }
-enum StatusAjuste { PENDENTE APROVADO REPROVADO }
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Perfil {
+  ADMINISTRADOR
+  RH
+  GESTOR
+  COLABORADOR
+}
+
+enum TipoBatida {
+  ENTRADA
+  INICIO_INTERVALO
+  FIM_INTERVALO
+  SAIDA
+}
+
+enum StatusBatida {
+  VALIDADA
+  FORA_DA_AREA
+  PENDENTE_ANALISE
+  OFFLINE_SINCRONIZADA
+}
+
+enum StatusAjuste {
+  PENDENTE
+  APROVADO
+  REPROVADO
+}
+
+enum StatusFechamento {
+  ABERTO
+  EM_ANALISE
+  FECHADO
+  REABERTO
+}
+
+enum StatusDispositivo {
+  PENDENTE
+  AUTORIZADO
+  BLOQUEADO
+}
 
 model Usuario {
-  id String @id @default(cuid())
-  email String @unique
-  senhaHash String
-  perfil Perfil
+  id          String       @id @default(cuid())
+  email       String       @unique
+  senhaHash   String
+  perfil      Perfil
   colaborador Colaborador?
-  criadoEm DateTime @default(now())
+  criadoEm    DateTime     @default(now())
 }
+
 model Colaborador {
-  id String @id @default(cuid())
-  usuarioId String? @unique
-  usuario Usuario? @relation(fields:[usuarioId], references:[id])
-  nome String
-  cpf String @unique
-  matricula String @unique
-  cargo String
-  departamento String
-  ativo Boolean @default(true)
-  escalas Escala[]
-  batidas BatidaPonto[]
-  ajustes AjustePonto[]
-  criadoEm DateTime @default(now())
+  id                  String         @id @default(cuid())
+  usuarioId           String?        @unique
+  usuario             Usuario?       @relation(fields: [usuarioId], references: [id])
+  nome                String
+  cpf                 String         @unique
+  matricula           String         @unique
+  cargo               String
+  departamento        String
+  gestorId            String?
+  centroCusto         String?
+  cargaHorariaSemanal Int            @default(44)
+  ativo               Boolean        @default(true)
+  escalas             Escala[]
+  batidas             BatidaPonto[]
+  ajustes             AjustePonto[]
+  saldos              BancoHoras[]
+  dispositivos        Dispositivo[]
+  criadoEm            DateTime       @default(now())
 }
+
 model LocalPonto {
-  id String @id @default(cuid())
-  nome String
-  endereco String?
-  latitude Float
-  longitude Float
-  raioMetros Int @default(150)
-  ativo Boolean @default(true)
-  escalas Escala[]
+  id         String   @id @default(cuid())
+  nome       String
+  endereco   String?
+  latitude   Float
+  longitude  Float
+  raioMetros Int      @default(150)
+  ativo      Boolean  @default(true)
+  escalas    Escala[]
 }
+
 model Jornada {
-  id String @id @default(cuid())
-  nome String
-  entrada String
-  inicioIntervalo String?
-  fimIntervalo String?
-  saida String
-  escalas Escala[]
+  id                String   @id @default(cuid())
+  nome              String
+  entrada           String
+  inicioIntervalo   String?
+  fimIntervalo      String?
+  saida             String
+  toleranciaMinutos Int      @default(5)
+  cargaMinutos      Int      @default(480)
+  escalas           Escala[]
 }
+
 model Escala {
-  id String @id @default(cuid())
+  id            String      @id @default(cuid())
   colaboradorId String
-  colaborador Colaborador @relation(fields:[colaboradorId], references:[id])
-  jornadaId String
-  jornada Jornada @relation(fields:[jornadaId], references:[id])
-  localId String
-  local LocalPonto @relation(fields:[localId], references:[id])
-  data DateTime
-  eventoId String?
-  eventoNome String?
+  colaborador   Colaborador @relation(fields: [colaboradorId], references: [id])
+  jornadaId     String
+  jornada       Jornada     @relation(fields: [jornadaId], references: [id])
+  localId       String
+  local         LocalPonto  @relation(fields: [localId], references: [id])
+  data          DateTime
+  eventoId      String?
+  eventoNome    String?
+  observacao    String?
+
+  @@unique([colaboradorId, data])
 }
+
 model BatidaPonto {
-  id String @id @default(cuid())
-  colaboradorId String
-  colaborador Colaborador @relation(fields:[colaboradorId], references:[id])
-  tipo TipoBatida
-  status StatusBatida
-  instanteServidor DateTime @default(now())
-  instanteDispositivo DateTime?
-  latitude Float
-  longitude Float
-  precisaoMetros Float?
+  id                   String       @id @default(cuid())
+  colaboradorId        String
+  colaborador          Colaborador  @relation(fields: [colaboradorId], references: [id])
+  tipo                 TipoBatida
+  status               StatusBatida
+  instanteServidor     DateTime     @default(now())
+  instanteDispositivo  DateTime?
+  latitude             Float
+  longitude            Float
+  precisaoMetros       Float?
   distanciaLocalMetros Float?
-  localId String?
-  eventoId String?
-  offline Boolean @default(false)
-  dispositivoId String?
-  mockLocationSuspeita Boolean @default(false)
-  nsr Int?
-  comprovanteNsr String?
-  hashIntegridade String?
-  criadoEm DateTime @default(now())
+  localId              String?
+  eventoId             String?
+  offline              Boolean      @default(false)
+  dispositivoId        String?
+  mockLocationSuspeita Boolean      @default(false)
+  nsr                  Int?
+  comprovanteNsr       String?
+  hashIntegridade      String?
+  criadoEm             DateTime     @default(now())
 }
+
 model AjustePonto {
-  id String @id @default(cuid())
+  id            String       @id @default(cuid())
   colaboradorId String
-  colaborador Colaborador @relation(fields:[colaboradorId], references:[id])
-  batidaId String?
+  colaborador   Colaborador  @relation(fields: [colaboradorId], references: [id])
+  batidaId      String?
   justificativa String
-  status StatusAjuste @default(PENDENTE)
-  solicitadoEm DateTime @default(now())
-  analisadoEm DateTime?
-  analisadoPor String?
+  status        StatusAjuste @default(PENDENTE)
+  solicitadoEm  DateTime     @default(now())
+  analisadoEm   DateTime?
+  analisadoPor  String?
 }
+
+model BancoHoras {
+  id            String      @id @default(cuid())
+  colaboradorId String
+  colaborador   Colaborador @relation(fields: [colaboradorId], references: [id])
+  competencia   String      // YYYY-MM
+  minutosSaldo  Int         @default(0)
+  minutosExtras Int         @default(0)
+  minutosDebito Int         @default(0)
+  atualizadoEm  DateTime    @updatedAt
+
+  @@unique([colaboradorId, competencia])
+}
+
+model FechamentoPonto {
+  id          String           @id @default(cuid())
+  competencia String           @unique // YYYY-MM
+  status      StatusFechamento @default(ABERTO)
+  fechadoEm   DateTime?
+  fechadoPor  String?
+  observacao  String?
+  criadoEm    DateTime         @default(now())
+}
+
+model Dispositivo {
+  id            String            @id @default(cuid())
+  colaboradorId String
+  colaborador   Colaborador       @relation(fields: [colaboradorId], references: [id])
+  identificador String            @unique
+  nome          String?
+  plataforma    String?
+  status        StatusDispositivo @default(PENDENTE)
+  ultimoAcesso  DateTime?
+  criadoEm      DateTime          @default(now())
+}
+
 model Auditoria {
-  id String @id @default(cuid())
-  usuarioId String?
-  acao String
-  entidade String
+  id         String   @id @default(cuid())
+  usuarioId  String?
+  acao       String
+  entidade   String
   entidadeId String?
-  dados Json?
-  criadoEm DateTime @default(now())
+  dados      Json?
+  criadoEm   DateTime @default(now())
 }

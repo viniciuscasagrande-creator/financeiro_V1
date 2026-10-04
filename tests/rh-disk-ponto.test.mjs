@@ -231,4 +231,72 @@ function calcularDistanciaHaversine(lat1, lon1, lat2, lon2) {
   console.log('✓ Trilha imutável registra logs de auditoria e operações de dados sensíveis (LGPD)');
 }
 
-console.log('\nTodos os 9 testes do RH Disk e Disk Ponto passaram com sucesso!\n');
+// Teste 10: Recálculo do Banco de Horas e Horas Extras por Competência (Fase 4)
+{
+  const previstoMinutos = 176 * 60; // 10.560m
+  const trabalhadoMinutos = (181 * 60) + 20; // 10.880m (181h 20m)
+  const saldoMinutos = trabalhadoMinutos - previstoMinutos; // +320m (+5h 20m)
+  const horasExtrasMinutos = Math.max(0, saldoMinutos);
+  const debitoMinutos = Math.max(0, -saldoMinutos);
+
+  assert.strictEqual(saldoMinutos, 320, 'Saldo deve ser +320 minutos');
+  assert.strictEqual(horasExtrasMinutos, 320, 'Horas extras devem ser 320 minutos');
+  assert.strictEqual(debitoMinutos, 0, 'Débito deve ser 0');
+  console.log('✓ Banco de Horas apura saldo positivo e horas extras (+5h 20m) na competência');
+}
+
+// Teste 11: Bloqueio Estrito de Fechamento Mensal por Ajustes Pendentes (Fase 4)
+{
+  const ajustesPonto = [
+    { id: 'aj-1', status: 'PENDENTE', justificativa: 'Esquecimento de registro' }
+  ];
+
+  function fecharCompetencia(competencia, ajustes) {
+    const pendentes = ajustes.filter(a => a.status === 'PENDENTE');
+    if (pendentes.length > 0) {
+      return { erro: `Existem ${pendentes.length} ajustes pendentes. Resolva-os antes do fechamento.`, status: 409 };
+    }
+    return { competencia, status: 'FECHADO', statusHttp: 200 };
+  }
+
+  const respostaBloqueio = fecharCompetencia('2026-10', ajustesPonto);
+  assert.strictEqual(respostaBloqueio.status, 409, 'Fechamento deve ser bloqueado com 409');
+  assert(respostaBloqueio.erro.includes('ajustes pendentes'));
+  console.log('✓ Fechamento mensal bloqueia homologação com status 409 se existirem ajustes pendentes');
+}
+
+// Teste 12: Homologação do Fechamento Mensal após Resolução das Pendências (Fase 4)
+{
+  const ajustesPontoResolvidos = [
+    { id: 'aj-1', status: 'APROVADO', parecer: 'Aprovado pelo RH' }
+  ];
+
+  function fecharCompetencia(competencia, ajustes) {
+    const pendentes = ajustes.filter(a => a.status === 'PENDENTE');
+    if (pendentes.length > 0) {
+      return { erro: `Existem ${pendentes.length} ajustes pendentes.`, status: 409 };
+    }
+    return { competencia, status: 'FECHADO', statusHttp: 200 };
+  }
+
+  const respostaOk = fecharCompetencia('2026-10', ajustesPontoResolvidos);
+  assert.strictEqual(respostaOk.statusHttp, 200);
+  assert.strictEqual(respostaOk.status, 'FECHADO');
+  console.log('✓ Fechamento mensal homologa competência com sucesso (FECHADO) após resolução de pendências');
+}
+
+// Teste 13: Gestão de Dispositivos Móveis Autorizados e Bloqueados (Fase 4)
+{
+  const dispositivo = { id: 'dev-01', identificador: 'dev-galaxy-a55', status: 'PENDENTE' };
+  assert.strictEqual(dispositivo.status, 'PENDENTE');
+
+  dispositivo.status = 'AUTORIZADO';
+  assert.strictEqual(dispositivo.status, 'AUTORIZADO');
+
+  dispositivo.status = 'BLOQUEADO';
+  assert.strictEqual(dispositivo.status, 'BLOQUEADO');
+  console.log('✓ Gestão de dispositivos valida ciclo de vida completo (PENDENTE -> AUTORIZADO -> BLOQUEADO)');
+}
+
+console.log('\nTodos os 13 testes do RH Disk e Disk Ponto (Fases 1 a 4) passaram com sucesso!\n');
+

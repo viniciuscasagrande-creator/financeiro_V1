@@ -1,6 +1,7 @@
 # RH Disk V1 + Disk Ponto (Ecossistema Operacional Completo)
+## Fase 4 — Gestão Completa de Ponto e Jornada
 
-Módulo corporativo de Recursos Humanos da **DiskIngressos** integrado ao aplicativo móvel **Disk Ponto** (Android APK) para registro de jornada com geofencing (cerca virtual) e conformidade integral com a **Portaria 671/2021 do MTE** e **LGPD**.
+Módulo corporativo de Recursos Humanos da **DiskIngressos** integrado ao aplicativo móvel **Disk Ponto** (Android APK) para registro de jornada com geofencing (cerca virtual), banco de horas, espelho de ponto, fechamento mensal com bloqueio de segurança e conformidade integral com a **Portaria 671/2021 do MTE** e **LGPD**.
 
 ---
 
@@ -9,34 +10,53 @@ Módulo corporativo de Recursos Humanos da **DiskIngressos** integrado ao aplica
 ```
 RH_DISK_V1/
 ├── apps/
-│   ├── web/        # Painel Web RH Operacional (React 18 + TypeScript + Vite)
-│   ├── api/        # Backend Core RH REST API (Node.js + Express + Prisma)
-│   └── mobile/     # Aplicativo Android Disk Ponto (React Native + Expo SDK 51)
+│   ├── web/          # Painel Web RH Operacional (React 18 + TypeScript + Vite)
+│   ├── api/          # Backend Core RH REST API (Node.js + Express + Prisma)
+│   └── mobile/       # Aplicativo Android Disk Ponto (React Native + Expo SDK 51)
 ├── packages/
-│   └── shared/     # DTOs, Enums e Tipos TypeScript compartilhados
+│   └── shared/       # DTOs, Enums e Tipos TypeScript compartilhados
 ├── prisma/
-│   └── schema.prisma # Modelagem relacional PostgreSQL com auditoria e NSR
-└── tests/
-    └── fluxo-operacional-rh.test.mjs # Suíte de testes automatizados E2E (11 etapas)
+│   ├── schema.prisma # Modelagem relacional PostgreSQL (Banco de Horas, Fechamento, Dispositivos)
+│   └── seed.ts       # Semeador completo com jornadas, escalas, bancos de horas e fechamentos
+├── tests/
+│   └── fluxo-operacional-rh.test.mjs # Suíte de 19 testes automatizados ponta a ponta (100% aprovada)
+├── docker-compose.yml# Banco PostgreSQL 16 Alpine pronto para execução
+└── .env.example      # Variáveis de ambiente configuradas
 ```
 
 ---
 
-## 🔄 Fluxo Operacional Fechado (End-to-End)
+## 🚀 Novidades e Entregas da Fase 4
 
-1. **Cadastrar Colaborador**: RH cadastra colaborador com CPF, e-mail, cargo, departamento e perfil de acesso. Matrícula sequencial (`DISK-XXXXX`) é gerada automaticamente.
-2. **Cadastrar Local e Geofence**: Cadastro da sede ou arenas/locais de eventos (ex: *Ligga Arena*, *Pedreira Paulo Leminski*) com latitude, longitude e raio de tolerância em metros.
-3. **Definir Jornada de Trabalho**: Criação de modelos de carga horária (ex: 44h semanais, 12x36 ou turno de evento).
-4. **Planejar Escala Operacional**: Vinculação entre o colaborador, a jornada definida, o local autorizado com cerca virtual e a data de vigência.
-5. **Autenticação no Disk Ponto**: Colaborador efetua login seguro no aplicativo móvel usando Matrícula ou E-mail.
-6. **Captura Pontual de GPS**: A localização é consultada **estritamente no milissegundo em que o botão 'Registrar Ponto' é acionado** (sem rastreamento permanente em segundo plano, respeitando a privacidade e LGPD).
-7. **Validação de Geofence (Haversine)**: O backend calcula a distância exata em metros entre as coordenadas do GPS e o centro da cerca virtual da escala:
-   - Se distância $\le$ raio cadastrado $\rightarrow$ Status: `VALIDADA`.
-   - Se distância $>$ raio cadastrado $\rightarrow$ Status: `FORA_DA_AREA` (com alerta de divergência gravado).
-8. **Comprovante Digital (Portaria 671 MTE)**: Registro imutável gerando Número Sequencial de Registro (**NSR**) e hash criptográfico SHA-256 para cada batida.
-9. **Monitoramento em Tempo Real no RH**: O Painel Web do RH reflete imediatamente as marcações, status, mapa de precisão e inconsistências.
-10. **Solicitação e Aprovação de Ajustes**: O colaborador pode solicitar ajuste/justificativa pelo app. O gestor analisa e aprova/rejeita no painel RH respeitando Segregação de Funções (**SoD**).
-11. **Trilha Imutável de Auditoria**: Qualquer alteração, inclusão ou homologação é gravada na tabela `Auditoria` com autor, IP, timestamp e payload antes/depois.
+1. **Cadastros Administrativos Completos:**
+   - **Colaboradores:** Gestão de centros de custo (`centroCusto`), carga horária semanal (`cargaHorariaSemanal`), gestor responsável (`gestorId`) e dados bancários/PIX.
+   - **Jornadas de Trabalho:** Carga prevista em minutos (`cargaMinutos`, ex: 480m) e tolerância regulamentar (`toleranciaMinutos`).
+   - **Locais & Geofences:** Gestão de coordenadas e raio em metros para Sede Disk e Arenas de Shows (*Ligga Arena*, *Pedreira Paulo Leminski*, *Teatro Positivo*).
+   - **Escalas Operacionais:** Vínculo de integridade fechado: **Colaborador → Escala → Local/Evento → Ponto → Banco de Horas → Fechamento**.
+
+2. **Monitor Diário de Ponto (Tempo Real):**
+   - Acompanhamento dos colaboradores em tempo real: *Trabalhando*, *Em Intervalo*, *Para Analisar (fora do raio ou Mock GPS)* e *Sem Marcação*.
+   - Exibição de precisão de satélite (ex: $\pm 5m$) e distância métrica do centro da cerca.
+
+3. **Banco de Horas e Horas Extras:**
+   - Endpoint `POST /api/banco-horas/recalcular/:colaboradorId` apura as batidas da competência vs carga prevista das escalas.
+   - Cálculo automático de saldo positivo/negativo, minutos de horas extras e débitos.
+
+4. **Espelho de Ponto Individual:**
+   - Consulta consolidada por colaborador e competência (`GET /api/ponto/espelho/:colaboradorId?competencia=YYYY-MM`).
+   - Apresentação diária: Entrada, Início de Intervalo, Fim de Intervalo, Saída, Horas Trabalhadas e Ocorrências.
+
+5. **Fechamento Mensal com Bloqueio de Segurança:**
+   - **Regra Fundamental de Proteção:** Não permite fechar ou homologar a competência mensal enquanto existirem ajustes de ponto pendentes de análise (`Status: PENDENTE`).
+   - Retorna erro HTTP `409 Conflict` bloqueando a operação e orientando o gestor.
+   - Após regularização, transiciona com sucesso para o status `FECHADO` gravando auditoria.
+
+6. **Gestão de Dispositivos Móveis (Disk Ponto):**
+   - Registro de aparelhos utilizados pelos colaboradores com plataforma e identificador único.
+   - Ciclo de vida: `PENDENTE` $\rightarrow$ `AUTORIZADO` $\rightarrow$ `BLOQUEADO`.
+
+7. **Trilha Imutável de Auditoria (Portaria 671 MTE & LGPD):**
+   - Registro cronológico imutável de todas as batidas, cadastros, alterações de escala, homologações de ajustes e fechamentos mensais.
 
 ---
 
@@ -54,63 +74,61 @@ O app está configurado com `package: com.diskingressos.ponto` no `apps/mobile/a
    cd apps/mobile
    npm install
    ```
-2. Faça login na conta Expo:
+2. Inicie o build para gerar o arquivo `.apk` diretamente para Android:
    ```bash
-   eas login
+   npm run build:apk
+   # ou: eas build -p android --profile preview
    ```
-3. Inicie o build na nuvem para gerar o arquivo `.apk` diretamente para instalação em dispositivos Android:
+3. Para gerar o pacote `.aab` da Google Play Store:
    ```bash
-   eas build -p android --profile preview
+   npm run build:aab
    ```
-4. Ao finalizar o processo, o EAS fornecerá o link direto para download do `.apk` pronto para distribuição interna aos colaboradores.
-
-### Execução em Modo de Desenvolvimento / Emulador Android:
-```bash
-npx expo run:android
-# ou
-npx expo start
-```
 
 ---
 
 ## 🖥️ Execução Local dos Módulos
 
-### 1. Backend API:
+### 1. Iniciar Banco PostgreSQL (Opcional - a API conta com modo resiliente em memória):
 ```bash
-cd apps/api
-npm install
-npm run dev
-# Servidor rodando na porta 3001
+docker compose up -d
+npm run prisma:migrate
+npm run seed
 ```
 
-### 2. Painel Web RH:
+### 2. Backend REST API:
 ```bash
-cd apps/web
-npm install
-npm run dev
-# Acesso via browser: http://localhost:5173
+npm run dev:api
+# Servidor rodando na porta 3333
+```
+
+### 3. Painel Web RH:
+```bash
+npm run dev:web
+# Painel acessível em: http://localhost:5173
 ```
 
 ---
 
 ## 🧪 Testes Automatizados
 
-Para executar o teste ponta a ponta que valida os 11 passos do fluxo:
+### Testes do RH Disk V1 (Fase 4):
 ```bash
 node tests/fluxo-operacional-rh.test.mjs
 ```
-Resultado esperado:
+Resultado: **19/19 testes aprovados (100%)**.
+
+### Suíte Geral Integrada (Módulo Financeiro + RH Disk):
+```bash
+npm test
 ```
-✓ 1. Colaborador cadastrado com sucesso
-✓ 2. Local cadastrado com cerca virtual
-✓ 3. Jornada de trabalho criada
-✓ 4. Escala criada vinculando Colaborador + Jornada + Cerca da Arena
-✓ 5. Login no Disk Ponto autenticado com sucesso via Matrícula
-✓ 6. Batida com GPS dentro da geofence gravada como VALIDADA
-✓ 7. Batida fora do raio gravada e interceptada como FORA_DA_AREA
-✓ 8. Painel RH lista e reflete todas as batidas em tempo real com status e geofence
-✓ 9. Colaborador submete solicitação de ajuste de ponto
-✓ 10. Gestor de RH aprova o ajuste de ponto com SoD respeitada
-✓ 11. Trilha imutável de auditoria registra todas as mutações e operações de dados
---- TODOS OS 11 TESTES DO FLUXO OPERACIONAL DO RH DISK FORAM APROVADOS! (100%) ---
-```
+Resultado: **106/106 testes aprovados (100%)**.
+
+---
+
+## 🔮 Próxima Etapa: Fase 5 (Recursos Humanos Estratégico)
+- **Férias e Ausências:** Gestão de períodos aquisitivos, concessivos e abono pecuniário.
+- **Atestados e Afastamentos:** Submissão com upload de comprovante e validação médica.
+- **Admissão e Onboarding Digital:** Fluxo guiado de coleta documental de novos colaboradores.
+- **Gestão de Documentos:** Armazenamento seguro e assinatura digital de termos e contratos.
+- **Benefícios:** Gestão de Vale Transporte, Vale Refeição/Alimentação e Planos de Saúde.
+- **Portal do Colaborador:** Autoatendimento integrado a Ponto, Férias e Holerites.

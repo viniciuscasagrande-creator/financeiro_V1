@@ -45,6 +45,7 @@ scratch/
 
 .vercel
 .env*
+!.env.example
 
 *.zip
 *.bundle
