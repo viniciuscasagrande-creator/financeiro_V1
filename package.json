@@ -9,6 +9,7 @@
     "dev": "node server.js",
     "build": "node build.js",
     "deploy": "node build.js && vercel --prod --yes",
+    "backup": "powershell -ExecutionPolicy Bypass -File scratch/backup.ps1",
     "test": "node tests/integridade-financeira.test.mjs && node tests/views-render.test.mjs && node tests/repasses-elegibilidade.test.mjs && node tests/conta-financeira-produtor.test.mjs && node tests/rh-disk-ponto.test.mjs",
     "prisma:generate": "prisma generate --schema=database/schema.prisma",
     "seed": "node -e \"console.log('Seed mock loaded com sucesso.')\""
