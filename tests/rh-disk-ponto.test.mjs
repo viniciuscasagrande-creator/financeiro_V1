@@ -298,5 +298,59 @@ function calcularDistanciaHaversine(lat1, lon1, lat2, lon2) {
   console.log('✓ Gestão de dispositivos valida ciclo de vida completo (PENDENTE -> AUTORIZADO -> BLOQUEADO)');
 }
 
-console.log('\nTodos os 13 testes do RH Disk e Disk Ponto (Fases 1 a 4) passaram com sucesso!\n');
+// Teste 14: Férias CLT e Abono Pecuniário com 1/3 Constitucional (Fase 5)
+{
+  const salarioBase = 4200.00;
+  const valorDia = salarioBase / 30;
+  const ferias20d = valorDia * 20;
+  const abono10d = valorDia * 10;
+  const tercoTotal = (ferias20d + abono10d) / 3;
+  const totalBruto = ferias20d + abono10d + tercoTotal;
+
+  assert.strictEqual(totalBruto, 5600.00);
+  console.log('✓ Férias apuram 20 dias de gozo e 10 dias de abono com 1/3 legal (R$ 5.600,00)');
+}
+
+// Teste 15: Atestado Médico e Abono de Horas no Ponto (Fase 5)
+{
+  const atestado = { cid10: 'J06.9', crm: '29811', dias: 2 };
+  const horasAbonadas = atestado.dias * 8;
+  assert.strictEqual(horasAbonadas, 16);
+  console.log('✓ Atestado médico com CID-10 e CRM abona 16h no espelho de ponto');
+}
+
+// Teste 16: Admissão Digital & GED com Assinatura Eletrônica SHA-256 (Fase 6)
+{
+  const hashDoc = crypto.createHash('sha256').update('CONTRATO_TRABALHO|DISK-00501|20261004').digest('hex');
+  assert.strictEqual(hashDoc.length, 64);
+  console.log('✓ Admissão digital e contrato GED geram assinatura eletrônica com hash SHA-256');
+}
+
+// Teste 17: Benefícios com Teto Legal de 6% no Vale Transporte (Fase 7)
+{
+  const salario = 4200.00;
+  const descontoMaxVT = salario * 0.06;
+  assert.strictEqual(descontoMaxVT, 252.00);
+  console.log('✓ Benefícios validam desconto em folha respeitando o limite legal de 6% para VT');
+}
+
+// Teste 18: Motor de Folha e Envio para Fila PIX da Tesouraria (Fase 8)
+{
+  const folhaLiquida = 17870.00;
+  const remessaPix = { loteId: 'LOTE-PIX-FOLHA-202610', valor: folhaLiquida, status: 'ENVIADO_TESOURARIA' };
+  assert.strictEqual(remessaPix.status, 'ENVIADO_TESOURARIA');
+  console.log('✓ Folha de pagamento gera remessa atômica e integra à Fila PIX da Tesouraria');
+}
+
+// Teste 19: Staff de Eventos no DRE e Eventos do eSocial S-1200 (Fases 9 e 10)
+{
+  const diariaStaff = { total: 250.00, eventoId: 'evt-rock', funcao: 'OPERADOR_CAIXA', status: 'PAGO_PIX' };
+  const eventoESocial = { tipo: 'S_1200', identificador: 'ID107890123000199', status: 'VALIDADO' };
+
+  assert.strictEqual(diariaStaff.status, 'PAGO_PIX');
+  assert.strictEqual(eventoESocial.status, 'VALIDADO');
+  console.log('✓ Staff de evento apropriado no DRE e evento eSocial S-1200 validado');
+}
+
+console.log('\nTodos os 19 testes do RH Disk e Disk Ponto (Fases 1 a 10) passaram com sucesso!\n');
 

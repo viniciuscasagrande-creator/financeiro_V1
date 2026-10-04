@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('--- Iniciando Seed do Banco PostgreSQL: RH Disk & Disk Ponto (Fase 4) ---');
+  console.log('--- Iniciando Seed do Banco PostgreSQL: RH Disk & Disk Ponto (Fases 1 a 10) ---');
 
   const defaultHash = await bcrypt.hash('Disk@123', 10);
 
@@ -37,7 +37,7 @@ async function main() {
     }
   });
 
-  // 2. Jornadas com tolerância e carga prevista
+  // 2. Jornadas
   const jornada44 = await prisma.jornada.upsert({
     where: { id: 'jor-padrao-44h' },
     update: {},
@@ -68,7 +68,7 @@ async function main() {
     }
   });
 
-  // 3. Usuários e Colaboradores com SoD e Centros de Custo
+  // 3. Usuários e Colaboradores
   const userAdmin = await prisma.usuario.upsert({
     where: { email: 'admin@diskingressos.com.br' },
     update: {},
@@ -105,11 +105,14 @@ async function main() {
     create: {
       nome: 'Ana Martins',
       cpf: '123.456.789-01',
-      matricula: 'DI-001',
-      cargo: 'Analista de Operações',
+      matricula: 'DISK-00128',
+      cargo: 'Analista de Operações Pleno',
       departamento: 'Operações e Eventos',
       centroCusto: 'CC-010-OPS',
       cargaHorariaSemanal: 44,
+      salarioBase: 4200.00,
+      chavePix: '12345678901',
+      tipoChavePix: 'CPF',
       usuarioId: userAna.id,
       ativo: true
     }
@@ -131,17 +134,20 @@ async function main() {
     create: {
       nome: 'Carlos Souza',
       cpf: '234.567.890-12',
-      matricula: 'DI-002',
-      cargo: 'Assistente de Operações',
+      matricula: 'DISK-00101',
+      cargo: 'Coordenador de Bilheteria',
       departamento: 'Operações e Eventos',
       centroCusto: 'CC-010-OPS',
       cargaHorariaSemanal: 44,
+      salarioBase: 4800.00,
+      chavePix: '23456789012',
+      tipoChavePix: 'CPF',
       usuarioId: userCarlos.id,
       ativo: true
     }
   });
 
-  // 4. Escalas vinculadas a Local e Evento
+  // 4. Escalas Operacionais
   const hoje = new Date();
   hoje.setHours(12, 0, 0, 0);
 
@@ -154,7 +160,7 @@ async function main() {
       localId: sede.id,
       data: hoje,
       eventoNome: 'Operação Sede Disk',
-      observacao: 'Escala regular presencial'
+      observacao: 'Escala presencial'
     }
   });
 
@@ -167,63 +173,23 @@ async function main() {
       localId: arena.id,
       data: hoje,
       eventoNome: 'Festival Curitiba 2026',
-      observacao: 'Operação Show Turno Noturno'
+      observacao: 'Show Turno Noturno'
     }
   });
 
-  // 5. Dispositivos Autorizados do Disk Ponto
-  await prisma.dispositivo.upsert({
-    where: { identificador: 'dev-samsung-a55-ana' },
-    update: {},
-    create: {
-      identificador: 'dev-samsung-a55-ana',
-      colaboradorId: colabAna.id,
-      nome: 'Galaxy A55 (Corporativo)',
-      plataforma: 'Android 14',
-      status: 'AUTORIZADO',
-      ultimoAcesso: new Date()
-    }
-  });
-
-  await prisma.dispositivo.upsert({
-    where: { identificador: 'dev-moto-g84-carlos' },
-    update: {},
-    create: {
-      identificador: 'dev-moto-g84-carlos',
-      colaboradorId: colabCarlos.id,
-      nome: 'Moto G84 (Pessoal)',
-      plataforma: 'Android 13',
-      status: 'AUTORIZADO',
-      ultimoAcesso: new Date()
-    }
-  });
-
-  // 6. Banco de Horas Inicial (Competência 2026-10)
+  // 5. Banco de Horas & Fechamento
   await prisma.bancoHoras.upsert({
     where: { colaboradorId_competencia: { colaboradorId: colabAna.id, competencia: '2026-10' } },
     update: {},
     create: {
       colaboradorId: colabAna.id,
       competencia: '2026-10',
-      minutosSaldo: 320, // +5h 20m
+      minutosSaldo: 320,
       minutosExtras: 320,
       minutosDebito: 0
     }
   });
 
-  await prisma.bancoHoras.upsert({
-    where: { colaboradorId_competencia: { colaboradorId: colabCarlos.id, competencia: '2026-10' } },
-    update: {},
-    create: {
-      colaboradorId: colabCarlos.id,
-      competencia: '2026-10',
-      minutosSaldo: -75, // -1h 15m
-      minutosExtras: 70,
-      minutosDebito: 145
-    }
-  });
-
-  // 7. Fechamento de Ponto
   await prisma.fechamentoPonto.upsert({
     where: { competencia: '2026-09' },
     update: {},
@@ -232,23 +198,125 @@ async function main() {
       status: 'FECHADO',
       fechadoEm: new Date('2026-10-01T10:00:00Z'),
       fechadoPor: userRh.id,
-      observacao: 'Competência Setembro/2026 homologada sem pendências'
+      observacao: 'Competência Setembro/2026 homologada'
     }
   });
 
-  await prisma.fechamentoPonto.upsert({
-    where: { competencia: '2026-10' },
+  // 6. Benefícios Corporativos (Fase 7)
+  await prisma.beneficioColaborador.upsert({
+    where: { id: 'ben-vr-ana' },
     update: {},
     create: {
-      competencia: '2026-10',
-      status: 'EM_ANALISE',
-      observacao: 'Competência Outubro/2026 aberta para apuração'
+      id: 'ben-vr-ana',
+      colaboradorId: colabAna.id,
+      tipo: 'VALE_REFEICAO',
+      operadora: 'Pluxee / Sodexo',
+      valorMensal: 770.00,
+      descontoEmFolha: 77.00,
+      cartaoNumero: '4432',
+      status: 'ATIVO'
     }
   });
 
-  console.log('✓ Locais criados:', sede.nome, '|', arena.nome);
-  console.log('✓ Jornadas criadas:', jornada44.nome, '|', jornadaShow.nome);
-  console.log('✓ Usuários, Colaboradores, Escalas, Dispositivos e Banco de Horas semeados com sucesso!');
+  await prisma.beneficioColaborador.upsert({
+    where: { id: 'ben-vt-ana' },
+    update: {},
+    create: {
+      id: 'ben-vt-ana',
+      colaboradorId: colabAna.id,
+      tipo: 'VALE_TRANSPORTE',
+      operadora: 'URBS Curitiba',
+      valorMensal: 330.00,
+      descontoEmFolha: 252.00,
+      cartaoNumero: '9812-4412-00',
+      status: 'ATIVO'
+    }
+  });
+
+  // 7. Folha de Pagamento & Holerite (Fase 8)
+  const folha = await prisma.folhaPagamento.upsert({
+    where: { competencia: '2026-09' },
+    update: {},
+    create: {
+      id: 'folha-202609',
+      competencia: '2026-09',
+      status: 'PAGA',
+      totalColaboradores: 2,
+      totalProventos: 9000.00,
+      totalDescontos: 1720.00,
+      totalLiquido: 7280.00,
+      totalEncargosEmpresa: 1512.00,
+      fechadaEm: new Date('2026-10-01T15:00:00Z'),
+      fechadaPor: userRh.id,
+      lotePixId: 'LOTE-PIX-FOLHA-202609'
+    }
+  });
+
+  await prisma.holerite.upsert({
+    where: { id: 'hol-ana-202609' },
+    update: {},
+    create: {
+      id: 'hol-ana-202609',
+      folhaId: folha.id,
+      colaboradorId: colabAna.id,
+      competencia: '2026-09',
+      salarioBase: 4200.00,
+      totalVencimentos: 4486.36,
+      totalDescontos: 835.42,
+      valorLiquido: 3650.94,
+      baseINSS: 4486.36,
+      baseIRRF: 3995.12,
+      baseFGTS: 4486.36,
+      fgtsRecolher: 358.91,
+      rubricas: [
+        { codigo: '001', descricao: 'Salário Base', tipo: 'PROVENTO', valor: 4200.00 },
+        { codigo: '015', descricao: 'Horas Extras 50%', tipo: 'PROVENTO', valor: 238.64 },
+        { codigo: '020', descricao: 'DSR Horas Extras', tipo: 'PROVENTO', valor: 47.72 },
+        { codigo: '101', descricao: 'INSS Folha', tipo: 'DESCONTO', valor: 491.24 },
+        { codigo: '102', descricao: 'IRRF s/ Salário', tipo: 'DESCONTO', valor: 175.18 },
+        { codigo: '201', descricao: 'Desconto VT (6%)', tipo: 'DESCONTO', valor: 252.00 }
+      ]
+    }
+  });
+
+  // 8. Staff de Evento (Fase 9)
+  await prisma.diariaStaffEvento.upsert({
+    where: { id: 'dia-staff-carlos' },
+    update: {},
+    create: {
+      id: 'dia-staff-carlos',
+      eventoId: 'evt-curitiba-rock',
+      eventoNome: 'Festival Curitiba Rock 2026',
+      localId: arena.id,
+      localNome: arena.nome,
+      data: hoje,
+      colaboradorId: colabCarlos.id,
+      nomeProfissional: colabCarlos.nome,
+      cpf: colabCarlos.cpf,
+      funcao: 'COORDENADOR_BILHETERIA',
+      valorDiaria: 250.00,
+      valorTransporte: 40.00,
+      valorAlimentacao: 50.00,
+      valorTotal: 340.00,
+      status: 'APROVADO_PAGAMENTO',
+      chavePix: colabCarlos.cpf
+    }
+  });
+
+  // 9. Evento eSocial (Fase 10)
+  await prisma.eventoESocial.upsert({
+    where: { identificador: 'ID1078901230001992026100108000000001' },
+    update: {},
+    create: {
+      id: 'esoc-seed-01',
+      tipo: 'S_1000',
+      identificador: 'ID1078901230001992026100108000000001',
+      reciboEntrega: '1.2.202610.000000000001234567',
+      status: 'TRANSMITIDO'
+    }
+  });
+
+  console.log('✓ Seed completo executado com sucesso para as Fases 1 a 10!');
 }
 
 main()

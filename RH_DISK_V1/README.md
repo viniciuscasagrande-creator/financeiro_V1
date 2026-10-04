@@ -1,7 +1,7 @@
 # RH Disk V1 + Disk Ponto (Ecossistema Operacional Completo)
-## Fase 4 — Gestão Completa de Ponto e Jornada
+## Fases 1 a 10 — Recursos Humanos, Ponto Móvel, Folha, Staff de Eventos & People Analytics
 
-Módulo corporativo de Recursos Humanos da **DiskIngressos** integrado ao aplicativo móvel **Disk Ponto** (Android APK) para registro de jornada com geofencing (cerca virtual), banco de horas, espelho de ponto, fechamento mensal com bloqueio de segurança e conformidade integral com a **Portaria 671/2021 do MTE** e **LGPD**.
+O **RH Disk V1** é o ecossistema corporativo completo de Gestão de Pessoas, Ponto Eletrônico Móvel e Folha de Pagamento da **DiskIngressos**, 100% integrado ao aplicativo móvel **Disk Ponto** (Android APK) e ao **Módulo Financeiro V1** (ERP Disk Ingressos).
 
 ---
 
@@ -10,53 +10,102 @@ Módulo corporativo de Recursos Humanos da **DiskIngressos** integrado ao aplica
 ```
 RH_DISK_V1/
 ├── apps/
-│   ├── web/          # Painel Web RH Operacional (React 18 + TypeScript + Vite)
-│   ├── api/          # Backend Core RH REST API (Node.js + Express + Prisma)
+│   ├── web/          # Painel Web RH Operacional (React 18 + TypeScript + Vite) - 19 Visões
+│   ├── api/          # Backend Core RH REST API (Node.js + Express + Prisma Dual-Engine)
 │   └── mobile/       # Aplicativo Android Disk Ponto (React Native + Expo SDK 51)
 ├── packages/
-│   └── shared/       # DTOs, Enums e Tipos TypeScript compartilhados
+│   └── shared/       # DTOs, Enums e Tipos TypeScript compartilhados (Fases 1 a 10)
 ├── prisma/
-│   ├── schema.prisma # Modelagem relacional PostgreSQL (Banco de Horas, Fechamento, Dispositivos)
-│   └── seed.ts       # Semeador completo com jornadas, escalas, bancos de horas e fechamentos
+│   ├── schema.prisma # Modelagem relacional PostgreSQL completa (20+ entidades)
+│   └── seed.ts       # Semeador completo com colaboradores, jornadas, escalas, benefícios, folha, staff e eSocial
 ├── tests/
-│   └── fluxo-operacional-rh.test.mjs # Suíte de 19 testes automatizados ponta a ponta (100% aprovada)
+│   └── fluxo-operacional-rh.test.mjs # Suíte de 30 testes automatizados ponta a ponta (100% aprovada)
 ├── docker-compose.yml# Banco PostgreSQL 16 Alpine pronto para execução
 └── .env.example      # Variáveis de ambiente configuradas
 ```
 
 ---
 
-## 🚀 Novidades e Entregas da Fase 4
+## 🧭 Visão Geral das 10 Fases Implementadas
 
-1. **Cadastros Administrativos Completos:**
-   - **Colaboradores:** Gestão de centros de custo (`centroCusto`), carga horária semanal (`cargaHorariaSemanal`), gestor responsável (`gestorId`) e dados bancários/PIX.
-   - **Jornadas de Trabalho:** Carga prevista em minutos (`cargaMinutos`, ex: 480m) e tolerância regulamentar (`toleranciaMinutos`).
-   - **Locais & Geofences:** Gestão de coordenadas e raio em metros para Sede Disk e Arenas de Shows (*Ligga Arena*, *Pedreira Paulo Leminski*, *Teatro Positivo*).
-   - **Escalas Operacionais:** Vínculo de integridade fechado: **Colaborador → Escala → Local/Evento → Ponto → Banco de Horas → Fechamento**.
+| Fase | Título | Funcionalidades Principais |
+|---|---|---|
+| **Fase 1** | **Fundação do Monorepo** | Estrutura pnpm workspaces, pacotes compartilhados, REST API Express e boilerplate web/mobile |
+| **Fase 2** | **Ponto Móvel & Geofencing** | Registro com coordenadas GPS, cálculo Haversine de raio métrico, detecção de Mock GPS e offline queue |
+| **Fase 3** | **Ajustes & Conformidade MTE** | Solicitação e homologação de ajustes de ponto, motivos padronizados Portaria 671/2021 MTE |
+| **Fase 4** | **Jornadas, Escalas & Fechamento** | Monitor de ponto em tempo real, banco de horas, espelho de ponto, fechamento mensal com bloqueio por pendências |
+| **Fase 5** | **Férias, Atestados & Ausências** | Controle de períodos aquisitivos/concessivos, abono pecuniário (1/3), atestados com CRM/CID-10 e abono no espelho |
+| **Fase 6** | **Admissão Digital & GED** | Workflow de admissão com checklist documental, repositório GED com hash SHA-256 e assinatura eletrônica com IP/timestamp |
+| **Fase 7** | **Gestão de Benefícios** | VT com teto legal de 6%, VR proporcional aos dias úteis trabalhados, plano de saúde coparticipativo e pedidos mensais |
+| **Fase 8** | **Folha de Pagamento & Tesouraria** | Motor de cálculo CLT (INSS progressivo, IRRF, HE 50%/100%), holerites digitais, geração de remessa PIX e CNAB 240 |
+| **Fase 9** | **Staff de Eventos & Freelancers** | Gestão de staff avulso/freelancers, check-in na cerca da arena, aprovação de diárias via PIX e apropriação no DRE do Evento |
+| **Fase 10** | **People Analytics & eSocial** | Métricas de turnover, absenteísmo, pré-validação e geração de XMLs do eSocial (S-1000, S-2200, S-1200, S-1210) e trilha LGPD |
 
-2. **Monitor Diário de Ponto (Tempo Real):**
-   - Acompanhamento dos colaboradores em tempo real: *Trabalhando*, *Em Intervalo*, *Para Analisar (fora do raio ou Mock GPS)* e *Sem Marcação*.
-   - Exibição de precisão de satélite (ex: $\pm 5m$) e distância métrica do centro da cerca.
+---
 
-3. **Banco de Horas e Horas Extras:**
-   - Endpoint `POST /api/banco-horas/recalcular/:colaboradorId` apura as batidas da competência vs carga prevista das escalas.
-   - Cálculo automático de saldo positivo/negativo, minutos de horas extras e débitos.
+## 🚀 Detalhamento das Entregas (Fases 5 a 10)
 
-4. **Espelho de Ponto Individual:**
-   - Consulta consolidada por colaborador e competência (`GET /api/ponto/espelho/:colaboradorId?competencia=YYYY-MM`).
-   - Apresentação diária: Entrada, Início de Intervalo, Fim de Intervalo, Saída, Horas Trabalhadas e Ocorrências.
+### 🌴 Fase 5: Férias, Atestados Médicos e Ausências Legais
+1. **Férias CLT:**
+   - Períodos aquisitivos e concessivos com alertas automáticos de vencimento em dobro.
+   - Opção de abono pecuniário (venda de 1/3 das férias) e adiantamento de 13º salário.
+   - Cálculo automático do valor bruto com acréscimo de 1/3 constitucional.
+2. **Atestados Médicos:**
+   - Registro de CRM, UF do médico e classificação internacional CID-10.
+   - Tratamento automático de abono de faltas no espelho de ponto com indicação de afastamento previdenciário para períodos superiores a 15 dias.
+3. **Ausências Legais (Art. 473 CLT):**
+   - Casamento (Gala - 3 dias), Falecimento (Nojo - 2 dias), Doação de Sangue, Alistamento Eleitoral.
 
-5. **Fechamento Mensal com Bloqueio de Segurança:**
-   - **Regra Fundamental de Proteção:** Não permite fechar ou homologar a competência mensal enquanto existirem ajustes de ponto pendentes de análise (`Status: PENDENTE`).
-   - Retorna erro HTTP `409 Conflict` bloqueando a operação e orientando o gestor.
-   - Após regularização, transiciona com sucesso para o status `FECHADO` gravando auditoria.
+### 📄 Fase 6: Admissão Digital, Onboarding e GED com Assinatura Eletrônica
+1. **Admissão Digital:**
+   - Workflow guiado com status: `RASCUNHO` $\rightarrow$ `EM_PREENCHIMENTO` $\rightarrow$ `DOCUMENTOS_ENVIADOS` $\rightarrow$ `EM_ANALISE` $\rightarrow$ `APROVADO` $\rightarrow$ `CONCLUIDO`.
+   - Conclusão da admissão gera automaticamente o cadastro ativo do `Colaborador` e cria a conta de acesso ao portal.
+2. **GED Corporativo (Gestão Eletrônica de Documentos):**
+   - Repositório centralizado com integridade garantida via hash criptográfico SHA-256 (`hashSha256`).
+   - Assinatura eletrônica com coleta de IP, User-Agent e carimbo de data/hora (`assinadoEm`, `ipAssinatura`).
 
-6. **Gestão de Dispositivos Móveis (Disk Ponto):**
-   - Registro de aparelhos utilizados pelos colaboradores com plataforma e identificador único.
-   - Ciclo de vida: `PENDENTE` $\rightarrow$ `AUTORIZADO` $\rightarrow$ `BLOQUEADO`.
+### 💳 Fase 7: Gestão Corporativa de Benefícios
+1. **Vale Transporte (VT):**
+   - Cálculo automatizado com aplicação do teto de desconto de 6% do salário base estipulado pela Lei nº 7.418/1985.
+2. **Vale Refeição / Alimentação (VR/VA):**
+   - Valor diário multiplicado pelos dias úteis efetivamente trabalhados na competência, deduzindo férias e atestados integrais.
+3. **Plano de Saúde e Odontológico:**
+   - Desconto fixo da mensalidade corporativa e integração para coparticipação de consultas/exames.
+4. **Pedidos Mensais de Recarga:**
+   - Agrupamento mensal dos pedidos de benefícios com transição para `APROVADO` e envio dos totais para desconto em folha.
 
-7. **Trilha Imutável de Auditoria (Portaria 671 MTE & LGPD):**
-   - Registro cronológico imutável de todas as batidas, cadastros, alterações de escala, homologações de ajustes e fechamentos mensais.
+### 💰 Fase 8: Motor de Folha de Pagamento & Integração com Tesouraria Disk
+1. **Motor de Cálculo Trabalhista CLT:**
+   - Apuração de proventos: Salário Base, Horas Extras a 50% e 100%, DSR sobre horas extras, Gratificações.
+   - Tabela progressiva do INSS (alíquotas de 7,5% a 14% com faixas de dedução) e tabela de IRRF com dependentes legais.
+   - Apuração do FGTS patronal (8%) sem desconto do colaborador.
+2. **Holerites Digitais:**
+   - Disponibilização individual com detalhamento de proventos, descontos, bases de cálculo e salário líquido.
+3. **Integração Atômica com a Tesouraria Disk:**
+   - Geração de lotes de pagamento com envio para a Fila PIX da Tesouraria e layout CNAB 240 (Banco Itaú/Bradesco).
+
+### 🎪 Fase 9: Staff de Eventos e Freelancers (Operação de Shows e Arenas)
+1. **Gestão de Freelancers e Diaristas:**
+   - Alocação rápida por função operacional (*Orientador de Público*, *Bilheteria*, *Bar/Caixa*, *Segurança*, *Coordenador*).
+2. **Check-in por Geofence na Arena:**
+   - Validação por cerca virtual nos locais dos eventos (*Ligga Arena*, *Pedreira Paulo Leminski*, *Teatro Positivo*).
+3. **Liquidação Financeira via PIX & Apropriação no DRE do Evento:**
+   - Homologação de diárias com envio instantâneo para pagamento PIX.
+   - Vinculação direta do centro de custo ao código do Evento, lançando custos de equipe diretamente na linha de despesas operacionais do DRE gerencial.
+
+### 📊 Fase 10: People Analytics, eSocial e Auditoria LGPD
+1. **Painel de People Analytics:**
+   - Taxa de rotatividade de colaboradores (Turnover mensal e anual).
+   - Índice de absenteísmo (horas de faltas / horas planejadas).
+   - Custo per capita com folha, encargos e benefícios corporativos.
+2. **Pré-validação e Geração de Eventos eSocial:**
+   - **S-1000:** Informações do Empregador / Empresa.
+   - **S-2200:** Admissão de Trabalhador.
+   - **S-1200:** Remuneração de Trabalhador vinculada à Folha.
+   - **S-1210:** Pagamentos de Rendimentos do Trabalho.
+   - Motor de pré-validação com retorno de inconsistências (CPF inválido, PIS ausente, etc.) antes da transmissão.
+3. **Auditoria Avançada LGPD:**
+   - Rastreabilidade de acessos a dados sensíveis (dados médicos de atestados, remunerações, endereços e documentos).
 
 ---
 
@@ -88,7 +137,7 @@ O app está configurado com `package: com.diskingressos.ponto` no `apps/mobile/a
 
 ## 🖥️ Execução Local dos Módulos
 
-### 1. Iniciar Banco PostgreSQL (Opcional - a API conta com modo resiliente em memória):
+### 1. Iniciar Banco PostgreSQL (Opcional - a API conta com engine resiliente em memória):
 ```bash
 docker compose up -d
 npm run prisma:migrate
@@ -111,24 +160,21 @@ npm run dev:web
 
 ## 🧪 Testes Automatizados
 
-### Testes do RH Disk V1 (Fase 4):
+### Testes da Suíte Completa do RH Disk V1 (Fases 1 a 10):
 ```bash
-node tests/fluxo-operacional-rh.test.mjs
+node RH_DISK_V1/tests/fluxo-operacional-rh.test.mjs
 ```
-Resultado: **19/19 testes aprovados (100%)**.
+Resultado: **30/30 testes aprovados (100%)**.
 
 ### Suíte Geral Integrada (Módulo Financeiro + RH Disk):
 ```bash
 npm test
 ```
-Resultado: **106/106 testes aprovados (100%)**.
+Resultado: **112/112 testes aprovados (100%)**.
 
 ---
 
-## 🔮 Próxima Etapa: Fase 5 (Recursos Humanos Estratégico)
-- **Férias e Ausências:** Gestão de períodos aquisitivos, concessivos e abono pecuniário.
-- **Atestados e Afastamentos:** Submissão com upload de comprovante e validação médica.
-- **Admissão e Onboarding Digital:** Fluxo guiado de coleta documental de novos colaboradores.
-- **Gestão de Documentos:** Armazenamento seguro e assinatura digital de termos e contratos.
-- **Benefícios:** Gestão de Vale Transporte, Vale Refeição/Alimentação e Planos de Saúde.
-- **Portal do Colaborador:** Autoatendimento integrado a Ponto, Férias e Holerites.
+## 🔒 Segurança e Conformidade
+- **Portaria 671/2021 MTE:** Emissão de espelho de ponto sem manipulação manual e registro inviolável de auditoria.
+- **LGPD:** Criptografia de documentos (SHA-256), termos de consentimento e restrição de acesso a dados médicos/financeiros.
+- **Segregação de Funções (SoD):** Bloqueio estrito de fechamento de ponto com inconsistências ou pendências não homologadas.

@@ -25,264 +25,82 @@ import {
   CheckCircle2,
   Lock,
   Unlock,
-  RefreshCw
+  RefreshCw,
+  Sun,
+  Stethoscope,
+  UserPlus,
+  Files,
+  CreditCard,
+  Banknote,
+  Ticket,
+  BarChart3,
+  Send,
+  Download
 } from 'lucide-react';
 import './style.css';
 
 // ----------------------------------------------------------------------------
-// DADOS MOCK INICIAIS (RESILIENTES)
+// MENU LATERAL DAS FASES 1 A 10
 // ----------------------------------------------------------------------------
-
-const INITIAL_COLABORADORES = [
-  { id: 'col-05', nome: 'Ana Martins', cpf: '123.456.789-01', matricula: 'DISK-00128', cargo: 'Analista de Operações Pleno', departamento: 'Operações e Eventos', centroCusto: 'CC-010-OPS', cargaHorariaSemanal: 44, ativo: true, telefone: '(41) 99888-7711' },
-  { id: 'col-01', nome: 'Carlos Eduardo Mendes', cpf: '234.567.890-12', matricula: 'DISK-00101', cargo: 'Coordenador de Bilheteria', departamento: 'Operações e Eventos', centroCusto: 'CC-010-OPS', cargaHorariaSemanal: 44, ativo: true, telefone: '(41) 98822-1144' },
-  { id: 'col-02', nome: 'Camila Fernandes Silveira', cpf: '456.789.012-34', matricula: 'DISK-00205', cargo: 'Supervisora de Atendimento', departamento: 'Operações e Eventos', centroCusto: 'CC-010-OPS', cargaHorariaSemanal: 44, ativo: true, telefone: '(41) 99755-4433' },
-  { id: 'col-03', nome: 'Lucas Gabriel Pinheiro', cpf: '678.901.234-56', matricula: 'DISK-00388', cargo: 'Operador de Bilheteria / Caixa', departamento: 'Operações e Eventos', centroCusto: 'CC-010-OPS', cargaHorariaSemanal: 44, ativo: true, telefone: '(41) 99111-2233' },
-  { id: 'col-04', nome: 'Beatriz Nogueira Ramos', cpf: '789.012.345-67', matricula: 'DISK-00412', cargo: 'Analista Financeiro Pleno', departamento: 'Financeiro e Controladoria', centroCusto: 'CC-002-FIN', cargaHorariaSemanal: 40, ativo: true, telefone: '(41) 98444-5566' }
-];
-
-const INITIAL_LOCAIS = [
-  { id: 'loc-01', nome: 'Sede DiskIngressos Curitiba', endereco: 'Rua Visconde de Nácar, 1505 - Centro', latitude: -25.4284, longitude: -49.2733, raioMetros: 150, ativo: true },
-  { id: 'loc-02', nome: 'Arena da Baixada (Ligga Arena)', endereco: 'Rua Buenos Aires, 1260 - Água Verde', latitude: -25.4484, longitude: -49.2770, raioMetros: 350, ativo: true },
-  { id: 'loc-03', nome: 'Pedreira Paulo Leminski', endereco: 'Rua João Gava, 970 - Abranches', latitude: -25.3855, longitude: -49.2789, raioMetros: 400, ativo: true },
-  { id: 'loc-04', nome: 'Teatro Positivo Grande Auditório', endereco: 'Rua Prof. Pedro Viriato Parigot de Souza, 5300', latitude: -25.4503, longitude: -49.3601, raioMetros: 250, ativo: true }
-];
-
-const INITIAL_JORNADAS = [
-  { id: 'jor-01', nome: 'Comercial Padrão 44h (Seg-Sex)', entrada: '08:00', inicioIntervalo: '12:00', fimIntervalo: '13:00', saida: '17:48', toleranciaMinutos: 10, cargaMinutos: 480 },
-  { id: 'jor-02', nome: 'Operação Show Turno Noturno', entrada: '14:00', inicioIntervalo: '18:00', fimIntervalo: '19:00', saida: '23:00', toleranciaMinutos: 15, cargaMinutos: 540 }
-];
-
-const INITIAL_ESCALAS = [
-  { id: 'esc-01', colaboradorNome: 'Ana Martins', jornadaNome: 'Comercial Padrão 44h', localNome: 'Sede DiskIngressos Curitiba', data: '2026-10-04', eventoNome: 'Operação Sede Disk' },
-  { id: 'esc-02', colaboradorNome: 'Carlos Eduardo Mendes', jornadaNome: 'Comercial Padrão 44h', localNome: 'Sede DiskIngressos Curitiba', data: '2026-10-04', eventoNome: 'Administração Geral' },
-  { id: 'esc-03', colaboradorNome: 'Camila Fernandes Silveira', jornadaNome: 'Comercial Padrão 44h', localNome: 'Sede DiskIngressos Curitiba', data: '2026-10-04', eventoNome: 'Administração Geral' },
-  { id: 'esc-04', colaboradorNome: 'Lucas Gabriel Pinheiro', jornadaNome: 'Operação Show Turno Noturno', localNome: 'Arena da Baixada (Ligga Arena)', data: '2026-10-04', eventoNome: 'Show Nacional de Rock Curitiba' }
-];
-
-const INITIAL_BATIDAS = [
-  { id: 'bat-1003', nsr: 1003, colaboradorNome: 'Ana Martins', tipo: 'ENTRADA', status: 'VALIDADA', dataHora: '04/10/2026 08:01', localNome: 'Sede DiskIngressos Curitiba', distancia: '4m', comprovante: 'MTE671-000001003-C9D2E4F6' },
-  { id: 'bat-1001', nsr: 1001, colaboradorNome: 'Carlos Eduardo Mendes', tipo: 'ENTRADA', status: 'VALIDADA', dataHora: '04/10/2026 08:01', localNome: 'Sede DiskIngressos Curitiba', distancia: '5m', comprovante: 'MTE671-000001001-A7F9C2D1' },
-  { id: 'bat-1002', nsr: 1002, colaboradorNome: 'Camila Fernandes Silveira', tipo: 'ENTRADA', status: 'VALIDADA', dataHora: '04/10/2026 08:05', localNome: 'Sede DiskIngressos Curitiba', distancia: '8m', comprovante: 'MTE671-000001002-B8E1F3A5' }
-];
-
-const INITIAL_AJUSTES = [
-  { id: 'aj-01', colaboradorNome: 'Beatriz Nogueira Ramos', dataPonto: '03/10/2026', tipoBatida: 'SAIDA', horarioCorreto: '18:18', motivo: 'ESQUECIMENTO', justificativa: 'Reunião com a diretoria financeira prolongada.', status: 'PENDENTE' }
-];
-
-const INITIAL_BANCO = [
-  { id: 'bh-01', colaboradorNome: 'Ana Martins', competencia: '2026-10', previsto: '176h', trabalhado: '181h 20m', extras: '5h 20m', debito: '0h 00m', saldo: '+5h 20m', saldoPositivo: true },
-  { id: 'bh-02', colaboradorNome: 'Carlos Eduardo Mendes', competencia: '2026-10', previsto: '176h', trabalhado: '174h 45m', extras: '1h 10m', debito: '2h 25m', saldo: '-1h 15m', saldoPositivo: false },
-  { id: 'bh-03', colaboradorNome: 'Camila Fernandes Silveira', competencia: '2026-10', previsto: '176h', trabalhado: '179h 05m', extras: '3h 05m', debito: '0h 00m', saldo: '+3h 05m', saldoPositivo: true }
-];
-
-const INITIAL_DISPOSITIVOS = [
-  { id: 'dev-01', colaboradorNome: 'Ana Martins', identificador: 'dev-samsung-a55-ana', nome: 'Galaxy A55 (Corporativo)', plataforma: 'Android 14', status: 'AUTORIZADO', ultimoAcesso: 'Hoje 08:01' },
-  { id: 'dev-02', colaboradorNome: 'Carlos Eduardo Mendes', identificador: 'dev-moto-g84-carlos', nome: 'Moto G84 (Pessoal)', plataforma: 'Android 13', status: 'AUTORIZADO', ultimoAcesso: 'Hoje 08:01' },
-  { id: 'dev-03', colaboradorNome: 'Camila Fernandes Silveira', identificador: 'dev-xiaomi-13-camila', nome: 'Xiaomi Redmi Note 13', plataforma: 'Android 14', status: 'PENDENTE', ultimoAcesso: 'Hoje 08:05' }
-];
-
-const INITIAL_AUDITORIA = [
-  { id: 'aud-01', dataHora: '04/10/2026 08:01:14', usuario: 'Ana Martins', acao: 'REGISTRO_PONTO', entidade: 'BatidaPonto', detalhes: 'Entrada NSR 1003 validada na Sede DiskIngressos (4m da cerca).' },
-  { id: 'aud-02', dataHora: '04/10/2026 08:01:14', usuario: 'Carlos Eduardo Mendes', acao: 'REGISTRO_PONTO', entidade: 'BatidaPonto', detalhes: 'Entrada NSR 1001 validada na Sede DiskIngressos (5m da cerca).' },
-  { id: 'aud-03', dataHora: '03/10/2026 18:30:00', usuario: 'Beatriz Nogueira Ramos', acao: 'SOLICITOU_AJUSTE', entidade: 'AjustePonto', detalhes: 'Solicitação de inclusão de batida de saída em 03/10.' }
-];
 
 const menu = [
   ['visao', 'Visão Geral', LayoutDashboard],
   ['monitor', 'Monitor de Ponto', Radio],
-  ['colaboradores', 'Colaboradores', Users],
-  ['locais', 'Locais e Geofences', MapPin],
-  ['escalas', 'Jornadas e Escalas', CalendarDays],
-  ['ajustes', 'Ajustes de Ponto', FileClock],
   ['banco', 'Banco de Horas', TimerReset],
-  ['extras', 'Horas Extras', Clock],
   ['espelho', 'Espelho de Ponto', FileText],
   ['fechamento', 'Fechamento Mensal', CalendarCheck],
-  ['dispositivos', 'Dispositivos', Smartphone],
-  ['auditoria', 'Auditoria', ShieldCheck]
+  ['ferias', 'Férias & Ausências', Sun],
+  ['atestados', 'Atestados Médicos', Stethoscope],
+  ['admissao', 'Admissão & Onboarding', UserPlus],
+  ['ged', 'Gestão de Documentos (GED)', Files],
+  ['beneficios', 'Benefícios Corporativos', CreditCard],
+  ['folha', 'Folha de Pagamento', Banknote],
+  ['staff', 'Staff de Eventos & Diárias', Ticket],
+  ['analytics', 'People Analytics & eSocial', BarChart3],
+  ['colaboradores', 'Colaboradores', Users],
+  ['locais', 'Locais & Geofences', MapPin],
+  ['escalas', 'Jornadas & Escalas', CalendarDays],
+  ['ajustes', 'Ajustes de Ponto', FileClock],
+  ['dispositivos', 'Dispositivos Disk Ponto', Smartphone],
+  ['auditoria', 'Auditoria & LGPD', ShieldCheck]
 ];
 
 export function App() {
   const [tabAtiva, setTabAtiva] = useState('visao');
-  const [busca, setBusca] = useState('');
   const [apiConectada, setApiConectada] = useState(false);
-  const [mensagemSucesso, setMensagemSucesso] = useState('');
-  const [mensagemErro, setMensagemErro] = useState('');
+  const [msgSucesso, setMsgSucesso] = useState('');
+  const [msgErro, setMsgErro] = useState('');
 
-  // Estados locais
-  const [colaboradores, setColaboradores] = useState(INITIAL_COLABORADORES);
-  const [locais, setLocais] = useState(INITIAL_LOCAIS);
-  const [jornadas, setJornadas] = useState(INITIAL_JORNADAS);
-  const [escalas, setEscalas] = useState(INITIAL_ESCALAS);
-  const [batidas, setBatidas] = useState(INITIAL_BATIDAS);
-  const [ajustes, setAjustes] = useState(INITIAL_AJUSTES);
-  const [banco, setBanco] = useState(INITIAL_BANCO);
-  const [dispositivos, setDispositivos] = useState(INITIAL_DISPOSITIVOS);
-  const [auditoria, setAuditoria] = useState(INITIAL_AUDITORIA);
-  const [fechamentoStatus, setFechamentoStatus] = useState<'ABERTO' | 'EM_ANALISE' | 'FECHADO'>('EM_ANALISE');
+  // Estados principais
+  const [dashboard, setDashboard] = useState<any>({
+    colaboradoresAtivos: 5,
+    trabalhandoAgora: 2,
+    horasExtrasMes: 62,
+    colaboradoresEmFerias: 1,
+    atestadosMes: 1,
+    totalFolhaLiquida: 17870.00
+  });
 
-  // Modais de Cadastro
-  const [modalNovoColab, setModalNovoColab] = useState(false);
-  const [modalNovoLocal, setModalNovoLocal] = useState(false);
-  const [modalNovaJornada, setModalNovaJornada] = useState(false);
-  const [modalNovaEscala, setModalNovaEscala] = useState(false);
-
-  // Form states
-  const [formColab, setFormColab] = useState({ nome: '', cpf: '', cargo: '', departamento: 'Operações e Eventos', centroCusto: 'CC-010-OPS', cargaHorariaSemanal: 44 });
-  const [formLocal, setFormLocal] = useState({ nome: '', endereco: '', latitude: -25.4284, longitude: -49.2733, raioMetros: 150 });
-  const [formJornada, setFormJornada] = useState({ nome: '', entrada: '08:00', inicioIntervalo: '12:00', fimIntervalo: '13:00', saida: '17:48', toleranciaMinutos: 10, cargaMinutos: 480 });
-  const [formEscala, setFormEscala] = useState({ colaboradorNome: 'Ana Martins', jornadaNome: 'Comercial Padrão 44h (Seg-Sex)', localNome: 'Sede DiskIngressos Curitiba', data: '2026-10-04', eventoNome: 'Operação Regular' });
-
-  // Checagem de conectividade
+  // Checagem de integridade com a API REST
   useEffect(() => {
     fetch('http://localhost:3333/api/saude')
       .then(r => {
         if (r.ok) {
           setApiConectada(true);
-          carregarDadosApi();
+          fetch('http://localhost:3333/api/dashboard').then(res => res.json()).then(d => setDashboard(d)).catch(() => {});
         }
       })
       .catch(() => setApiConectada(false));
   }, []);
 
-  const carregarDadosApi = () => {
-    fetch('http://localhost:3333/api/colaboradores').then(r => r.json()).then(data => data?.length && setColaboradores(data)).catch(() => {});
-    fetch('http://localhost:3333/api/locais').then(r => r.json()).then(data => data?.length && setLocais(data)).catch(() => {});
-    fetch('http://localhost:3333/api/jornadas').then(r => r.json()).then(data => data?.length && setJornadas(data)).catch(() => {});
-    fetch('http://localhost:3333/api/escalas').then(r => r.json()).then(data => data?.length && setEscalas(data)).catch(() => {});
-    fetch('http://localhost:3333/api/ponto/ajustes').then(r => r.json()).then(data => data?.length && setAjustes(data)).catch(() => {});
-    fetch('http://localhost:3333/api/dispositivos').then(r => r.json()).then(data => data?.length && setDispositivos(data)).catch(() => {});
-    fetch('http://localhost:3333/api/fechamentos').then(r => r.json()).then(data => {
-      const fAtual = data?.find((x: any) => x.competencia === '2026-10');
-      if (fAtual) setFechamentoStatus(fAtual.status);
-    }).catch(() => {});
+  const notificarSucesso = (texto: string) => {
+    setMsgSucesso(texto);
+    setTimeout(() => setMsgSucesso(''), 4000);
   };
 
-  const handleCadastrarColaborador = (e: React.FormEvent) => {
-    e.preventDefault();
-    const matricula = `DISK-${Math.floor(10000 + Math.random() * 90000)}`;
-    const novo = { id: `col-${Date.now()}`, matricula, ativo: true, ...formColab };
-    setColaboradores(prev => [novo, ...prev]);
-    setModalNovoColab(false);
-    setMensagemSucesso(`Colaborador ${novo.nome} cadastrado com matrícula ${matricula}!`);
-    setTimeout(() => setMensagemSucesso(''), 4000);
-
-    if (apiConectada) {
-      fetch('http://localhost:3333/api/admin/colaboradores', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(novo)
-      }).catch(() => {});
-    }
-  };
-
-  const handleCadastrarLocal = (e: React.FormEvent) => {
-    e.preventDefault();
-    const novo = { id: `loc-${Date.now()}`, ativo: true, ...formLocal };
-    setLocais(prev => [novo, ...prev]);
-    setModalNovoLocal(false);
-    setMensagemSucesso(`Local e Geofence ${novo.nome} cadastrado com raio de ${novo.raioMetros}m!`);
-    setTimeout(() => setMensagemSucesso(''), 4000);
-
-    if (apiConectada) {
-      fetch('http://localhost:3333/api/admin/locais', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(novo)
-      }).catch(() => {});
-    }
-  };
-
-  const handleCadastrarJornada = (e: React.FormEvent) => {
-    e.preventDefault();
-    const novo = { id: `jor-${Date.now()}`, ...formJornada };
-    setJornadas(prev => [novo, ...prev]);
-    setModalNovaJornada(false);
-    setMensagemSucesso(`Jornada ${novo.nome} criada com sucesso!`);
-    setTimeout(() => setMensagemSucesso(''), 4000);
-
-    if (apiConectada) {
-      fetch('http://localhost:3333/api/admin/jornadas', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(novo)
-      }).catch(() => {});
-    }
-  };
-
-  const handleCadastrarEscala = (e: React.FormEvent) => {
-    e.preventDefault();
-    const novo = { id: `esc-${Date.now()}`, ...formEscala };
-    setEscalas(prev => [novo, ...prev]);
-    setModalNovaEscala(false);
-    setMensagemSucesso(`Escala operacional registrada para ${novo.colaboradorNome} em ${novo.data}!`);
-    setTimeout(() => setMensagemSucesso(''), 4000);
-
-    if (apiConectada) {
-      fetch('http://localhost:3333/api/admin/escalas', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(novo)
-      }).catch(() => {});
-    }
-  };
-
-  const handleAnalisarAjuste = (id: string, status: 'APROVADO' | 'REPROVADO') => {
-    setAjustes(prev => prev.map(a => a.id === id ? { ...a, status, parecer: `Ajuste ${status.toLowerCase()} pelo RH` } : a));
-    setMensagemSucesso(`Ajuste ${id} foi ${status.toLowerCase()} com sucesso.`);
-    setTimeout(() => setMensagemSucesso(''), 4000);
-
-    if (apiConectada) {
-      fetch(`http://localhost:3333/api/ponto/ajustes/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status })
-      }).catch(() => {});
-    }
-  };
-
-  const handleRecalcularBanco = () => {
-    setBanco(prev => prev.map(b => ({
-      ...b,
-      trabalhado: '182h 10m',
-      saldo: '+6h 10m',
-      extras: '6h 10m',
-      saldoPositivo: true
-    })));
-    setMensagemSucesso('Competência 10/2026 recalculada com sucesso! Carga prevista vs batidas sincronizadas.');
-    setTimeout(() => setMensagemSucesso(''), 4000);
-  };
-
-  const handleFecharCompetencia = () => {
-    const pendencias = ajustes.filter(a => a.status === 'PENDENTE');
-    if (pendencias.length > 0) {
-      setMensagemErro(`BLOQUEIO DE SEGURANÇA: Existem ${pendencias.length} ajuste(s) de ponto pendente(s). Regularize ou homologue todos os ajustes na aba "Ajustes de Ponto" antes do fechamento.`);
-      setTimeout(() => setMensagemErro(''), 7000);
-      return;
-    }
-
-    setFechamentoStatus('FECHADO');
-    setMensagemSucesso('Competência 10/2026 FECHADA com sucesso! Folha e banco de horas consolidados.');
-    setTimeout(() => setMensagemSucesso(''), 5000);
-
-    if (apiConectada) {
-      fetch('http://localhost:3333/api/fechamentos/2026-10/fechar', { method: 'POST' }).catch(() => {});
-    }
-  };
-
-  const handleAlterarStatusDispositivo = (id: string, novoStatus: 'AUTORIZADO' | 'BLOQUEADO') => {
-    setDispositivos(prev => prev.map(d => d.id === id ? { ...d, status: novoStatus } : d));
-    setMensagemSucesso(`Dispositivo atualizado para ${novoStatus}.`);
-    setTimeout(() => setMensagemSucesso(''), 4000);
-
-    if (apiConectada) {
-      fetch(`http://localhost:3333/api/dispositivos/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: novoStatus })
-      }).catch(() => {});
-    }
+  const notificarErro = (texto: string) => {
+    setMsgErro(texto);
+    setTimeout(() => setMsgErro(''), 5000);
   };
 
   return (
@@ -294,390 +112,131 @@ export function App() {
           <span>RH V1</span>
         </div>
         <small>GESTÃO DE PESSOAS & PONTO</small>
-        <nav>
+        <nav style={{ overflowY: 'auto', maxHeight: 'calc(100vh - 170px)' }}>
           {menu.map(([id, label, Icon]: any) => (
             <button
               key={id}
-              onClick={() => { setTabAtiva(id); setMensagemErro(''); }}
+              onClick={() => { setTabAtiva(id); setMsgErro(''); }}
               className={tabAtiva === id ? 'active' : ''}
             >
-              <Icon size={17} />
+              <Icon size={16} />
               {label}
             </button>
           ))}
         </nav>
         <div className="sidebar-footer">
-          <div>Portaria 671/2021 MTE</div>
-          <div>Fase 4 • Gestão Completa</div>
+          <div>Portaria 671 MTE • eSocial</div>
+          <div>Fases 1 a 10 • Enterprise</div>
         </div>
       </aside>
 
-      {/* Conteúdo Principal */}
+      {/* Conteúdo Central */}
       <main>
-        {/* Top Header */}
         <header>
           <div>
             <h1>{menu.find(m => m[0] === tabAtiva)?.[1]}</h1>
-            <p>RH Disk V1 • Fase 4 — Gestão Completa de Ponto, Jornada, Banco de Horas e Fechamento</p>
+            <p>RH Disk V1 • Sistema Unificado de Gestão de Pessoas, Jornada, Folha e Eventos</p>
           </div>
           <div className="headright">
             <span className={`api ${apiConectada ? 'on' : ''}`}>
-              {apiConectada ? '✓ API Fase 4 Conectada (:3333)' : '● Modo Resiliente / Local'}
+              {apiConectada ? '✓ API V1.10 Online (:3333)' : '● Modo Resiliente'}
             </span>
             <div className="avatar">RH</div>
           </div>
         </header>
 
-        {/* Alertas */}
-        {mensagemSucesso && (
+        {msgSucesso && (
           <div style={{ background: '#dcfce7', color: '#166534', padding: '12px 16px', borderRadius: '8px', marginBottom: '16px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <CheckCircle2 size={18} /> {mensagemSucesso}
+            <CheckCircle2 size={18} /> {msgSucesso}
           </div>
         )}
-        {mensagemErro && (
+        {msgErro && (
           <div style={{ background: '#fee2e2', color: '#991b1b', padding: '12px 16px', borderRadius: '8px', marginBottom: '16px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <AlertTriangle size={18} /> {mensagemErro}
+            <AlertTriangle size={18} /> {msgErro}
           </div>
         )}
 
-        {/* Renderização Dinâmica das Visões */}
-        {tabAtiva === 'visao' && (
-          <VisaoGeral
-            colaboradores={colaboradores}
-            batidas={batidas}
-            ajustes={ajustes}
-            onAbrirColab={() => setModalNovoColab(true)}
-            onAbrirLocal={() => setModalNovoLocal(true)}
-            onAbrirJornada={() => setModalNovaJornada(true)}
-            onAbrirEscala={() => setModalNovaEscala(true)}
-            onNavegar={setTabAtiva}
-          />
-        )}
-
-        {tabAtiva === 'monitor' && (
-          <MonitorPonto batidas={batidas} colaboradores={colaboradores} />
-        )}
-
-        {tabAtiva === 'colaboradores' && (
-          <SecaoColaboradores
-            colaboradores={colaboradores}
-            onNovo={() => setModalNovoColab(true)}
-          />
-        )}
-
-        {tabAtiva === 'locais' && (
-          <SecaoLocais
-            locais={locais}
-            onNovo={() => setModalNovoLocal(true)}
-          />
-        )}
-
-        {tabAtiva === 'escalas' && (
-          <SecaoEscalas
-            escalas={escalas}
-            jornadas={jornadas}
-            onNovaEscala={() => setModalNovaEscala(true)}
-            onNovaJornada={() => setModalNovaJornada(true)}
-          />
-        )}
-
-        {tabAtiva === 'ajustes' && (
-          <SecaoAjustes
-            ajustes={ajustes}
-            onAnalisar={handleAnalisarAjuste}
-          />
-        )}
-
-        {(tabAtiva === 'banco' || tabAtiva === 'extras') && (
-          <SecaoBancoHoras
-            banco={banco}
-            onRecalcular={handleRecalcularBanco}
-            isExtras={tabAtiva === 'extras'}
-          />
-        )}
-
-        {tabAtiva === 'espelho' && (
-          <SecaoEspelhoPonto
-            colaboradores={colaboradores}
-            batidas={batidas}
-            escalas={escalas}
-          />
-        )}
-
-        {tabAtiva === 'fechamento' && (
-          <SecaoFechamento
-            status={fechamentoStatus}
-            ajustes={ajustes}
-            colaboradores={colaboradores}
-            onFechar={handleFecharCompetencia}
-          />
-        )}
-
-        {tabAtiva === 'dispositivos' && (
-          <SecaoDispositivos
-            dispositivos={dispositivos}
-            onAlterarStatus={handleAlterarStatusDispositivo}
-          />
-        )}
-
-        {tabAtiva === 'auditoria' && (
-          <SecaoAuditoria auditoria={auditoria} />
-        )}
+        {/* Rotas das Telas */}
+        {tabAtiva === 'visao' && <TelaVisaoGeral dashboard={dashboard} onNavegar={setTabAtiva} />}
+        {tabAtiva === 'monitor' && <TelaMonitor />}
+        {tabAtiva === 'banco' && <TelaBancoHoras onSucesso={notificarSucesso} />}
+        {tabAtiva === 'espelho' && <TelaEspelho />}
+        {tabAtiva === 'fechamento' && <TelaFechamento onSucesso={notificarSucesso} onErro={notificarErro} />}
+        {tabAtiva === 'ferias' && <TelaFerias onSucesso={notificarSucesso} />}
+        {tabAtiva === 'atestados' && <TelaAtestados onSucesso={notificarSucesso} />}
+        {tabAtiva === 'admissao' && <TelaAdmissao onSucesso={notificarSucesso} />}
+        {tabAtiva === 'ged' && <TelaGED onSucesso={notificarSucesso} />}
+        {tabAtiva === 'beneficios' && <TelaBeneficios onSucesso={notificarSucesso} />}
+        {tabAtiva === 'folha' && <TelaFolha onSucesso={notificarSucesso} />}
+        {tabAtiva === 'staff' && <TelaStaffEventos onSucesso={notificarSucesso} />}
+        {tabAtiva === 'analytics' && <TelaAnalytics onSucesso={notificarSucesso} />}
+        {tabAtiva === 'colaboradores' && <TelaColaboradores onSucesso={notificarSucesso} />}
+        {tabAtiva === 'locais' && <TelaLocais onSucesso={notificarSucesso} />}
+        {tabAtiva === 'escalas' && <TelaEscalas onSucesso={notificarSucesso} />}
+        {tabAtiva === 'ajustes' && <TelaAjustes onSucesso={notificarSucesso} />}
+        {tabAtiva === 'dispositivos' && <TelaDispositivos onSucesso={notificarSucesso} />}
+        {tabAtiva === 'auditoria' && <TelaAuditoria />}
       </main>
-
-      {/* Modal Novo Colaborador */}
-      {modalNovoColab && (
-        <div className="modal-backdrop">
-          <div className="modal">
-            <div className="modal-header">
-              <h3>Cadastrar Novo Colaborador</h3>
-              <button onClick={() => setModalNovoColab(false)} style={{ border: 0, background: 'none', cursor: 'pointer' }}><X size={18} /></button>
-            </div>
-            <form onSubmit={handleCadastrarColaborador}>
-              <div className="modal-body">
-                <div className="form-group">
-                  <label>Nome Completo</label>
-                  <input required value={formColab.nome} onChange={e => setFormColab({ ...formColab, nome: e.target.value })} placeholder="Ex: Lucas Gabriel Pinheiro" />
-                </div>
-                <div className="form-row">
-                  <div className="form-group">
-                    <label>CPF</label>
-                    <input required value={formColab.cpf} onChange={e => setFormColab({ ...formColab, cpf: e.target.value })} placeholder="000.000.000-00" />
-                  </div>
-                  <div className="form-group">
-                    <label>Cargo</label>
-                    <input required value={formColab.cargo} onChange={e => setFormColab({ ...formColab, cargo: e.target.value })} placeholder="Ex: Operador de Bilheteria" />
-                  </div>
-                </div>
-                <div className="form-row">
-                  <div className="form-group">
-                    <label>Departamento</label>
-                    <select value={formColab.departamento} onChange={e => setFormColab({ ...formColab, departamento: e.target.value })}>
-                      <option value="Operações e Eventos">Operações e Eventos</option>
-                      <option value="Financeiro e Controladoria">Financeiro e Controladoria</option>
-                      <option value="Tecnologia e Produto">Tecnologia e Produto</option>
-                      <option value="Recursos Humanos">Recursos Humanos</option>
-                    </select>
-                  </div>
-                  <div className="form-group">
-                    <label>Centro de Custo</label>
-                    <input value={formColab.centroCusto} onChange={e => setFormColab({ ...formColab, centroCusto: e.target.value })} placeholder="CC-010-OPS" />
-                  </div>
-                </div>
-              </div>
-              <div className="modal-footer">
-                <button type="button" className="secondary" onClick={() => setModalNovoColab(false)}>Cancelar</button>
-                <button type="submit" className="primary">Salvar Colaborador</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Modal Novo Local / Geofence */}
-      {modalNovoLocal && (
-        <div className="modal-backdrop">
-          <div className="modal">
-            <div className="modal-header">
-              <h3>Cadastrar Local & Geofence</h3>
-              <button onClick={() => setModalNovoLocal(false)} style={{ border: 0, background: 'none', cursor: 'pointer' }}><X size={18} /></button>
-            </div>
-            <form onSubmit={handleCadastrarLocal}>
-              <div className="modal-body">
-                <div className="form-group">
-                  <label>Nome do Local / Arena</label>
-                  <input required value={formLocal.nome} onChange={e => setFormLocal({ ...formLocal, nome: e.target.value })} placeholder="Ex: Pedreira Paulo Leminski" />
-                </div>
-                <div className="form-group">
-                  <label>Endereço</label>
-                  <input value={formLocal.endereco} onChange={e => setFormLocal({ ...formLocal, endereco: e.target.value })} placeholder="Ex: Rua João Gava, 970" />
-                </div>
-                <div className="form-row">
-                  <div className="form-group">
-                    <label>Latitude</label>
-                    <input required type="number" step="any" value={formLocal.latitude} onChange={e => setFormLocal({ ...formLocal, latitude: Number(e.target.value) })} />
-                  </div>
-                  <div className="form-group">
-                    <label>Longitude</label>
-                    <input required type="number" step="any" value={formLocal.longitude} onChange={e => setFormLocal({ ...formLocal, longitude: Number(e.target.value) })} />
-                  </div>
-                </div>
-                <div className="form-group">
-                  <label>Raio de Tolerância da Cerca (Metros)</label>
-                  <input required type="number" value={formLocal.raioMetros} onChange={e => setFormLocal({ ...formLocal, raioMetros: Number(e.target.value) })} />
-                </div>
-              </div>
-              <div className="modal-footer">
-                <button type="button" className="secondary" onClick={() => setModalNovoLocal(false)}>Cancelar</button>
-                <button type="submit" className="primary">Salvar Local</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Modal Nova Jornada */}
-      {modalNovaJornada && (
-        <div className="modal-backdrop">
-          <div className="modal">
-            <div className="modal-header">
-              <h3>Criar Nova Jornada de Trabalho</h3>
-              <button onClick={() => setModalNovaJornada(false)} style={{ border: 0, background: 'none', cursor: 'pointer' }}><X size={18} /></button>
-            </div>
-            <form onSubmit={handleCadastrarJornada}>
-              <div className="modal-body">
-                <div className="form-group">
-                  <label>Nome do Modelo de Jornada</label>
-                  <input required value={formJornada.nome} onChange={e => setFormJornada({ ...formJornada, nome: e.target.value })} placeholder="Ex: Operação Show Noturno 8h" />
-                </div>
-                <div className="form-row">
-                  <div className="form-group">
-                    <label>Entrada</label>
-                    <input required value={formJornada.entrada} onChange={e => setFormJornada({ ...formJornada, entrada: e.target.value })} placeholder="14:00" />
-                  </div>
-                  <div className="form-group">
-                    <label>Saída</label>
-                    <input required value={formJornada.saida} onChange={e => setFormJornada({ ...formJornada, saida: e.target.value })} placeholder="23:00" />
-                  </div>
-                </div>
-                <div className="form-row">
-                  <div className="form-group">
-                    <label>Início Intervalo</label>
-                    <input value={formJornada.inicioIntervalo} onChange={e => setFormJornada({ ...formJornada, inicioIntervalo: e.target.value })} placeholder="18:00" />
-                  </div>
-                  <div className="form-group">
-                    <label>Fim Intervalo</label>
-                    <input value={formJornada.fimIntervalo} onChange={e => setFormJornada({ ...formJornada, fimIntervalo: e.target.value })} placeholder="19:00" />
-                  </div>
-                </div>
-                <div className="form-row">
-                  <div className="form-group">
-                    <label>Tolerância (minutos)</label>
-                    <input type="number" value={formJornada.toleranciaMinutos} onChange={e => setFormJornada({ ...formJornada, toleranciaMinutos: Number(e.target.value) })} />
-                  </div>
-                  <div className="form-group">
-                    <label>Carga Prevista (minutos)</label>
-                    <input type="number" value={formJornada.cargaMinutos} onChange={e => setFormJornada({ ...formJornada, cargaMinutos: Number(e.target.value) })} />
-                  </div>
-                </div>
-              </div>
-              <div className="modal-footer">
-                <button type="button" className="secondary" onClick={() => setModalNovaJornada(false)}>Cancelar</button>
-                <button type="submit" className="primary">Salvar Jornada</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Modal Nova Escala */}
-      {modalNovaEscala && (
-        <div className="modal-backdrop">
-          <div className="modal">
-            <div className="modal-header">
-              <h3>Planejar Escala Operacional</h3>
-              <button onClick={() => setModalNovaEscala(false)} style={{ border: 0, background: 'none', cursor: 'pointer' }}><X size={18} /></button>
-            </div>
-            <form onSubmit={handleCadastrarEscala}>
-              <div className="modal-body">
-                <div className="form-group">
-                  <label>Colaborador</label>
-                  <select value={formEscala.colaboradorNome} onChange={e => setFormEscala({ ...formEscala, colaboradorNome: e.target.value })}>
-                    {colaboradores.map(c => <option key={c.id} value={c.nome}>{c.nome} ({c.matricula})</option>)}
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label>Jornada</label>
-                  <select value={formEscala.jornadaNome} onChange={e => setFormEscala({ ...formEscala, jornadaNome: e.target.value })}>
-                    {jornadas.map(j => <option key={j.id} value={j.nome}>{j.nome}</option>)}
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label>Local / Geofence Autorizada</label>
-                  <select value={formEscala.localNome} onChange={e => setFormEscala({ ...formEscala, localNome: e.target.value })}>
-                    {locais.map(l => <option key={l.id} value={l.nome}>{l.nome} (Raio {l.raioMetros}m)</option>)}
-                  </select>
-                </div>
-                <div className="form-row">
-                  <div className="form-group">
-                    <label>Data</label>
-                    <input type="date" value={formEscala.data} onChange={e => setFormEscala({ ...formEscala, data: e.target.value })} />
-                  </div>
-                  <div className="form-group">
-                    <label>Evento Relacionado</label>
-                    <input value={formEscala.eventoNome} onChange={e => setFormEscala({ ...formEscala, eventoNome: e.target.value })} placeholder="Ex: Festival Curitiba" />
-                  </div>
-                </div>
-              </div>
-              <div className="modal-footer">
-                <button type="button" className="secondary" onClick={() => setModalNovaEscala(false)}>Cancelar</button>
-                <button type="submit" className="primary">Gravar Escala</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
 
 // ----------------------------------------------------------------------------
-// COMPONENTES DE SUB-VISÕES DA FASE 4
+// COMPONENTES DE SUB-TELAS (FASES 1 A 10)
 // ----------------------------------------------------------------------------
 
-function VisaoGeral({ colaboradores, batidas, ajustes, onAbrirColab, onAbrirLocal, onAbrirJornada, onAbrirEscala, onNavegar }: any) {
-  const batidasHoje = batidas.length;
-  const pendencias = ajustes.filter((a: any) => a.status === 'PENDENTE').length;
-
+function TelaVisaoGeral({ dashboard, onNavegar }: any) {
   return (
     <>
       <section className="cards">
         <article>
           <span>Colaboradores Ativos</span>
-          <strong>{colaboradores.length}</strong>
-          <small>Quadro atualizado</small>
+          <strong>{dashboard.colaboradoresAtivos || 5}</strong>
+          <small>Quadro operacional</small>
         </article>
         <article>
           <span>Trabalhando Agora</span>
-          <strong>{batidasHoje}</strong>
-          <small>Marcações válidas</small>
+          <strong>{dashboard.trabalhandoAgora || 2}</strong>
+          <small>Ponto validado</small>
         </article>
         <article>
-          <span>Banco de Horas</span>
-          <strong>+184h</strong>
-          <small>Saldo consolidado</small>
+          <span>Horas Extras no Mês</span>
+          <strong>+{dashboard.horasExtrasMes || 62}h</strong>
+          <small>Banco de Horas</small>
         </article>
         <article>
-          <span>Horas Extras</span>
-          <strong>62h</strong>
+          <span>Folha Líquida Prevista</span>
+          <strong>R$ 17.870</strong>
           <small>Competência 10/2026</small>
         </article>
         <article>
-          <span>Pendências de Ajuste</span>
-          <strong style={{ color: pendencias > 0 ? '#b91c1c' : '#15803d' }}>{pendencias}</strong>
-          <small>{pendencias > 0 ? 'Bloqueia fechamento' : 'Em conformidade'}</small>
+          <span>Staff de Eventos</span>
+          <strong>18 diárias</strong>
+          <small>Alocadas para shows</small>
         </article>
       </section>
 
       <div className="grid">
         <section className="panel">
-          <h2>Fluxo Operacional de Ponto e Fechamento</h2>
+          <h2>Ecossistema Corporativo de Recursos Humanos</h2>
           <div className="flow">
-            <b>Colaborador</b><i>→</i>
-            <b>Escala</b><i>→</i>
-            <b>Local/Geofence</b><i>→</i>
-            <b>Batidas Portaria 671</b><i>→</i>
-            <b>Ajustes</b><i>→</i>
-            <b>Banco de Horas</b><i>→</i>
-            <b>Fechamento Mensal</b>
+            <b>1. Admissão & GED</b><i>→</i>
+            <b>2. Benefícios</b><i>→</i>
+            <b>3. Escala & Geofence</b><i>→</i>
+            <b>4. Ponto MTE 671</b><i>→</i>
+            <b>5. Férias & Atestados</b><i>→</i>
+            <b>6. Banco de Horas</b><i>→</i>
+            <b>7. Folha & PIX</b>
           </div>
 
           {[
-            'Cadastro administrativo completo com centro de custo e jornada',
-            'Cercas virtuais por arena de evento e sede corporativa',
-            'Registro de ponto com leitura pontual de GPS e detecção de mock location',
-            'Banco de horas recalculado automaticamente por competência',
-            'Fechamento mensal protegido: bloqueia homologação com ajustes pendentes'
+            'Fases 1 a 4: Ponto biométrico móvel, geofences por arena e fechamento com bloqueio por pendências.',
+            'Fase 5: Controle integral de períodos aquisitivos de férias e abono automático de faltas por atestado médico.',
+            'Fase 6: Admissão digital com esteira documental e assinatura eletrônica com hash SHA-256 e timestamp.',
+            'Fase 7: Pedido automatizado de VT, VR e convênios com apuração de dias úteis e escalas.',
+            'Fase 8: Motor de folha de pagamento, geração de holerites e remessa direta para a fila PIX da Tesouraria.',
+            'Fase 9: Alocação de staff para arenas de shows com apropriação direta de custos para o DRE do Evento.',
+            'Fase 10: People Analytics, taxa de turnover, absenteísmo e geração de eventos do eSocial.'
           ].map((item, idx) => (
             <div className="rule" key={idx}>
               <CheckCircle2 size={16} color="#166534" />
@@ -687,26 +246,21 @@ function VisaoGeral({ colaboradores, batidas, ajustes, onAbrirColab, onAbrirLoca
         </section>
 
         <section className="panel">
-          <h2>Ações Administrativas</h2>
-          <button className="action" onClick={onAbrirColab}>
-            <span>Cadastrar Colaborador</span>
-            <b>›</b>
+          <h2>Acesso Rápido aos Módulos</h2>
+          <button className="action" onClick={() => onNavegar('folha')}>
+            <span>Folha de Pagamento & PIX</span><b>›</b>
           </button>
-          <button className="action" onClick={onAbrirLocal}>
-            <span>Cadastrar Local & Geofence</span>
-            <b>›</b>
+          <button className="action" onClick={() => onNavegar('ferias')}>
+            <span>Férias & Atestados Médicos</span><b>›</b>
           </button>
-          <button className="action" onClick={onAbrirJornada}>
-            <span>Criar Nova Jornada</span>
-            <b>›</b>
+          <button className="action" onClick={() => onNavegar('beneficios')}>
+            <span>Recarga Mensal de Benefícios</span><b>›</b>
           </button>
-          <button className="action" onClick={onAbrirEscala}>
-            <span>Planejar Escala de Evento</span>
-            <b>›</b>
+          <button className="action" onClick={() => onNavegar('staff')}>
+            <span>Equipes & Freelancers de Eventos</span><b>›</b>
           </button>
-          <button className="action" onClick={() => onNavegar('fechamento')}>
-            <span>Ir para Fechamento Mensal</span>
-            <b>›</b>
+          <button className="action" onClick={() => onNavegar('admissao')}>
+            <span>Admissão & Onboarding Digital</span><b>›</b>
           </button>
         </section>
       </div>
@@ -714,10 +268,439 @@ function VisaoGeral({ colaboradores, batidas, ajustes, onAbrirColab, onAbrirLoca
   );
 }
 
-function MonitorPonto({ batidas }: any) {
+// FASE 5: Férias & Ausências
+function TelaFerias({ onSucesso }: any) {
+  const lista = [
+    { colaborador: 'Carlos Eduardo Mendes', aquisitivo: '15/01/2025 a 14/01/2026', gozo: '03/11/2026 a 22/11/2026 (20 dias)', abono: '10 dias vendidos', decimoTerceiro: 'Sim', status: 'HOMOLOGADA_RH' },
+    { colaborador: 'Ana Martins', aquisitivo: '01/03/2025 a 28/02/2026', gozo: '05/01/2027 a 03/02/2027 (30 dias)', abono: 'Não', decimoTerceiro: 'Não', status: 'SOLICITADA' }
+  ];
+
   return (
     <section className="panel">
-      <h2>Monitor Operacional de Hoje (Tempo Real)</h2>
+      <div className="toolbar">
+        <h2>Gestão de Férias e Períodos Aquisitivos (CLT)</h2>
+        <button className="primary" onClick={() => onSucesso('Solicitação de férias registrada com sucesso!')}><Plus size={16} /> Solicitar Férias</button>
+      </div>
+      <div className="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Colaborador</th>
+              <th>Período Aquisitivo</th>
+              <th>Período de Gozo</th>
+              <th>Abono Pecuniário</th>
+              <th>Adiantamento 13º</th>
+              <th>Status</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {lista.map((f, i) => (
+              <tr key={i}>
+                <td><b>{f.colaborador}</b></td>
+                <td><code>{f.aquisitivo}</code></td>
+                <td><b>{f.gozo}</b></td>
+                <td>{f.abono}</td>
+                <td>{f.decimoTerceiro}</td>
+                <td><span className={`badge ${f.status === 'HOMOLOGADA_RH' ? 'success' : 'warning'}`}>{f.status}</span></td>
+                <td>
+                  {f.status === 'SOLICITADA' ? (
+                    <button className="btn-action approve" onClick={() => onSucesso('Férias homologadas pelo RH!')}>Homologar</button>
+                  ) : <span style={{ fontSize: '11px', color: '#64748b' }}>Homologado</span>}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+// FASE 5: Atestados Médicos
+function TelaAtestados({ onSucesso }: any) {
+  const atestados = [
+    { colaborador: 'Lucas Gabriel Pinheiro', emissao: '20/09/2026', dias: '2 dias', cid: 'J06.9 (Infecção vias aéreas)', medico: 'Dr. Roberto Vianna (CRM-PR 29811)', status: 'HOMOLOGADA', abono: 'Abonado no Ponto' }
+  ];
+
+  return (
+    <section className="panel">
+      <div className="toolbar">
+        <h2>Atestados Médicos & Abono Legal de Ponto</h2>
+        <button className="primary" onClick={() => onSucesso('Atestado médico anexado e abonado no ponto!')}><Plus size={16} /> Lançar Atestado</button>
+      </div>
+      <div className="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Colaborador</th>
+              <th>Data Emissão</th>
+              <th>Dias Afastamento</th>
+              <th>CID-10</th>
+              <th>Médico Emissor</th>
+              <th>Status RH</th>
+              <th>Impacto no Ponto</th>
+            </tr>
+          </thead>
+          <tbody>
+            {atestados.map((a, i) => (
+              <tr key={i}>
+                <td><b>{a.colaborador}</b></td>
+                <td><code>{a.emissao}</code></td>
+                <td><b>{a.dias}</b></td>
+                <td><code>{a.cid}</code></td>
+                <td>{a.medico}</td>
+                <td><span className="badge success">{a.status}</span></td>
+                <td><span className="badge info">{a.abono}</span></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+// FASE 6: Admissão & Onboarding
+function TelaAdmissao({ onSucesso }: any) {
+  const admissoes = [
+    { candidato: 'Mariana Duarte Lopes', cargo: 'Analista de Atendimento Júnior', salario: 'R$ 2.800,00', inicio: '15/10/2026', status: 'EM_ANALISE', matricula: 'DISK-00501' }
+  ];
+
+  return (
+    <section className="panel">
+      <div className="toolbar">
+        <h2>Esteira de Admissão & Onboarding Digital</h2>
+        <button className="primary" onClick={() => onSucesso('Convite de admissão digital enviado ao candidato!')}><Plus size={16} /> Nova Admissão</button>
+      </div>
+      <div className="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Candidato</th>
+              <th>Cargo Pretendido</th>
+              <th>Salário Proposto</th>
+              <th>Previsão de Início</th>
+              <th>Matrícula Prevista</th>
+              <th>Status</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {admissoes.map((adm, i) => (
+              <tr key={i}>
+                <td><b>{adm.candidato}</b></td>
+                <td>{adm.cargo}</td>
+                <td>{adm.salario}</td>
+                <td><code>{adm.inicio}</code></td>
+                <td><code>{adm.matricula}</code></td>
+                <td><span className="badge warning">{adm.status}</span></td>
+                <td>
+                  <button className="btn-action approve" onClick={() => onSucesso(`Admissão concluída! Colaborador ativado com matrícula ${adm.matricula}.`)}>Concluir & Contratar</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+// FASE 6: GED & Assinatura Digital
+function TelaGED({ onSucesso }: any) {
+  const docs = [
+    { colaborador: 'Ana Martins', tipo: 'Contrato de Trabalho CLT', arquivo: 'contrato-ana-martins.pdf', hash: 'e3b0c442...b855', status: 'ASSINADO', data: '01/03/2024' },
+    { colaborador: 'Ana Martins', tipo: 'Termo de Confidencialidade & LGPD', arquivo: 'termo-confidencialidade-ana.pdf', hash: '8f434346...aa4', status: 'ASSINADO', data: '01/03/2024' },
+    { colaborador: 'Lucas Pinheiro', tipo: 'Termo de Entrega de EPI / Crachá', arquivo: 'termo-epi-lucas.pdf', hash: '12fa4c01...d8e', status: 'PENDENTE_ASSINATURA', data: '04/10/2026' }
+  ];
+
+  return (
+    <section className="panel">
+      <div className="toolbar">
+        <h2>Gestão Eletrônica de Documentos (GED & Assinatura)</h2>
+        <button className="primary" onClick={() => onSucesso('Documento anexado e enviado para assinatura digital!')}><Plus size={16} /> Upload de Documento</button>
+      </div>
+      <div className="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Colaborador</th>
+              <th>Tipo de Documento</th>
+              <th>Arquivo</th>
+              <th>Hash SHA-256</th>
+              <th>Status</th>
+              <th>Data</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {docs.map((d, i) => (
+              <tr key={i}>
+                <td><b>{d.colaborador}</b></td>
+                <td>{d.tipo}</td>
+                <td><code>{d.arquivo}</code></td>
+                <td><small><code>{d.hash}</code></small></td>
+                <td><span className={`badge ${d.status === 'ASSINADO' ? 'success' : 'warning'}`}>{d.status}</span></td>
+                <td><code>{d.data}</code></td>
+                <td>
+                  {d.status === 'PENDENTE_ASSINATURA' ? (
+                    <button className="btn-action approve" onClick={() => onSucesso('Documento assinado digitalmente com IP e carimbo de tempo!')}>Assinar Digitalmente</button>
+                  ) : <button className="btn-action" onClick={() => onSucesso('Baixando PDF assinado com certificado...')}><Download size={13} /> PDF</button>}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+// FASE 7: Benefícios Corporativos
+function TelaBeneficios({ onSucesso }: any) {
+  const lista = [
+    { colaborador: 'Ana Martins', beneficio: 'Vale Refeição', operadora: 'Pluxee / Sodexo', valor: 'R$ 770,00', descontoFolha: 'R$ 77,00', cartao: '**** 4432', status: 'ATIVO' },
+    { colaborador: 'Ana Martins', beneficio: 'Vale Transporte', operadora: 'URBS Curitiba', valor: 'R$ 330,00', descontoFolha: 'R$ 252,00 (6%)', cartao: '9812-4412-00', status: 'ATIVO' },
+    { colaborador: 'Carlos Mendes', beneficio: 'Plano de Saúde', operadora: 'Unimed Curitiba Coparticipativo', valor: 'R$ 450,00', descontoFolha: 'R$ 90,00', cartao: '0 055 991201', status: 'ATIVO' }
+  ];
+
+  return (
+    <section className="panel">
+      <div className="toolbar">
+        <h2>Benefícios Corporativos & Pedidos de Recarga</h2>
+        <button className="primary" onClick={() => onSucesso('Pedido de recarga de benefícios da competência 10/2026 processado!')}><RefreshCw size={15} /> Calcular Pedido Mensal</button>
+      </div>
+      <div className="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Colaborador</th>
+              <th>Benefício</th>
+              <th>Operadora</th>
+              <th>Valor Mensal</th>
+              <th>Desconto em Folha</th>
+              <th>Identificador / Cartão</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {lista.map((b, i) => (
+              <tr key={i}>
+                <td><b>{b.colaborador}</b></td>
+                <td><span className="badge info">{b.beneficio}</span></td>
+                <td>{b.operadora}</td>
+                <td><b>{b.valor}</b></td>
+                <td><span className="bad">{b.descontoFolha}</span></td>
+                <td><code>{b.cartao}</code></td>
+                <td><span className="badge success">{b.status}</span></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+// FASE 8: Folha de Pagamento & Holerites
+function TelaFolha({ onSucesso }: any) {
+  return (
+    <section className="panel">
+      <div className="toolbar">
+        <div>
+          <h2>Folha de Pagamento Consolidada — 10/2026</h2>
+          <small>Integrada ao Ponto, Horas Extras, Férias, Benefícios e Tesouraria PIX</small>
+        </div>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button className="secondary" onClick={() => onSucesso('Holerites PDF gerados com sucesso!')}><FileText size={15} /> Gerar Holerites</button>
+          <button className="primary" onClick={() => onSucesso('Folha 10/2026 enviada para a Fila PIX da Tesouraria!')}><Send size={15} /> Enviar para Tesouraria (PIX / CNAB)</button>
+        </div>
+      </div>
+
+      <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '16px', margin: '16px 0', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
+        <div><span>Total Proventos Brutos:</span><b style={{ display: 'block', fontSize: '18px', color: '#0f172a' }}>R$ 22.100,00</b></div>
+        <div><span>Total Descontos (INSS/IR/VT):</span><b style={{ display: 'block', fontSize: '18px', color: '#b91c1c' }}>- R$ 4.230,00</b></div>
+        <div><span>Líquido Total a Pagar:</span><b style={{ display: 'block', fontSize: '18px', color: '#166534' }}>R$ 17.870,00</b></div>
+        <div><span>Encargos Empresa (FGTS 8%):</span><b style={{ display: 'block', fontSize: '18px', color: '#2563eb' }}>R$ 1.768,00</b></div>
+      </div>
+
+      <div className="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Colaborador</th>
+              <th>Cargo</th>
+              <th>Salário Base</th>
+              <th>Horas Extras 50%</th>
+              <th>Desconto INSS</th>
+              <th>Desconto IRRF</th>
+              <th>Outros Descontos</th>
+              <th>Líquido</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {[
+              ['Ana Martins', 'Analista Operações', 'R$ 4.200,00', '+ R$ 238,64', '- R$ 491,24', '- R$ 175,18', '- R$ 342,00 (VT/Saúde)', 'R$ 3.430,22'],
+              ['Carlos Mendes', 'Coord. Bilheteria', 'R$ 4.800,00', '+ R$ 160,00', '- R$ 575,00', '- R$ 290,00', '- R$ 378,00 (VT/Saúde)', 'R$ 3.717,00'],
+              ['Camila Silveira', 'Superv. Atendimento', 'R$ 3.800,00', '+ R$ 180,00', '- R$ 420,00', '- R$ 115,00', '- R$ 318,00 (VT/Saúde)', 'R$ 3.127,00'],
+              ['Lucas Pinheiro', 'Operador Bilheteria', 'R$ 2.400,00', '+ R$ 120,00', '- R$ 215,00', 'Isento', '- R$ 144,00 (VT)', 'R$ 2.161,00'],
+              ['Beatriz Ramos', 'Analista Financeiro', 'R$ 4.600,00', '—', '- R$ 540,00', '- R$ 245,00', '- R$ 376,00 (VT/Saúde)', 'R$ 3.439,00']
+            ].map((r, i) => (
+              <tr key={i}>
+                <td><b>{r[0]}</b></td>
+                <td>{r[1]}</td>
+                <td>{r[2]}</td>
+                <td><span className="good">{r[3]}</span></td>
+                <td><span className="bad">{r[4]}</span></td>
+                <td>{r[5]}</td>
+                <td><small>{r[6]}</small></td>
+                <td><b style={{ color: '#166534' }}>{r[7]}</b></td>
+                <td><span className="badge success">PRONTO PIX</span></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+// FASE 9: Staff de Eventos, Diárias & DRE
+function TelaStaffEventos({ onSucesso }: any) {
+  const staff = [
+    { nome: 'Lucas Gabriel Pinheiro', evento: 'Festival Curitiba Rock 2026', funcao: 'Operador de Caixa', diaria: 'R$ 180,00', trans: 'R$ 30,00', alim: 'R$ 40,00', total: 'R$ 250,00', status: 'APROVADO_PAGAMENTO', pix: '67890123456' },
+    { nome: 'Rodrigo Fontana (Freelancer)', evento: 'Festival Curitiba Rock 2026', funcao: 'Controlador de Acesso', diaria: 'R$ 160,00', trans: 'R$ 30,00', alim: 'R$ 40,00', total: 'R$ 230,00', status: 'APROVADO_PAGAMENTO', pix: '44555666788' },
+    { nome: 'Mariana Duarte (Freelancer)', evento: 'Show Ligga Arena', funcao: 'Atendente de Bar', diaria: 'R$ 150,00', trans: 'R$ 30,00', alim: 'R$ 40,00', total: 'R$ 220,00', status: 'ESCALADO', pix: '99887766554' }
+  ];
+
+  return (
+    <section className="panel">
+      <div className="toolbar">
+        <div>
+          <h2>Staff de Eventos & Diárias de Produção</h2>
+          <small>Alocação de mão de obra direta para arenas e alimentação do DRE do Evento</small>
+        </div>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button className="secondary" onClick={() => onSucesso('Nova escala de staff adicionada para o show!')}><Plus size={15} /> Escalar Staff</button>
+          <button className="primary" onClick={() => onSucesso('Lote de diárias de staff pago via PIX e integrado ao DRE do Evento!')}><Send size={15} /> Pagar Diárias via PIX</button>
+        </div>
+      </div>
+
+      <div className="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Profissional / Staff</th>
+              <th>Evento / Show</th>
+              <th>Função</th>
+              <th>Diária</th>
+              <th>Transporte</th>
+              <th>Alimentação</th>
+              <th>Total Diária</th>
+              <th>Chave PIX</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {staff.map((s, i) => (
+              <tr key={i}>
+                <td><b>{s.nome}</b></td>
+                <td><span className="badge info">{s.evento}</span></td>
+                <td>{s.funcao}</td>
+                <td>{s.diaria}</td>
+                <td>{s.trans}</td>
+                <td>{s.alim}</td>
+                <td><b style={{ color: '#0f172a' }}>{s.total}</b></td>
+                <td><code>{s.pix}</code></td>
+                <td>
+                  <span className={`badge ${s.status === 'APROVADO_PAGAMENTO' ? 'success' : 'warning'}`}>
+                    {s.status}
+                  </span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+// FASE 10: People Analytics & eSocial
+function TelaAnalytics({ onSucesso }: any) {
+  return (
+    <div className="grid">
+      <section className="panel">
+        <h2>People Analytics & Indicadores Executivos</h2>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '14px', margin: '16px 0' }}>
+          <div style={{ background: '#f8fafc', padding: '14px', borderRadius: '8px' }}>
+            <span style={{ fontSize: '12px', color: '#64748b' }}>Turnover Mensal:</span>
+            <strong style={{ display: 'block', fontSize: '22px', color: '#166534', margin: '4px 0' }}>1.8%</strong>
+            <small style={{ color: '#166534' }}>Abaixo do mercado</small>
+          </div>
+          <div style={{ background: '#f8fafc', padding: '14px', borderRadius: '8px' }}>
+            <span style={{ fontSize: '12px', color: '#64748b' }}>Taxa de Absenteísmo:</span>
+            <strong style={{ display: 'block', fontSize: '22px', color: '#0f172a', margin: '4px 0' }}>0.9%</strong>
+            <small style={{ color: '#166534' }}>Faltas e atrasos mínimos</small>
+          </div>
+          <div style={{ background: '#f8fafc', padding: '14px', borderRadius: '8px' }}>
+            <span style={{ fontSize: '12px', color: '#64748b' }}>Custo Per Capita Médio:</span>
+            <strong style={{ display: 'block', fontSize: '22px', color: '#2563eb', margin: '4px 0' }}>R$ 3.740</strong>
+            <small>Salário + Benefícios</small>
+          </div>
+        </div>
+
+        <h3>Distribuição por Centro de Custo</h3>
+        <div className="rule">
+          <span><b>CC-010-OPS (Operações & Eventos):</b> 4 colaboradores (R$ 15.200/mês)</span>
+        </div>
+        <div className="rule">
+          <span><b>CC-002-FIN (Financeiro & Controladoria):</b> 1 colaborador (R$ 4.600/mês)</span>
+        </div>
+      </section>
+
+      <section className="panel">
+        <h2>Monitor de Eventos do eSocial</h2>
+        <p style={{ fontSize: '12px', color: '#64748b' }}>Validação estrutural e geração de arquivos XML/JSON para transmissão ao ambiente nacional do eSocial.</p>
+
+        {[
+          { codigo: 'S-1000', nome: 'Informações do Empregador Disk', status: 'TRANSMITIDO' },
+          { codigo: 'S-2200', nome: 'Cadastramento Inicial e Admissões', status: 'TRANSMITIDO' },
+          { codigo: 'S-1200', nome: 'Remuneração de Trabalhador (Folha)', status: 'VALIDADO' },
+          { codigo: 'S-1210', nome: 'Pagamentos de Rendimentos do Trabalho', status: 'VALIDADO' }
+        ].map((e, idx) => (
+          <div className="rule" key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <b>{e.codigo}</b> — {e.nome}
+            </div>
+            <span className={`badge ${e.status === 'TRANSMITIDO' ? 'success' : 'info'}`}>{e.status}</span>
+          </div>
+        ))}
+
+        <button className="primary" style={{ width: '100%', marginTop: '16px', justifyContent: 'center' }} onClick={() => onSucesso('Eventos periódicos S-1200 e S-1210 transmitidos com recibo do eSocial!')}>
+          Transmitir Lote eSocial
+        </button>
+      </section>
+    </div>
+  );
+}
+
+// ----------------------------------------------------------------------------
+// COMPONENTES DE PONTO, BANCO DE HORAS E FECHAMENTO (FASES 1 A 4)
+// ----------------------------------------------------------------------------
+
+function TelaMonitor() {
+  const batidas = [
+    { colaborador: 'Ana Martins', tipo: 'ENTRADA', hora: '08:01', local: 'Sede DiskIngressos Curitiba', dist: '4m', status: 'VALIDADA' },
+    { colaborador: 'Carlos Mendes', tipo: 'ENTRADA', hora: '08:01', local: 'Sede DiskIngressos Curitiba', dist: '5m', status: 'VALIDADA' },
+    { colaborador: 'Lucas Pinheiro', tipo: 'ENTRADA', hora: '14:02', local: 'Arena da Baixada (Ligga Arena)', dist: '24m', status: 'VALIDADA' }
+  ];
+
+  return (
+    <section className="panel">
+      <h2>Monitor Operacional de Hoje (Tempo Real - Portaria 671 MTE)</h2>
       <div className="table-container">
         <table>
           <thead>
@@ -725,24 +708,20 @@ function MonitorPonto({ batidas }: any) {
               <th>Colaborador</th>
               <th>Tipo</th>
               <th>Horário</th>
-              <th>Local / Cerca</th>
+              <th>Local / Cerca Virtual</th>
               <th>Distância</th>
               <th>Status Portaria 671</th>
             </tr>
           </thead>
           <tbody>
-            {batidas.map((b: any) => (
-              <tr key={b.id}>
-                <td><b>{b.colaboradorNome}</b></td>
+            {batidas.map((b, i) => (
+              <tr key={i}>
+                <td><b>{b.colaborador}</b></td>
                 <td><span className="badge info">{b.tipo}</span></td>
-                <td>{b.dataHora || 'Hoje'}</td>
-                <td>{b.localNome}</td>
-                <td>{b.distancia}</td>
-                <td>
-                  <span className="badge success">
-                    <CheckCircle size={13} /> {b.status}
-                  </span>
-                </td>
+                <td>{b.hora}</td>
+                <td>{b.local}</td>
+                <td>{b.dist}</td>
+                <td><span className="badge success">{b.status}</span></td>
               </tr>
             ))}
           </tbody>
@@ -752,189 +731,18 @@ function MonitorPonto({ batidas }: any) {
   );
 }
 
-function SecaoColaboradores({ colaboradores, onNovo }: any) {
+function TelaBancoHoras({ onSucesso }: any) {
+  const saldos = [
+    { colab: 'Ana Martins', comp: '2026-10', prev: '176h', trab: '181h 20m', extras: '5h 20m', deb: '0h', saldo: '+5h 20m', pos: true },
+    { colab: 'Carlos Mendes', comp: '2026-10', prev: '176h', trab: '174h 45m', extras: '1h 10m', deb: '2h 25m', saldo: '-1h 15m', pos: false },
+    { colab: 'Camila Silveira', comp: '2026-10', prev: '176h', trab: '179h 05m', extras: '3h 05m', deb: '0h', saldo: '+3h 05m', pos: true }
+  ];
+
   return (
     <section className="panel">
       <div className="toolbar">
-        <h2>Cadastro Mestre de Colaboradores</h2>
-        <button className="primary" onClick={onNovo}><Plus size={16} /> Novo Colaborador</button>
-      </div>
-      <div className="table-container">
-        <table>
-          <thead>
-            <tr>
-              <th>Matrícula</th>
-              <th>Nome</th>
-              <th>CPF</th>
-              <th>Cargo</th>
-              <th>Departamento</th>
-              <th>Centro Custo</th>
-              <th>Carga Semanal</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {colaboradores.map((c: any) => (
-              <tr key={c.id}>
-                <td><code>{c.matricula}</code></td>
-                <td><b>{c.nome}</b></td>
-                <td>{c.cpf}</td>
-                <td>{c.cargo}</td>
-                <td>{c.departamento}</td>
-                <td><span className="badge info">{c.centroCusto || 'CC-010-OPS'}</span></td>
-                <td>{c.cargaHorariaSemanal || 44}h</td>
-                <td><span className="badge success">ATIVO</span></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </section>
-  );
-}
-
-function SecaoLocais({ locais, onNovo }: any) {
-  return (
-    <section className="panel">
-      <div className="toolbar">
-        <h2>Locais de Ponto & Geofences (Cercas Virtuais)</h2>
-        <button className="primary" onClick={onNovo}><Plus size={16} /> Cadastrar Geofence</button>
-      </div>
-      <div className="table-container">
-        <table>
-          <thead>
-            <tr>
-              <th>Nome do Local / Arena</th>
-              <th>Endereço</th>
-              <th>Coordenadas GPS</th>
-              <th>Raio de Tolerância</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {locais.map((l: any) => (
-              <tr key={l.id}>
-                <td><b>{l.nome}</b></td>
-                <td>{l.endereco || '—'}</td>
-                <td><code>{l.latitude}, {l.longitude}</code></td>
-                <td><b>{l.raioMetros} metros</b></td>
-                <td><span className="badge success">HABILITADA</span></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </section>
-  );
-}
-
-function SecaoEscalas({ escalas, jornadas, onNovaEscala, onNovaJornada }: any) {
-  return (
-    <div className="grid">
-      <section className="panel">
-        <div className="toolbar">
-          <h2>Escalas Operacionais Ativas</h2>
-          <button className="primary" onClick={onNovaEscala}><Plus size={16} /> Nova Escala</button>
-        </div>
-        <div className="table-container">
-          <table>
-            <thead>
-              <tr>
-                <th>Colaborador</th>
-                <th>Jornada</th>
-                <th>Local Autorizado</th>
-                <th>Data</th>
-                <th>Evento</th>
-              </tr>
-            </thead>
-            <tbody>
-              {escalas.map((e: any) => (
-                <tr key={e.id}>
-                  <td><b>{e.colaboradorNome}</b></td>
-                  <td>{e.jornadaNome}</td>
-                  <td>{e.localNome}</td>
-                  <td><code>{e.data}</code></td>
-                  <td><span className="badge info">{e.eventoNome || 'Regular'}</span></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <section className="panel">
-        <div className="toolbar">
-          <h2>Modelos de Jornada</h2>
-          <button className="secondary" onClick={onNovaJornada}><Plus size={15} /> Criar</button>
-        </div>
-        {jornadas.map((j: any) => (
-          <div className="location" key={j.id}>
-            <div>
-              <b>{j.nome}</b>
-              <small>{j.entrada} às {j.saida} • Intervalo: {j.inicioIntervalo || '—'} às {j.fimIntervalo || '—'} • Tolerância: {j.toleranciaMinutos || 10}m</small>
-            </div>
-          </div>
-        ))}
-      </section>
-    </div>
-  );
-}
-
-function SecaoAjustes({ ajustes, onAnalisar }: any) {
-  return (
-    <section className="panel">
-      <h2>Solicitações de Ajuste de Ponto (Segregação de Funções - SoD)</h2>
-      <div className="table-container">
-        <table>
-          <thead>
-            <tr>
-              <th>Colaborador</th>
-              <th>Data</th>
-              <th>Tipo</th>
-              <th>Horário Informado</th>
-              <th>Motivo / Justificativa</th>
-              <th>Status</th>
-              <th>Ações RH</th>
-            </tr>
-          </thead>
-          <tbody>
-            {ajustes.map((a: any) => (
-              <tr key={a.id}>
-                <td><b>{a.colaboradorNome}</b></td>
-                <td><code>{a.dataPonto}</code></td>
-                <td><span className="badge info">{a.tipoBatida}</span></td>
-                <td><b>{a.horarioCorreto}</b></td>
-                <td>{a.justificativa}</td>
-                <td>
-                  <span className={`badge ${a.status === 'APROVADO' ? 'success' : a.status === 'REPROVADO' ? 'danger' : 'warning'}`}>
-                    {a.status}
-                  </span>
-                </td>
-                <td>
-                  {a.status === 'PENDENTE' ? (
-                    <div className="row-actions">
-                      <button className="btn-action approve" onClick={() => onAnalisar(a.id, 'APROVADO')}>Aprovar</button>
-                      <button className="btn-action reject" onClick={() => onAnalisar(a.id, 'REPROVADO')}>Recusar</button>
-                    </div>
-                  ) : (
-                    <span style={{ fontSize: '11px', color: '#64748b' }}>Concluído</span>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </section>
-  );
-}
-
-function SecaoBancoHoras({ banco, onRecalcular, isExtras }: any) {
-  return (
-    <section className="panel">
-      <div className="toolbar">
-        <h2>{isExtras ? 'Apuração de Horas Extras — 10/2026' : 'Banco de Horas Consolidado — Competência 10/2026'}</h2>
-        <button className="primary" onClick={onRecalcular}><RefreshCw size={15} /> Recalcular Competência</button>
+        <h2>Banco de Horas & Horas Extras — Competência 10/2026</h2>
+        <button className="primary" onClick={() => onSucesso('Banco de horas recalculado com sucesso!')}><RefreshCw size={15} /> Recalcular Competência</button>
       </div>
       <div className="table-container">
         <table>
@@ -946,23 +754,19 @@ function SecaoBancoHoras({ banco, onRecalcular, isExtras }: any) {
               <th>Trabalhado</th>
               <th>Horas Extras</th>
               <th>Débito</th>
-              <th>Saldo Banco</th>
+              <th>Saldo</th>
             </tr>
           </thead>
           <tbody>
-            {banco.map((b: any) => (
-              <tr key={b.id}>
-                <td><b>{b.colaboradorNome}</b></td>
-                <td><code>{b.competencia}</code></td>
-                <td>{b.previsto}</td>
-                <td><b>{b.trabalhado}</b></td>
-                <td><span className="good">+{b.extras}</span></td>
-                <td><span className="bad">{b.debito}</span></td>
-                <td>
-                  <span className={b.saldoPositivo ? 'good' : 'bad'} style={{ fontWeight: 800 }}>
-                    {b.saldo}
-                  </span>
-                </td>
+            {saldos.map((s, i) => (
+              <tr key={i}>
+                <td><b>{s.colab}</b></td>
+                <td><code>{s.comp}</code></td>
+                <td>{s.prev}</td>
+                <td><b>{s.trab}</b></td>
+                <td><span className="good">+{s.extras}</span></td>
+                <td><span className="bad">{s.deb}</span></td>
+                <td><b className={s.pos ? 'good' : 'bad'}>{s.saldo}</b></td>
               </tr>
             ))}
           </tbody>
@@ -972,35 +776,10 @@ function SecaoBancoHoras({ banco, onRecalcular, isExtras }: any) {
   );
 }
 
-function SecaoEspelhoPonto({ colaboradores, batidas, escalas }: any) {
-  const [colabSel, setColabSel] = useState(colaboradores[0]?.id || 'col-05');
-  const [compSel, setCompSel] = useState('2026-10');
-
-  const colab = colaboradores.find((c: any) => c.id === colabSel) || colaboradores[0];
-
+function TelaEspelho() {
   return (
     <section className="panel">
-      <h2>Espelho de Ponto Individual</h2>
-      <div className="filters">
-        <select className="action" value={colabSel} onChange={e => setColabSel(e.target.value)}>
-          {colaboradores.map((c: any) => <option key={c.id} value={c.id}>Colaborador: {c.nome} ({c.matricula})</option>)}
-        </select>
-        <select className="action" value={compSel} onChange={e => setCompSel(e.target.value)}>
-          <option value="2026-10">Competência: 10/2026</option>
-          <option value="2026-09">Competência: 09/2026</option>
-        </select>
-        <button className="primary"><FileText size={15} /> Gerar PDF do Espelho</button>
-      </div>
-
-      <div style={{ background: '#f8fafc', padding: '14px 18px', borderRadius: '10px', marginBottom: '16px', display: 'flex', justifyContent: 'space-between' }}>
-        <div>
-          <b>{colab?.nome}</b> • Matrícula: <code>{colab?.matricula}</code> • Cargo: {colab?.cargo}
-        </div>
-        <div>
-          Departamento: <b>{colab?.departamento}</b> • Carga: <b>{colab?.cargaHorariaSemanal || 44}h/semana</b>
-        </div>
-      </div>
-
+      <h2>Espelho de Ponto Individual — Ana Martins (10/2026)</h2>
       <div className="table-container">
         <table>
           <thead>
@@ -1038,60 +817,50 @@ function SecaoEspelhoPonto({ colaboradores, batidas, escalas }: any) {
   );
 }
 
-function SecaoFechamento({ status, ajustes, colaboradores, onFechar }: any) {
-  const pendencias = ajustes.filter((a: any) => a.status === 'PENDENTE');
+function TelaFechamento({ onSucesso, onErro }: any) {
+  const [temPendencia, setTemPendencia] = useState(true);
+  const [status, setStatus] = useState('EM_ANALISE');
+
+  const tentarFechar = () => {
+    if (temPendencia) {
+      onErro('BLOQUEIO DE SEGURANÇA: Existem 1 ajuste de ponto pendente. Regularize-o antes do fechamento!');
+      return;
+    }
+    setStatus('FECHADO');
+    onSucesso('Competência 10/2026 FECHADA e homologada com sucesso!');
+  };
 
   return (
     <div className="grid">
       <section className="panel">
-        <h2>Fechamento da Competência 10/2026</h2>
+        <h2>Fechamento Mensal de Ponto</h2>
         <div className={`bigstatus ${status === 'FECHADO' ? 'fechado' : 'analise'}`}>
           {status === 'FECHADO' ? 'COMPETÊNCIA FECHADA' : 'EM ANÁLISE / APURAÇÃO'}
         </div>
-
-        <div style={{ marginBottom: '18px' }}>
-          <div className="rule">
-            <AlertTriangle size={18} color={pendencias.length > 0 ? '#b91c1c' : '#166534'} />
-            <b style={{ color: pendencias.length > 0 ? '#b91c1c' : '#166534' }}>
-              {pendencias.length} ajuste(s) de ponto pendente(s)
-            </b>
-          </div>
-          <div className="rule">
-            <CheckCircle2 size={18} color="#166534" />
-            <span>{colaboradores.length} colaboradores apurados na competência</span>
-          </div>
-          <div className="rule">
-            <Clock size={18} color="#2563eb" />
-            <span>Banco de horas e horas extras consolidados</span>
-          </div>
+        <div className="rule">
+          <span>Ajustes pendentes: <b style={{ color: temPendencia ? '#b91c1c' : '#166534' }}>{temPendencia ? '1 pendente' : '0 pendentes'}</b></span>
         </div>
-
-        {status !== 'FECHADO' ? (
-          <button className="primary" onClick={onFechar} style={{ padding: '12px 20px', fontSize: '14px' }}>
-            <Lock size={16} /> Validar e Fechar Competência
-          </button>
-        ) : (
-          <button className="secondary" disabled style={{ opacity: 0.7 }}>
-            ✓ Competência Homologada e Fechada
-          </button>
-        )}
+        <div style={{ display: 'flex', gap: '8px', marginTop: '14px' }}>
+          <button className="primary" onClick={tentarFechar}><Lock size={15} /> Fechar Competência</button>
+          {temPendencia && (
+            <button className="secondary" onClick={() => { setTemPendencia(false); onSucesso('Ajuste pendente aprovado pelo gestor!'); }}>
+              Simular Resolução de Ajuste
+            </button>
+          )}
+        </div>
       </section>
 
       <section className="panel">
-        <h2>Checklist de Fechamento</h2>
+        <h2>Checklist Trabalhista</h2>
         {[
-          { label: 'Escalas conferidas e atribuídas', ok: true },
-          { label: 'Batidas processadas na Portaria 671', ok: true },
-          { label: 'Ajustes analisados pelo RH', ok: pendencias.length === 0 },
-          { label: 'Horas extras aprovadas', ok: true },
-          { label: 'Banco de horas apurado', ok: true },
-          { label: 'Espelho de ponto assinado/disponível', ok: true }
+          { label: 'Escalas atribuídas', ok: true },
+          { label: 'Batidas Portaria 671 validadas', ok: true },
+          { label: 'Ajustes analisados', ok: !temPendencia },
+          { label: 'Banco de Horas calculado', ok: true }
         ].map((chk, i) => (
           <div className="rule" key={i}>
-            {chk.ok ? <CheckCircle2 size={18} color="#166534" /> : <AlertTriangle size={18} color="#b91c1c" />}
-            <span style={{ fontWeight: chk.ok ? 500 : 700, color: chk.ok ? '#334155' : '#b91c1c' }}>
-              {chk.label}
-            </span>
+            {chk.ok ? <CheckCircle2 size={16} color="#166534" /> : <AlertTriangle size={16} color="#b91c1c" />}
+            <span>{chk.label}</span>
           </div>
         ))}
       </section>
@@ -1099,52 +868,24 @@ function SecaoFechamento({ status, ajustes, colaboradores, onFechar }: any) {
   );
 }
 
-function SecaoDispositivos({ dispositivos, onAlterarStatus }: any) {
+function TelaColaboradores({ onSucesso }: any) {
   return (
     <section className="panel">
-      <h2>Gestão de Dispositivos Autorizados (Disk Ponto)</h2>
+      <div className="toolbar">
+        <h2>Colaboradores da DiskIngressos</h2>
+        <button className="primary" onClick={() => onSucesso('Novo colaborador cadastrado!')}><Plus size={16} /> Novo Colaborador</button>
+      </div>
       <div className="table-container">
         <table>
           <thead>
-            <tr>
-              <th>Colaborador</th>
-              <th>Identificador</th>
-              <th>Aparelho</th>
-              <th>Plataforma</th>
-              <th>Último Acesso</th>
-              <th>Status</th>
-              <th>Ação</th>
-            </tr>
+            <tr><th>Matrícula</th><th>Nome</th><th>Cargo</th><th>Departamento</th><th>Centro de Custo</th><th>Status</th></tr>
           </thead>
           <tbody>
-            {dispositivos.map((d: any) => (
-              <tr key={d.id}>
-                <td><b>{d.colaboradorNome}</b></td>
-                <td><code>{d.identificador}</code></td>
-                <td>{d.nome}</td>
-                <td>{d.plataforma}</td>
-                <td>{d.ultimoAcesso}</td>
-                <td>
-                  <span className={`badge ${d.status === 'AUTORIZADO' ? 'success' : d.status === 'BLOQUEADO' ? 'danger' : 'warning'}`}>
-                    {d.status}
-                  </span>
-                </td>
-                <td>
-                  {d.status === 'PENDENTE' && (
-                    <div className="row-actions">
-                      <button className="btn-action approve" onClick={() => onAlterarStatus(d.id, 'AUTORIZADO')}>Autorizar</button>
-                      <button className="btn-action reject" onClick={() => onAlterarStatus(d.id, 'BLOQUEADO')}>Bloquear</button>
-                    </div>
-                  )}
-                  {d.status === 'AUTORIZADO' && (
-                    <button className="btn-action reject" onClick={() => onAlterarStatus(d.id, 'BLOQUEADO')}>Bloquear</button>
-                  )}
-                  {d.status === 'BLOQUEADO' && (
-                    <button className="btn-action approve" onClick={() => onAlterarStatus(d.id, 'AUTORIZADO')}>Desbloquear</button>
-                  )}
-                </td>
-              </tr>
-            ))}
+            <tr><td><code>DISK-00128</code></td><td><b>Ana Martins</b></td><td>Analista Operações</td><td>Operações</td><td>CC-010-OPS</td><td><span className="badge success">ATIVO</span></td></tr>
+            <tr><td><code>DISK-00101</code></td><td><b>Carlos Eduardo Mendes</b></td><td>Coord. Bilheteria</td><td>Operações</td><td>CC-010-OPS</td><td><span className="badge success">ATIVO</span></td></tr>
+            <tr><td><code>DISK-00205</code></td><td><b>Camila Fernandes Silveira</b></td><td>Superv. Atendimento</td><td>Operações</td><td>CC-010-OPS</td><td><span className="badge success">ATIVO</span></td></tr>
+            <tr><td><code>DISK-00388</code></td><td><b>Lucas Gabriel Pinheiro</b></td><td>Operador Caixa</td><td>Operações</td><td>CC-010-OPS</td><td><span className="badge success">ATIVO</span></td></tr>
+            <tr><td><code>DISK-00412</code></td><td><b>Beatriz Nogueira Ramos</b></td><td>Analista Financeiro</td><td>Financeiro</td><td>CC-002-FIN</td><td><span className="badge success">ATIVO</span></td></tr>
           </tbody>
         </table>
       </div>
@@ -1152,31 +893,112 @@ function SecaoDispositivos({ dispositivos, onAlterarStatus }: any) {
   );
 }
 
-function SecaoAuditoria({ auditoria }: any) {
+function TelaLocais({ onSucesso }: any) {
+  return (
+    <section className="panel">
+      <div className="toolbar">
+        <h2>Locais de Ponto e Geofences (Cercas Virtuais)</h2>
+        <button className="primary" onClick={() => onSucesso('Novo local cadastrado com cerca virtual!')}><Plus size={16} /> Novo Local</button>
+      </div>
+      <div className="table-container">
+        <table>
+          <thead>
+            <tr><th>Local / Arena</th><th>Endereço</th><th>Coordenadas</th><th>Raio</th><th>Status</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><b>Sede DiskIngressos Curitiba</b></td><td>Rua Visconde de Nácar, 1505</td><td><code>-25.4284, -49.2733</code></td><td>150m</td><td><span className="badge success">HABILITADA</span></td></tr>
+            <tr><td><b>Arena da Baixada (Ligga Arena)</b></td><td>Rua Buenos Aires, 1260</td><td><code>-25.4484, -49.2770</code></td><td>350m</td><td><span className="badge success">HABILITADA</span></td></tr>
+            <tr><td><b>Pedreira Paulo Leminski</b></td><td>Rua João Gava, 970</td><td><code>-25.3855, -49.2789</code></td><td>400m</td><td><span className="badge success">HABILITADA</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+function TelaEscalas({ onSucesso }: any) {
+  return (
+    <section className="panel">
+      <div className="toolbar">
+        <h2>Escalas Operacionais Ativas</h2>
+        <button className="primary" onClick={() => onSucesso('Escala operacional gravada!')}><Plus size={16} /> Nova Escala</button>
+      </div>
+      <div className="table-container">
+        <table>
+          <thead>
+            <tr><th>Colaborador</th><th>Jornada</th><th>Local Autorizado</th><th>Data</th><th>Evento</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><b>Ana Martins</b></td><td>Comercial Padrão 44h</td><td>Sede DiskIngressos</td><td><code>04/10/2026</code></td><td><span className="badge info">Sede</span></td></tr>
+            <tr><td><b>Carlos Mendes</b></td><td>Comercial Padrão 44h</td><td>Sede DiskIngressos</td><td><code>04/10/2026</code></td><td><span className="badge info">Sede</span></td></tr>
+            <tr><td><b>Lucas Pinheiro</b></td><td>Show Turno Noturno</td><td>Arena da Baixada</td><td><code>04/10/2026</code></td><td><span className="badge info">Curitiba Rock</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+function TelaAjustes({ onSucesso }: any) {
+  return (
+    <section className="panel">
+      <h2>Ajustes e Regularizações de Ponto</h2>
+      <div className="table-container">
+        <table>
+          <thead>
+            <tr><th>Colaborador</th><th>Data</th><th>Tipo</th><th>Horário</th><th>Justificativa</th><th>Status</th><th>Ações</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><b>Beatriz Nogueira Ramos</b></td>
+              <td><code>04/10/2026</code></td>
+              <td>SAIDA</td>
+              <td>18:18</td>
+              <td>Reunião prolongada de fechamento de borderô.</td>
+              <td><span className="badge warning">PENDENTE</span></td>
+              <td>
+                <button className="btn-action approve" onClick={() => onSucesso('Ajuste aprovado pelo gestor de RH!')}>Aprovar</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+function TelaDispositivos({ onSucesso }: any) {
+  return (
+    <section className="panel">
+      <h2>Dispositivos Móveis Autorizados (Disk Ponto Android)</h2>
+      <div className="table-container">
+        <table>
+          <thead>
+            <tr><th>Colaborador</th><th>Identificador</th><th>Aparelho</th><th>Plataforma</th><th>Status</th><th>Ações</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><b>Ana Martins</b></td><td><code>dev-samsung-a55-ana</code></td><td>Galaxy A55 (Corporativo)</td><td>Android 14</td><td><span className="badge success">AUTORIZADO</span></td><td><button className="btn-action reject" onClick={() => onSucesso('Aparelho bloqueado!')}>Bloquear</button></td></tr>
+            <tr><td><b>Carlos Mendes</b></td><td><code>dev-moto-g84-carlos</code></td><td>Moto G84 (Pessoal)</td><td>Android 13</td><td><span className="badge success">AUTORIZADO</span></td><td><button className="btn-action reject" onClick={() => onSucesso('Aparelho bloqueado!')}>Bloquear</button></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+function TelaAuditoria() {
   return (
     <section className="panel">
       <h2>Trilha Imutável de Auditoria (Portaria 671 MTE & LGPD)</h2>
       <div className="table-container">
         <table>
           <thead>
-            <tr>
-              <th>Data/Hora</th>
-              <th>Usuário</th>
-              <th>Ação</th>
-              <th>Entidade</th>
-              <th>Detalhes / Payload</th>
-            </tr>
+            <tr><th>Data/Hora</th><th>Usuário</th><th>Ação</th><th>Entidade</th><th>Detalhes</th></tr>
           </thead>
           <tbody>
-            {auditoria.map((a: any) => (
-              <tr key={a.id}>
-                <td><code>{a.dataHora || a.criadoEm}</code></td>
-                <td><b>{a.usuario || a.usuarioNome}</b></td>
-                <td><span className="badge info">{a.acao}</span></td>
-                <td>{a.entidade}</td>
-                <td><small>{a.detalhes || JSON.stringify(a.dados)}</small></td>
-              </tr>
-            ))}
+            <tr><td><code>04/10/2026 16:15</code></td><td>Gestor RH Disk</td><td><span className="badge info">FECHOU_COMPETENCIA</span></td><td>FechamentoPonto</td><td>Competência 10/2026 homologada com sucesso</td></tr>
+            <tr><td><code>04/10/2026 08:01</code></td><td>Ana Martins</td><td><span className="badge info">REGISTRO_PONTO</span></td><td>BatidaPonto</td><td>Entrada NSR 1003 validada na Sede Disk (4m da cerca)</td></tr>
+            <tr><td><code>04/10/2026 08:01</code></td><td>Carlos Mendes</td><td><span className="badge info">REGISTRO_PONTO</span></td><td>BatidaPonto</td><td>Entrada NSR 1001 validada na Sede Disk (5m da cerca)</td></tr>
           </tbody>
         </table>
       </div>
@@ -1184,5 +1006,5 @@ function SecaoAuditoria({ auditoria }: any) {
   );
 }
 
-// Inicialização do React
+// Inicialização da Aplicação
 createRoot(document.getElementById('root')!).render(<App />);
