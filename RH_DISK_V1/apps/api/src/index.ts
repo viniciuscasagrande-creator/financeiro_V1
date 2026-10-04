@@ -1158,6 +1158,70 @@ app.post('/api/esocial/gerar/:tipo', (req: Request, res: Response) => {
   res.status(201).json(novo);
 });
 
+// ----------------------------------------------------------------------------
+// ROTAS FASE 5 (GESTÃO INTEGRADA): RECRUTAMENTO, PDI, TREINAMENTOS, OFFBOARDING & COMUNICADOS
+// ----------------------------------------------------------------------------
+
+export const vagas: any[] = [
+  { id: 'vaga-01', titulo: 'Operador de Bilheteria / Caixa', departamento: 'Operações e Eventos', cargo: 'Operador de Bilheteria', quantidade: 4, status: 'ABERTA', criadoEm: '2026-10-01' },
+  { id: 'vaga-02', titulo: 'Engenheiro de Software Backend', departamento: 'Tecnologia da Informação & Core', cargo: 'Engenheiro Pleno', quantidade: 1, status: 'ABERTA', criadoEm: '2026-09-25' }
+];
+
+export const candidatos: any[] = [
+  { id: 'cand-01', vagaId: 'vaga-01', nome: 'Mariana Albuquerque Prado', email: 'mariana.prado@gmail.com', telefone: '(41) 98877-6655', etapa: 'DOCUMENTACAO', avaliacao: 5 },
+  { id: 'cand-02', vagaId: 'vaga-02', nome: 'Felipe Zanin de Castro', email: 'felipe.zanin@yahoo.com.br', telefone: '(41) 97766-5544', etapa: 'ENTREVISTA_TECNICA', avaliacao: 4 }
+];
+
+export const avaliacoesDesempenho: any[] = [
+  { id: 'aval-01', colaboradorId: 'colab-001', colaboradorNome: 'Carlos Eduardo Mendes', ciclo: '2026.1 (1º Semestre)', nota: 9.4, status: 'CONCLUIDA', feedback: 'Excelente liderança de equipe de arena e cumprimento estrito de pontualidade.' },
+  { id: 'aval-02', colaboradorId: 'colab-002', colaboradorNome: 'Camila Fernandes Silveira', ciclo: '2026.1 (1º Semestre)', nota: 9.1, status: 'CONCLUIDA', feedback: 'Ótima gestão de atendimento ao cliente e controle de acessos em grandes shows.' }
+];
+
+export const treinamentos: any[] = [
+  { id: 'trein-01', titulo: 'Segurança e Prevenção de Incêndios em Grandes Arenas', categoria: 'NR-23 / Brigada', cargaHoraria: 16, obrigatorio: true, validadeMeses: 12, ativo: true },
+  { id: 'trein-02', titulo: 'Boas Práticas de Atendimento e Resolução de Conflitos', categoria: 'Operações', cargaHoraria: 8, obrigatorio: false, validadeMeses: 24, ativo: true },
+  { id: 'trein-03', titulo: 'Segurança da Informação e LGPD no Tratamento de Dados', categoria: 'Compliance', cargaHoraria: 4, obrigatorio: true, validadeMeses: 12, ativo: true }
+];
+
+export const equipamentos: any[] = [
+  { id: 'eq-01', patrimonio: 'PAT-2026-0041', nome: 'Smartphone Coletor REP-P Samsung Galaxy A54', serial: 'R5CW100ABC', colaboradorId: 'colab-001', entregueEm: '2026-03-15', status: 'EM_USO' },
+  { id: 'eq-02', patrimonio: 'PAT-2026-0088', nome: 'Notebook Dell Latitude 5440 i7 16GB', serial: '8HK24N3', colaboradorId: 'colab-004', entregueEm: '2025-02-01', status: 'EM_USO' }
+];
+
+export const desligamentos: any[] = [
+  { id: 'desl-01', colaboradorId: 'colab-999', colaboradorNome: 'Ex-Funcionário Temporário', dataPrevista: '2026-09-30', motivo: 'Término de Contrato de Safra', tipo: 'TERMINO_CONTRATO', status: 'CONCLUIDO', percentualChecklist: 100 }
+];
+
+export const comunicados: any[] = [
+  { id: 'com-01', titulo: 'Protocolo de Operação e Pontualidade para Shows de Outubro/2026', mensagem: 'Lembramos a todos os colaboradores de campo sobre a utilização obrigatória do crachá funcional e confirmação de presença via aplicativo Disk Ponto com geofencing ativo.', publico: 'TODOS', publicadoEm: '2026-10-01 09:00', ativo: true }
+];
+
+app.get('/api/vagas', (_, res) => res.json(vagas));
+app.post('/api/vagas', (req: Request, res: Response) => {
+  const nova = { id: `vaga-${Date.now()}`, ...req.body, criadoEm: new Date().toISOString() };
+  vagas.unshift(nova);
+  res.status(201).json(nova);
+});
+
+app.get('/api/candidatos', (_, res) => res.json(candidatos));
+app.post('/api/candidatos', (req: Request, res: Response) => {
+  const novo = { id: `cand-${Date.now()}`, ...req.body, criadoEm: new Date().toISOString() };
+  candidatos.unshift(novo);
+  res.status(201).json(novo);
+});
+
+app.get('/api/avaliacoes-desempenho', (_, res) => res.json(avaliacoesDesempenho));
+app.post('/api/avaliacoes-desempenho', (req: Request, res: Response) => {
+  const nova = { id: `aval-${Date.now()}`, ...req.body, status: 'CONCLUIDA', criadoEm: new Date().toISOString() };
+  avaliacoesDesempenho.unshift(nova);
+  res.status(201).json(nova);
+});
+
+app.get('/api/treinamentos', (_, res) => res.json(treinamentos));
+app.get('/api/equipamentos', (_, res) => res.json(equipamentos));
+app.get('/api/desligamentos', (_, res) => res.json(desligamentos));
+app.get('/api/comunicados', (_, res) => res.json(comunicados));
+
 // Trilha Geral de Auditoria
 app.get('/api/auditoria', (_, res) => res.json(auditoria));
 
