@@ -99,6 +99,21 @@ class LimitlessFinancialApp {
     this.activeDossieTab = 'sec-dossie-resumo';
     this.dossieTab = 'sec-dossie-resumo';
 
+    // Rastreamento persistente de submenus do menu lateral expandidos (não fecham sozinhos)
+    try {
+      const saved = JSON.parse(localStorage.getItem('opened_submenus') || '[]');
+      this.openedSubmenus = new Set(Array.isArray(saved) ? saved : []);
+    } catch (e) {
+      this.openedSubmenus = new Set();
+    }
+
+    try {
+      const wasCollapsed = localStorage.getItem('sidebar_desktop_collapsed') === 'true';
+      if (wasCollapsed && window.innerWidth >= 992) {
+        document.body.classList.add('sidebar-main-resized');
+      }
+    } catch (e) {}
+
     // Subscribe to state changes
     financialStore.subscribe((state) => {
       this.render(state);
@@ -631,18 +646,58 @@ class LimitlessFinancialApp {
     financialStore.setView(targetView);
     window.scrollTo({ top: 0, behavior: 'smooth' });
 
-    // Close mobile sidebar if open
-    const sidebar = document.getElementById('appSidebar');
-    if (sidebar && sidebar.classList.contains('sidebar-mobile-expanded')) {
-      sidebar.classList.remove('sidebar-mobile-expanded');
-    }
+    // REGRA DE USABILIDADE: O menu lateral expandido PERMANECE EXPANDIDO (não fecha sozinho ao navegar)
+    // O usuário clica para expandir e ele fica. Só fecha se o usuário clicar no botão de fechar/alternar.
   }
 
   toggleSidebar() {
     const sidebar = document.getElementById('appSidebar');
-    if (sidebar) {
-      sidebar.classList.toggle('sidebar-mobile-expanded');
+    const isMobile = window.innerWidth < 992;
+    
+    if (isMobile) {
+      if (sidebar) {
+        sidebar.classList.toggle('sidebar-mobile-expanded');
+      }
+    } else {
+      // No Desktop, alterna entre o modo expandido oficial (270px) e compacto (72px)
+      const isCurrentlyResized = document.body.classList.contains('sidebar-main-resized');
+      document.body.classList.toggle('sidebar-main-resized', !isCurrentlyResized);
+      try {
+        localStorage.setItem('sidebar_desktop_collapsed', !isCurrentlyResized ? 'true' : 'false');
+      } catch (e) {}
     }
+  }
+
+  toggleSubmenu(event, element, itemId) {
+    if (event) {
+      if (typeof event.preventDefault === 'function') event.preventDefault();
+      if (typeof event.stopPropagation === 'function') event.stopPropagation();
+    }
+    this.openedSubmenus = this.openedSubmenus || new Set();
+    const li = element ? element.closest('.nav-item-submenu') : null;
+    const id = itemId || (li ? li.getAttribute('data-submenu-id') : null);
+    if (!id) return;
+
+    const willOpen = !this.openedSubmenus.has(id);
+    if (willOpen) {
+      this.openedSubmenus.add(id);
+      if (li) {
+        li.classList.add('is-open', 'nav-item-open');
+        const sub = li.querySelector('.nav-group-sub');
+        if (sub) sub.style.display = 'flex';
+      }
+    } else {
+      this.openedSubmenus.delete(id);
+      if (li) {
+        li.classList.remove('is-open', 'nav-item-open');
+        const sub = li.querySelector('.nav-group-sub');
+        if (sub) sub.style.display = 'none';
+      }
+    }
+
+    try {
+      localStorage.setItem('opened_submenus', JSON.stringify([...this.openedSubmenus]));
+    } catch (e) {}
   }
 
   closeAllSearchDropdowns() {
@@ -3689,6 +3744,8 @@ class LimitlessFinancialApp {
 
     const menuItems = (menusPorPerfil[profileKey] || menusPorPerfil.PRODUTOR).filter(item => !item.hidden);
 
+    this.openedSubmenus = this.openedSubmenus || new Set();
+
     this.sidebarNav.innerHTML = menuItems.map(item => {
       const hasSubs = Array.isArray(item.subItems) && item.subItems.length > 0;
       const isParentActive = currentView === item.id;
@@ -3698,11 +3755,14 @@ class LimitlessFinancialApp {
 
       if (hasSubs) {
         const isChildActive = item.subItems.some(sub => sub.id === currentView);
-        const isOpen = isParentActive || isChildActive;
+        if (isParentActive || isChildActive) {
+          this.openedSubmenus.add(item.id);
+        }
+        const isOpen = this.openedSubmenus.has(item.id);
 
         return `
-          <li class="nav-item nav-item-submenu ${isOpen ? 'is-open' : ''}">
-            <a class="nav-link" onclick="this.parentElement.classList.toggle('is-open')">
+          <li class="nav-item nav-item-submenu ${isOpen ? 'is-open nav-item-open' : ''}" data-submenu-id="${item.id}">
+            <a class="nav-link" href="javascript:void(0)" onclick="window.app && window.app.toggleSubmenu(event, this, '${item.id}')">
               <div class="nav-item-left">
                 <i class="${item.icon} nav-item-icon"></i>
                 <span class="nav-item-title">${item.label}</span>
@@ -3712,13 +3772,23 @@ class LimitlessFinancialApp {
                 <i class="ph-caret-right nav-arrow"></i>
               </div>
             </a>
-            <ul class="nav-group-sub">
+            <ul class="nav-group-sub" style="display: ${isOpen ? 'flex' : 'none'};">
               ${item.subItems.map(sub => {
                 if (sub.action === 'openPayoutModal') {
                   return `
                     <li class="nav-item">
-                      <a class="nav-link" onclick="window.app.openPayoutModal()">
+                      <a class="nav-link" href="javascript:void(0)" onclick="window.app && window.app.openPayoutModal()">
                         <i class="ph-plus-circle"></i>
+                        <span>${sub.label}</span>
+                      </a>
+                    </li>
+                  `;
+                }
+                if (sub.action === 'openTransferModal') {
+                  return `
+                    <li class="nav-item">
+                      <a class="nav-link" href="javascript:void(0)" onclick="window.app && window.app.openTransferModal()">
+                        <i class="ph-arrows-left-right"></i>
                         <span>${sub.label}</span>
                       </a>
                     </li>
@@ -3727,7 +3797,7 @@ class LimitlessFinancialApp {
                 const isSubActive = currentView === sub.id && (!this.currentFilterArg || this.currentFilterArg === sub.filterArg);
                 return `
                   <li class="nav-item">
-                    <a class="nav-link ${isSubActive ? 'active' : ''}" onclick="window.app.navigate('${sub.id}', '${sub.filterArg || 'all'}')">
+                    <a class="nav-link ${isSubActive ? 'active' : ''}" href="javascript:void(0)" onclick="window.app && window.app.navigate('${sub.id}', '${sub.filterArg || 'all'}')">
                       <i class="ph-caret-right"></i>
                       <span>${sub.label}</span>
                     </a>
@@ -3741,7 +3811,7 @@ class LimitlessFinancialApp {
 
       return `
         <li class="nav-item">
-          <a class="nav-link ${isParentActive ? 'active' : ''}" onclick="window.app.navigate('${item.id}')">
+          <a class="nav-link ${isParentActive ? 'active' : ''}" href="javascript:void(0)" onclick="window.app && window.app.navigate('${item.id}')">
             <div class="nav-item-left">
               <i class="${item.icon} nav-item-icon"></i>
               <span class="nav-item-title">${item.label}</span>
@@ -8970,3 +9040,16 @@ if (document.readyState === 'loading') {
 } else {
   window.app = new LimitlessFinancialApp();
 }
+
+window.toggleSubmenu = function(event, element, itemId) {
+  if (window.app && typeof window.app.toggleSubmenu === 'function') {
+    return window.app.toggleSubmenu(event, element, itemId);
+  }
+};
+
+window.toggleSidebar = function() {
+  if (window.app && typeof window.app.toggleSidebar === 'function') {
+    return window.app.toggleSidebar();
+  }
+};
+

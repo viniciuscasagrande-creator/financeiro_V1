@@ -1504,7 +1504,8 @@ a:hover {
   flex-shrink: 0 !important;
 }
 
-.nav-sidebar .nav-item-submenu.is-open > .nav-link .nav-arrow {
+.nav-sidebar .nav-item-submenu.is-open > .nav-link .nav-arrow,
+.nav-sidebar .nav-item-submenu.nav-item-open > .nav-link .nav-arrow {
   transform: rotate(90deg) !important;
   opacity: 0.9 !important;
   color: #60a5fa !important;
@@ -1522,7 +1523,8 @@ a:hover {
 }
 
 /* Estilo do Menu Pai quando o Submenu está Aberto */
-.nav-sidebar .nav-item-submenu.is-open > .nav-link {
+.nav-sidebar .nav-item-submenu.is-open > .nav-link,
+.nav-sidebar .nav-item-submenu.nav-item-open > .nav-link {
   color: #f8fafc !important;
   background: rgba(255, 255, 255, 0.04) !important;
 }
@@ -1538,7 +1540,8 @@ a:hover {
   gap: 1px !important;
 }
 
-.nav-sidebar .nav-item-submenu.is-open > .nav-group-sub {
+.nav-sidebar .nav-item-submenu.is-open > .nav-group-sub,
+.nav-sidebar .nav-item-submenu.nav-item-open > .nav-group-sub {
   display: flex !important;
 }
 
@@ -1602,9 +1605,14 @@ a:hover {
   user-select: none;
 }
 
-/* Sidebar Resized (Compact) */
-body.sidebar-main-resized #appSidebar {
+/* Sidebar Resized (Compact) - Alternado apenas via clique explícito */
+body.sidebar-main-resized #appSidebar,
+body.sidebar-main-resized .app-shell .app-sidebar,
+body.sidebar-main-resized .app-sidebar {
   width: 72px !important;
+  min-width: 72px !important;
+  max-width: 72px !important;
+  transition: width 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
 body.sidebar-main-resized .sidebar-resize-hide,
@@ -1613,7 +1621,8 @@ body.sidebar-main-resized .nav-link span,
 body.sidebar-main-resized .nav-arrow,
 body.sidebar-main-resized .nav-item-section-divider,
 body.sidebar-main-resized .nav-item-header,
-body.sidebar-main-resized .badge {
+body.sidebar-main-resized .badge,
+body.sidebar-main-resized .sidebar-footer {
   display: none !important;
 }
 
@@ -1622,19 +1631,26 @@ body.sidebar-main-resized .nav-sidebar .nav-link {
   padding: 10px;
 }
 
-/* Mobile Sidebar Drawer */
+/* Mobile Sidebar Drawer - Abre via clique e permanece expandido até clique de fechamento */
 @media (max-width: 991px) {
-  #appSidebar {
-    position: fixed;
-    top: 56px;
-    bottom: 0;
-    left: -280px;
-    z-index: 1040;
-    transition: left 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  #appSidebar,
+  .app-shell .app-sidebar,
+  .app-sidebar {
+    position: fixed !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    left: -290px !important;
+    width: 280px !important;
+    min-width: 280px !important;
+    max-width: 280px !important;
+    z-index: 1040 !important;
+    transition: left 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
   }
-  #appSidebar.sidebar-mobile-expanded {
-    left: 0;
-    box-shadow: 0 0 40px rgba(0,0,0,0.5);
+  #appSidebar.sidebar-mobile-expanded,
+  .app-shell .app-sidebar.sidebar-mobile-expanded,
+  .app-sidebar.sidebar-mobile-expanded {
+    left: 0 !important;
+    box-shadow: 0 0 50px rgba(0,0,0,0.6) !important;
   }
 }
 

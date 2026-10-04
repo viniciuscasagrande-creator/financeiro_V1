@@ -39,7 +39,7 @@
           <a href="#" class="d-flex align-items-center gap-2 text-white text-decoration-none" onclick="window.app && window.app.navigate(financialStore.getState().viewMode === 'disk' ? 'diskDashboard' : 'overview'); return false;">
             <img src="img/diskingressos-logo.svg" alt="DiskIngressos" style="height: 28px;">
           </a>
-          <button type="button" class="btn btn-sm btn-icon rounded-pill text-white-50 border-0 d-lg-none" onclick="window.app && window.app.toggleSidebar()">
+          <button type="button" class="btn btn-sm btn-icon rounded-pill text-white-50 border-0" onclick="window.app && window.app.toggleSidebar()" title="Recolher / Fechar Menu Lateral">
             <i class="ph-x fs-5"></i>
           </button>
         </div>
@@ -84,8 +84,8 @@
       <!-- HEADER (Topo da App Area, inicia depois da Sidebar) -->
       <header class="app-header navbar navbar-dark" id="appHeader">
         <div class="d-flex align-items-center gap-2">
-          <!-- Mobile sidebar toggle -->
-          <button type="button" class="btn btn-sm text-white border-0 d-lg-none p-1" onclick="window.app && window.app.toggleSidebar()">
+          <!-- Sidebar toggle (Expandir / Recolher Menu Lateral) -->
+          <button type="button" class="btn btn-sm text-white border-0 p-1" id="sidebar-toggle-btn" onclick="window.app && window.app.toggleSidebar()" title="Expandir / Recolher Menu Lateral">
             <i class="ph-list fs-4"></i>
           </button>
           <span class="badge bg-primary text-white fw-bold fs-xxs px-2 py-1" id="navbar-role-indicator">PORTAL DO PRODUTOR</span>
