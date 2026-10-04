@@ -448,6 +448,71 @@ app.post('/api/auth/login', (req: Request, res: Response) => {
   res.status(401).json({ erro: 'Credenciais inválidas. Use CPF, Matrícula ou E-mail corporativo.' });
 });
 
+app.get('/api/auth/me', (req: Request, res: Response) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) {
+    return res.status(401).json({ erro: 'Token de autenticação não informado.' });
+  }
+  res.json({
+    id: 'usr-admin-01',
+    nome: 'Administrador RH Disk',
+    email: 'rh@diskingressos.com.br',
+    perfil: 'ADMINISTRADOR',
+    permissoes: ['LER_PONTO', 'CRIAR_PONTO', 'APROVAR_AJUSTES', 'GERENCIAR_ESCALAS', 'AUDITORIA']
+  });
+});
+
+// 2.1 Monitor Operacional de Ponto (Tempo Real)
+app.get('/api/monitor/hoje', (req: Request, res: Response) => {
+  const batidasHoje = batidas.filter(b => b.instanteServidor.startsWith(hojeStr));
+
+  const colaboradoresMonitorados = colaboradores.map(col => {
+    const batidasColab = batidasHoje.filter(b => b.colaboradorId === col.id);
+    const ultimaBatida = batidasColab[0];
+    const escalaHoje = escalas.find(e => e.colaboradorId === col.id && e.data === hojeStr);
+
+    let situacao = 'SEM_MARCACAO';
+    if (ultimaBatida) {
+      if (ultimaBatida.status === 'PENDENTE_ANALISE' || ultimaBatida.status === 'FORA_DA_AREA' || ultimaBatida.mockLocationSuspeita) {
+        situacao = 'PARA_ANALISAR';
+      } else if (ultimaBatida.tipo === 'ENTRADA' || ultimaBatida.tipo === 'FIM_INTERVALO') {
+        situacao = 'TRABALHANDO';
+      } else if (ultimaBatida.tipo === 'INICIO_INTERVALO') {
+        situacao = 'INTERVALO';
+      } else if (ultimaBatida.tipo === 'SAIDA') {
+        situacao = 'JORNADA_ENCERRADA';
+      }
+    }
+
+    return {
+      colaboradorId: col.id,
+      nome: col.nome,
+      matricula: col.matricula,
+      cargo: col.cargo,
+      departamento: col.departamento,
+      situacao,
+      ultimaBatida,
+      escala: escalaHoje,
+      localNome: escalaHoje?.localNome || ultimaBatida?.localNome || 'Sede DiskIngressos Curitiba',
+      alertaSuspeita: ultimaBatida?.mockLocationSuspeita || false,
+      distanciaLocalMetros: ultimaBatida?.distanciaLocalMetros || 0,
+      precisaoMetros: ultimaBatida?.precisaoMetros || 0,
+      offline: ultimaBatida?.offline || false
+    };
+  });
+
+  const kpis = {
+    emTrabalho: colaboradoresMonitorados.filter(c => c.situacao === 'TRABALHANDO').length,
+    emIntervalo: colaboradoresMonitorados.filter(c => c.situacao === 'INTERVALO').length,
+    paraAnalisar: colaboradoresMonitorados.filter(c => c.situacao === 'PARA_ANALISAR').length,
+    semMarcacao: colaboradoresMonitorados.filter(c => c.situacao === 'SEM_MARCACAO').length,
+    jornadaEncerrada: colaboradoresMonitorados.filter(c => c.situacao === 'JORNADA_ENCERRADA').length,
+    totalMonitorados: colaboradoresMonitorados.length
+  };
+
+  res.json({ kpis, colaboradores: colaboradoresMonitorados });
+});
+
 // 3. Colaboradores
 app.get('/api/colaboradores', (req: Request, res: Response) => {
   const { busca } = req.query;
@@ -657,7 +722,8 @@ app.post('/api/ponto/registrar', (req: Request, res: Response) => {
     dispositivoId,
     localId,
     eventoId,
-    offline
+    offline,
+    mockLocationSuspeita
   } = req.body;
 
   if (!colaboradorId || !tipo) {
@@ -673,11 +739,15 @@ app.post('/api/ponto/registrar', (req: Request, res: Response) => {
   const localAlvo = locais.find(l => l.id === targetLocalId) || locais[0];
 
   let distanciaMetros = 0;
-  let status: 'VALIDADA' | 'FORA_DA_AREA' = 'VALIDADA';
+  let status: 'VALIDADA' | 'FORA_DA_AREA' | 'PENDENTE_ANALISE' = 'VALIDADA';
 
   if (latitude !== undefined && longitude !== undefined) {
     distanciaMetros = calcularDistanciaHaversine(latitude, longitude, localAlvo.latitude, localAlvo.longitude);
     status = distanciaMetros <= localAlvo.raioMetros ? 'VALIDADA' : 'FORA_DA_AREA';
+  }
+
+  if (mockLocationSuspeita) {
+    status = 'PENDENTE_ANALISE';
   }
 
   // Gera Sequencial NSR e Assinatura SHA-256 (Portaria 671)
@@ -707,7 +777,7 @@ app.post('/api/ponto/registrar', (req: Request, res: Response) => {
     eventoNome: escalaHoje?.eventoNome,
     offline: Boolean(offline),
     dispositivoId: dispositivoId || 'Android APK Disk Ponto',
-    mockLocationSuspeita: false,
+    mockLocationSuspeita: Boolean(mockLocationSuspeita),
     comprovanteNsr: comprovanteCode,
     hashIntegridade: hash,
     criadoEm: nowIso
@@ -877,6 +947,52 @@ app.post('/api/ponto/ajustes/:id/analisar', (req: Request, res: Response) => {
     req
   );
 
+  res.json(ajuste);
+});
+
+app.patch('/api/ponto/ajustes/:id', (req: Request, res: Response) => {
+  const { id } = req.params;
+  const { status, parecer, analisadoPor } = req.body;
+  const ajuste = ajustes.find(a => a.id === id);
+  if (!ajuste) return res.status(404).json({ erro: 'Ajuste não encontrado' });
+  if (!['APROVADO', 'REPROVADO'].includes(status)) return res.status(400).json({ erro: 'Status inválido' });
+
+  ajuste.status = status;
+  ajuste.analisadoEm = new Date().toISOString();
+  ajuste.analisadoPor = analisadoPor || 'RH';
+  ajuste.parecer = parecer || `Ajuste ${status.toLowerCase()} pelo RH`;
+
+  if (ajuste.status === 'APROVADO') {
+    const colab = colaboradores.find(c => c.id === ajuste.colaboradorId);
+    if (colab) {
+      const nsr = ++nsrSequence;
+      const nowIso = new Date().toISOString();
+      const hash = crypto.createHash('sha256').update(`${nsr}|AJUSTE_RH|${ajuste.horarioCorreto}`).digest('hex');
+      batidas.unshift({
+        id: `bat-ajuste-${nsr}`,
+        nsr,
+        colaboradorId: colab.id,
+        colaboradorNome: colab.nome,
+        colaboradorMatricula: colab.matricula,
+        tipo: ajuste.tipoBatida,
+        status: 'VALIDADA',
+        instanteServidor: `${ajuste.dataPonto}T${ajuste.horarioCorreto}:00.000Z`,
+        latitude: locais[0].latitude,
+        longitude: locais[0].longitude,
+        precisaoMetros: 0,
+        distanciaLocalMetros: 0,
+        localId: locais[0].id,
+        localNome: 'Sede (Ajuste Administrativo RH)',
+        offline: false,
+        mockLocationSuspeita: false,
+        comprovanteNsr: `MTE671-${String(nsr).padStart(9, '0')}-${hash.substring(0, 8).toUpperCase()}`,
+        hashIntegridade: hash,
+        criadoEm: nowIso
+      });
+    }
+  }
+
+  registrarLogAuditoria(`AJUSTE_PONTO_${ajuste.status}`, 'AjustePonto', { ajusteId: id, status: ajuste.status }, req);
   res.json(ajuste);
 });
 

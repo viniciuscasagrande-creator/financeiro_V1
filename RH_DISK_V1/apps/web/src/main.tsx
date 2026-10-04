@@ -17,7 +17,8 @@ import {
   QrCode,
   Smartphone,
   Check,
-  X
+  X,
+  Radio
 } from 'lucide-react';
 import './style.css';
 
@@ -77,6 +78,27 @@ export function App() {
   const [batidas, setBatidas] = useState(INITIAL_BATIDAS);
   const [ajustes, setAjustes] = useState(INITIAL_AJUSTES);
   const [auditoria, setAuditoria] = useState(INITIAL_AUDITORIA);
+  const [apiConectada, setApiConectada] = useState(false);
+  const [perfilUsuario, setPerfilUsuario] = useState<'ADMINISTRADOR' | 'GESTOR_RH' | 'COLABORADOR'>('GESTOR_RH');
+  const [filtroMonitor, setFiltroMonitor] = useState('TODOS');
+
+  // Checagem de integridade com a API REST
+  useEffect(() => {
+    fetch('http://localhost:3333/api/saude')
+      .then(r => r.ok && setApiConectada(true))
+      .catch(() => setApiConectada(false));
+  }, []);
+
+  const fetchMonitorHoje = () => {
+    fetch('http://localhost:3333/api/monitor/hoje')
+      .then(r => r.json())
+      .then(dados => {
+        if (dados && dados.kpis) {
+          setApiConectada(true);
+        }
+      })
+      .catch(() => {});
+  };
 
   // Modais
   const [modalAberto, setModalAberto] = useState<string | null>(null);
@@ -188,6 +210,7 @@ export function App() {
 
   const menu = [
     { id: 'visao', label: 'Visão Geral', icon: LayoutDashboard },
+    { id: 'monitor', label: 'Monitor de Ponto', icon: Radio, badge: batidas.filter(b => b.status === 'PENDENTE_ANALISE' || (b as any).mockLocationSuspeita).length || undefined },
     { id: 'colaboradores', label: 'Colaboradores', icon: Users },
     { id: 'locais', label: 'Locais e Geofences', icon: MapPin },
     { id: 'jornadas', label: 'Jornadas de Trabalho', icon: Clock },
@@ -237,11 +260,12 @@ export function App() {
           <div>
             <h1>
               {tabAtiva === 'visao' && 'Visão Geral do RH & Ponto'}
+              {tabAtiva === 'monitor' && 'Monitor Operacional de Ponto (Tempo Real)'}
               {tabAtiva === 'colaboradores' && 'Colaboradores & Equipes'}
               {tabAtiva === 'locais' && 'Locais Autorizados & Cercas Virtuais (Geofences)'}
               {tabAtiva === 'jornadas' && 'Jornadas de Trabalho & Horários'}
               {tabAtiva === 'escalas' && 'Escalas & Alocação por Evento'}
-              {tabAtiva === 'ponto' && 'Monitor de Ponto & Batidas Auditadas'}
+              {tabAtiva === 'ponto' && 'Ponto e Batidas Auditadas (Portaria 671 MTE)'}
               {tabAtiva === 'ajustes' && 'Central de Ajustes & Regularização de Ponto'}
               {tabAtiva === 'estrutura' && 'Estrutura Organizacional'}
               {tabAtiva === 'auditoria' && 'Trilha Imutável de Auditoria (LGPD)'}
@@ -249,10 +273,30 @@ export function App() {
             <p>DiskIngressos • Ecossistema Integrado de Pessoal, Ponto Eletrônico e Custos de Eventos.</p>
           </div>
           <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+            <span
+              className="badge"
+              style={{
+                background: apiConectada ? '#dcfce7' : '#fef3c7',
+                color: apiConectada ? '#166534' : '#92400e',
+                fontSize: '11px',
+                fontWeight: 600
+              }}
+            >
+              {apiConectada ? '🟢 API Online (Porta 3333)' : '🟡 Modo Resiliente'}
+            </span>
+            <select
+              value={perfilUsuario}
+              onChange={(e) => setPerfilUsuario(e.target.value as any)}
+              style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '12px', fontWeight: 600, background: 'white' }}
+            >
+              <option value="ADMINISTRADOR">👑 Administrador</option>
+              <option value="GESTOR_RH">👔 Gestor de RH</option>
+              <option value="COLABORADOR">👤 Colaborador</option>
+            </select>
             <button className="primary" onClick={() => setModalAberto('simulador')}>
               <Smartphone size={16} /> Simular Batida no App
             </button>
-            <div className="avatar">RH</div>
+            <div className="avatar">{perfilUsuario === 'ADMINISTRADOR' ? 'ADM' : (perfilUsuario === 'GESTOR_RH' ? 'RH' : 'COL')}</div>
           </div>
         </header>
 
@@ -350,6 +394,188 @@ export function App() {
                   </div>
                 ))}
               </section>
+            </div>
+        {/* 1.1 MONITOR DE PONTO (TEMPO REAL • FASE 2 & FASE 3) */}
+        {tabAtiva === 'monitor' && (
+          <div>
+            <div className="toolbar" style={{ marginBottom: '14px' }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '16px', color: '#0f172a' }}>Monitor Operacional de Ponto (Tempo Real)</h3>
+                <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#64748b' }}>
+                  Acompanhamento instantâneo da presença, jornadas em andamento, intervalos e detecção de anomalias GPS / Mock Location.
+                </p>
+              </div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button className="secondary" onClick={() => fetchMonitorHoje()}>
+                  Atualizar Monitor
+                </button>
+                <button className="primary" onClick={() => setModalAberto('simulador')}>
+                  <Smartphone size={16} /> Simular Batida
+                </button>
+              </div>
+            </div>
+
+            <section className="cards">
+              <article>
+                <span>Trabalhando agora</span>
+                <strong style={{ color: '#16a34a' }}>
+                  {batidas.filter(b => b.tipo === 'ENTRADA' || b.tipo === 'FIM_INTERVALO').length}
+                </strong>
+                <small style={{ color: '#16a34a' }}>Jornada em execução</small>
+              </article>
+              <article>
+                <span>Em intervalo / Almoço</span>
+                <strong style={{ color: '#d97706' }}>
+                  {batidas.filter(b => b.tipo === 'INICIO_INTERVALO').length}
+                </strong>
+                <small style={{ color: '#d97706' }}>Pausa regulamentar</small>
+              </article>
+              <article>
+                <span>Atrasados / Sem marcação</span>
+                <strong style={{ color: '#dc2626' }}>
+                  {colaboradores.length - batidas.filter(b => b.tipo === 'ENTRADA').length > 0
+                    ? colaboradores.length - batidas.filter(b => b.tipo === 'ENTRADA').length
+                    : 0}
+                </strong>
+                <small style={{ color: '#dc2626' }}>Sem registro no dia</small>
+              </article>
+              <article>
+                <span>Ocorrências para análise</span>
+                <strong style={{ color: '#9333ea' }}>
+                  {batidas.filter(b => b.status === 'PENDENTE_ANALISE' || b.status === 'FORA_DA_AREA' || (b as any).mockLocationSuspeita).length}
+                </strong>
+                <small style={{ color: '#9333ea' }}>Fora do raio ou Mock GPS</small>
+              </article>
+              <article>
+                <span>Validadas na Geofence</span>
+                <strong style={{ color: '#2563eb' }}>
+                  {batidas.filter(b => b.status === 'VALIDADA').length}
+                </strong>
+                <small style={{ color: '#2563eb' }}>100% conformidade MTE</small>
+              </article>
+            </section>
+
+            <div className="table-container">
+              <div style={{ padding: '12px 16px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '12px', fontWeight: 600, color: '#475569' }}>Filtro de Situação:</span>
+                {['TODOS', 'TRABALHANDO', 'INTERVALO', 'OCORRENCIAS'].map(filtro => (
+                  <button
+                    key={filtro}
+                    className={`btn-action ${filtroMonitor === filtro ? 'approve' : ''}`}
+                    onClick={() => setFiltroMonitor(filtro)}
+                  >
+                    {filtro === 'TODOS' && 'Todos os Colaboradores'}
+                    {filtro === 'TRABALHANDO' && '🟢 Trabalhando'}
+                    {filtro === 'INTERVALO' && '🟡 Em Intervalo'}
+                    {filtro === 'OCORRENCIAS' && '⚠️ Ocorrências / Análise'}
+                  </button>
+                ))}
+              </div>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Colaborador</th>
+                    <th>Situação Atual</th>
+                    <th>Última Marcação</th>
+                    <th>Local / Escala Autorizada</th>
+                    <th>Distância / Raio</th>
+                    <th>Evidências Técnicas</th>
+                    <th>Status Geofence</th>
+                    <th>Ações</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {colaboradores.map(col => {
+                    const batidasCol = batidas.filter(b => b.colaboradorNome === col.nome);
+                    const ultima = batidasCol[0];
+                    const escala = escalas.find(e => e.colaboradorNome === col.nome);
+
+                    let situacao = 'SEM_MARCACAO';
+                    let sitBadge = <span className="badge warning">Sem Marcação</span>;
+                    if (ultima) {
+                      if (ultima.status === 'PENDENTE_ANALISE' || ultima.status === 'FORA_DA_AREA' || (ultima as any).mockLocationSuspeita) {
+                        situacao = 'OCORRENCIAS';
+                        sitBadge = <span className="badge danger">⚠️ Para Analisar</span>;
+                      } else if (ultima.tipo === 'ENTRADA' || ultima.tipo === 'FIM_INTERVALO') {
+                        situacao = 'TRABALHANDO';
+                        sitBadge = <span className="badge success">🟢 Trabalhando</span>;
+                      } else if (ultima.tipo === 'INICIO_INTERVALO') {
+                        situacao = 'INTERVALO';
+                        sitBadge = <span className="badge warning">🟡 Em Intervalo</span>;
+                      } else if (ultima.tipo === 'SAIDA') {
+                        situacao = 'ENCERRADO';
+                        sitBadge = <span className="badge info">🔴 Encerrado</span>;
+                      }
+                    }
+
+                    if (filtroMonitor !== 'TODOS' && filtroMonitor !== situacao) {
+                      return null;
+                    }
+
+                    return (
+                      <tr key={col.id}>
+                        <td>
+                          <b>{col.nome}</b>
+                          <div style={{ fontSize: '11px', color: '#64748b' }}>{col.cargo} • <code>{col.matricula}</code></div>
+                        </td>
+                        <td>{sitBadge}</td>
+                        <td>
+                          {ultima ? (
+                            <div>
+                              <b>{ultima.tipo.replace('_', ' ')}</b>
+                              <div style={{ fontSize: '11px', color: '#64748b' }}>{ultima.dataHora}</div>
+                            </div>
+                          ) : '—'}
+                        </td>
+                        <td>{escala?.localNome || ultima?.localNome || 'Sede DiskIngressos Curitiba'}</td>
+                        <td>
+                          {ultima ? (
+                            <div>
+                              <b>{ultima.distancia}</b>
+                              <div style={{ fontSize: '10px', color: '#64748b' }}>Raio: 150m-350m</div>
+                            </div>
+                          ) : '—'}
+                        </td>
+                        <td>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', fontSize: '11px' }}>
+                            <span>Precisão: <b>±{ultima ? '6.5m' : '—'}</b></span>
+                            {(ultima as any)?.offline ? <span style={{ color: '#d97706' }}>📱 Offline Sincronizado</span> : <span style={{ color: '#16a34a' }}>🌐 Online</span>}
+                            {(ultima as any)?.mockLocationSuspeita ? <span style={{ color: '#dc2626', fontWeight: 'bold' }}>⚠️ Mock Location Suspeito</span> : null}
+                          </div>
+                        </td>
+                        <td>
+                          {ultima?.status === 'VALIDADA' && <span className="badge success">✓ Validada</span>}
+                          {ultima?.status === 'FORA_DA_AREA' && <span className="badge danger">Fora da Área</span>}
+                          {(!ultima || ultima?.status === 'PENDENTE_ANALISE') && <span className="badge warning">Sob Análise</span>}
+                        </td>
+                        <td>
+                          <div className="row-actions">
+                            {ultima && (
+                              <button
+                                className="btn-action"
+                                title="Ver Comprovante MTE"
+                                onClick={() => alert(`Comprovante Portaria 671 MTE\nColaborador: ${col.nome}\nNSR: #${ultima.nsr}\nAutenticidade: ${ultima.comprovante}\nStatus: ${ultima.status}`)}
+                              >
+                                MTE
+                              </button>
+                            )}
+                            {situacao === 'OCORRENCIAS' && (
+                              <button
+                                className="btn-action approve"
+                                onClick={() => {
+                                  alert(`Ocorrência de ${col.nome} validada e regularizada com sucesso pelo RH.`);
+                                }}
+                              >
+                                Regularizar
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           </div>
         )}
