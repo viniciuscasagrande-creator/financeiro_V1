@@ -2106,7 +2106,370 @@ export const initialMockDatabase = {
     distribuicaoGenero: { masculino: 54, feminino: 46 },
     tempoMedioCasaMeses: 26.4,
     horasTreinamentoColaborador: 14.5
-  }
+  },
+
+  rhCentralAprovacoes: [
+    {
+      id: "apr-001",
+      tipo: "FÉRIAS",
+      solicitante: "Camila Fernandes Silveira",
+      cargo: "Supervisor de Atendimento",
+      departamento: "Operações e Eventos",
+      detalhes: "Férias 20 dias (01/11 a 20/11) + 10 dias abono pecuniário",
+      valor: 7466.67,
+      status: "PENDENTE_GESTOR",
+      dataSolicitacao: "02/10/2026 14:20",
+      alçada: "Gestor → RH"
+    },
+    {
+      id: "apr-002",
+      tipo: "HORA_EXTRA",
+      solicitante: "Carlos Eduardo Mendes",
+      cargo: "Coordenador de Bilheteria",
+      departamento: "Operações e Eventos",
+      detalhes: "3h30 extras no fechamento de borderô Show Rock Curitiba",
+      valor: 180.00,
+      status: "PENDENTE_RH",
+      dataSolicitacao: "03/10/2026 23:45",
+      alçada: "RH"
+    },
+    {
+      id: "apr-003",
+      tipo: "REEMBOLSO",
+      solicitante: "Carlos Eduardo Mendes",
+      cargo: "Coordenador de Bilheteria",
+      departamento: "Operações e Eventos",
+      detalhes: "Deslocamento urgente para arena e alimentação de plantão",
+      valor: 186.40,
+      status: "PENDENTE_GESTOR",
+      dataSolicitacao: "04/10/2026 10:15",
+      alçada: "Gestor → Financeiro"
+    },
+    {
+      id: "apr-004",
+      tipo: "AJUSTE_PONTO",
+      solicitante: "Beatriz Nogueira Ramos",
+      cargo: "Analista Financeiro Pleno",
+      departamento: "Financeiro & Controladoria",
+      detalhes: "Esquecimento de registro de saída em 02/10 às 18:18",
+      valor: 0,
+      status: "PENDENTE_RH",
+      dataSolicitacao: "03/10/2026 09:15",
+      alçada: "RH (Portaria 671 MTE)"
+    },
+    {
+      id: "apr-005",
+      tipo: "ADMISSAO",
+      solicitante: "Mariana Albuquerque Prado",
+      cargo: "Analista de Suporte Jr",
+      departamento: "Operações e Bilheteria",
+      detalhes: "Contrato de trabalho e ASO conferidos. Aguarda liberação de acesso.",
+      valor: 3200.00,
+      status: "PENDENTE_RH",
+      dataSolicitacao: "04/10/2026 11:00",
+      alçada: "RH → TI"
+    }
+  ],
+
+  rhCargosSalarios: [
+    {
+      id: "cs-01",
+      cargo: "Operador de Bilheteria / Caixa",
+      departamento: "Operações e Eventos",
+      cbo: "4211-25",
+      nivel: "Operacional",
+      piso: 2200.00,
+      medio: 2600.00,
+      teto: 3200.00,
+      colaboradoresNaFaixa: 18,
+      statusFaixa: "EM_CONFORMIDADE"
+    },
+    {
+      id: "cs-02",
+      cargo: "Supervisor de Atendimento e Acesso",
+      departamento: "Operações e Eventos",
+      cbo: "1423-20",
+      nivel: "Pleno",
+      piso: 3500.00,
+      medio: 4200.00,
+      teto: 5200.00,
+      colaboradoresNaFaixa: 6,
+      statusFaixa: "EM_CONFORMIDADE"
+    },
+    {
+      id: "cs-03",
+      cargo: "Analista Financeiro",
+      departamento: "Financeiro, Controladoria e Tesouraria",
+      cbo: "2525-05",
+      nivel: "Pleno",
+      piso: 4200.00,
+      medio: 5400.00,
+      teto: 6800.00,
+      colaboradoresNaFaixa: 5,
+      statusFaixa: "EM_CONFORMIDADE"
+    },
+    {
+      id: "cs-04",
+      cargo: "Engenheiro de Software Fullstack",
+      departamento: "Tecnologia da Informação & Core",
+      cbo: "2124-05",
+      nivel: "Sênior",
+      piso: 8500.00,
+      medio: 11000.00,
+      teto: 14500.00,
+      colaboradoresNaFaixa: 7,
+      statusFaixa: "EM_CONFORMIDADE"
+    }
+  ],
+
+  rhVagas: [
+    {
+      id: "vaga-01",
+      titulo: "Operador de Bilheteria / Caixa Freelancer",
+      departamento: "Operações e Bilheteria de Eventos",
+      tipoContrato: "FREELANCER_EVENTO",
+      quantidade: 12,
+      candidatosInscritos: 34,
+      status: "ABERTA",
+      prazoEncerramento: "15/10/2026",
+      remuneracao: "R$ 180,00/diária + VT/VR"
+    },
+    {
+      id: "vaga-02",
+      titulo: "Analista de Suporte de TI para Eventos",
+      departamento: "Tecnologia da Informação & Core",
+      tipoContrato: "CLT",
+      quantidade: 2,
+      candidatosInscritos: 18,
+      status: "TRIAGEM",
+      prazoEncerramento: "20/10/2026",
+      remuneracao: "R$ 4.200,00 + Benefícios"
+    }
+  ],
+
+  rhCandidatos: [
+    {
+      id: "cand-01",
+      vagaId: "vaga-01",
+      nome: "Gabriel Sampaio Ribeiro",
+      email: "gabriel.sampaio@gmail.com",
+      telefone: "(41) 98822-1133",
+      etapa: "ENTREVISTA_FINAL",
+      scoreAvaliacao: 92,
+      status: "APROVADO_PROPOSTA"
+    },
+    {
+      id: "cand-02",
+      vagaId: "vaga-02",
+      nome: "Bruna Meireles Prado",
+      email: "bruna.ti@outlook.com",
+      telefone: "(41) 97711-4455",
+      etapa: "TESTE_TECNICO",
+      scoreAvaliacao: 88,
+      status: "EM_AVALIACAO"
+    }
+  ],
+
+  rhDesligamentos: [
+    {
+      id: "desl-01",
+      colaboradorId: "colab-007",
+      colaboradorNome: "Marcos Vinicius Rezende",
+      cargo: "Auxiliar Operacional Temporário",
+      departamento: "Operações e Eventos",
+      dataPrevista: "10/10/2026",
+      motivo: "Término de Contrato por Prazo Determinado",
+      tipo: "TERMINO_CONTRATO",
+      statusChecklist: "80%_CONCLUIDO",
+      devolucaoPatrimonio: "PENDENTE_CRACHA_EPI",
+      exameDemissionalAgendado: true
+    }
+  ],
+
+  rhExamesSst: [
+    {
+      id: "sst-01",
+      colaboradorNome: "Carlos Eduardo Mendes",
+      tipoExame: "ASO_PERIODICO",
+      dataRealizacao: "12/04/2026",
+      validade: "12/04/2027",
+      medicoCoordenador: "Dra. Silvana (CRM 18492-PR)",
+      resultado: "APTO",
+      riscosMapeados: "Ergonômico (Postura) • Físico (Ruído em Arenas)",
+      status: "VIGENTE"
+    },
+    {
+      id: "sst-02",
+      colaboradorNome: "Mariana Albuquerque Prado",
+      tipoExame: "ASO_ADMISSIONAL",
+      dataRealizacao: "02/10/2026",
+      validade: "02/10/2027",
+      medicoCoordenador: "Dr. Roberto Guimarães (CRM 29845-PR)",
+      resultado: "APTO",
+      riscosMapeados: "Ergonômico",
+      status: "VIGENTE"
+    }
+  ],
+
+  rhPatrimonio: [
+    {
+      id: "pat-01",
+      patrimonio: "PAT-2026-0041",
+      itemNome: "Smartphone Coletor REP-P Samsung Galaxy A54",
+      categoria: "DISPOSITIVO_MOVEL",
+      serial: "R5CW100ABC",
+      cauteladoPara: "Carlos Eduardo Mendes",
+      dataEntrega: "15/03/2021",
+      termoAssinado: true,
+      status: "EM_USO"
+    },
+    {
+      id: "pat-02",
+      patrimonio: "PAT-2026-0088",
+      itemNome: "Notebook Dell Latitude 5440 i7 16GB",
+      categoria: "TI_CORE",
+      serial: "8HK24N3",
+      cauteladoPara: "Beatriz Nogueira Ramos",
+      dataEntrega: "01/02/2024",
+      termoAssinado: true,
+      status: "EM_USO"
+    },
+    {
+      id: "pat-03",
+      patrimonio: "PAT-2026-0105",
+      itemNome: "Rádio Comunicador HT Digital Motorola DGP-8550",
+      categoria: "RADIO_EVENTOS",
+      serial: "788ABC0012",
+      cauteladoPara: "Carlos Eduardo Mendes",
+      dataEntrega: "25/09/2026",
+      termoAssinado: true,
+      status: "EM_USO"
+    }
+  ],
+
+  rhAvaliacoesPdi: [
+    {
+      id: "pdi-01",
+      colaboradorNome: "Camila Fernandes Silveira",
+      cargo: "Supervisor de Atendimento e Acesso",
+      ciclo: "2026.1 (1º Semestre)",
+      notaCompetencias: 9.3,
+      notaMetas: 9.0,
+      status: "CONCLUIDO",
+      feedbackGestor: "Destaque na liderança de equipes de bilheteria e resolução de contingências de catracas.",
+      acoesPdi: "Curso Avançado de Gestão de Conflitos e Comunicação Não-Violenta."
+    },
+    {
+      id: "pdi-02",
+      colaboradorNome: "Beatriz Nogueira Ramos",
+      cargo: "Analista Financeiro Pleno",
+      ciclo: "2026.1 (1º Semestre)",
+      notaCompetencias: 9.5,
+      notaMetas: 9.6,
+      status: "CONCLUIDO",
+      feedbackGestor: "Excelência técnica em conciliação bancária de gateways e auditoria de repasses.",
+      acoesPdi: "Treinamento em Power BI para Controladoria Avançada."
+    }
+  ],
+
+  rhTreinamentos: [
+    {
+      id: "trein-01",
+      titulo: "NR-23: Prevenção e Combate a Incêndios em Grandes Arenas de Eventos",
+      categoria: "NR_OBRIGATORIA",
+      cargaHoraria: 16,
+      obrigatorio: true,
+      validadeMeses: 12,
+      concluidosCount: 38,
+      vencendoCount: 2,
+      status: "VIGENTE"
+    },
+    {
+      id: "trein-02",
+      titulo: "Operação Segura do Registrador REP-P Disk Ponto e Geofencing",
+      categoria: "OPERACIONAL",
+      cargaHoraria: 4,
+      obrigatorio: true,
+      validadeMeses: 24,
+      concluidosCount: 52,
+      vencendoCount: 0,
+      status: "VIGENTE"
+    },
+    {
+      id: "trein-03",
+      titulo: "LGPD e Segurança no Atendimento de Clientes e Fãs em Bilheterias",
+      categoria: "COMPLIANCE",
+      cargaHoraria: 6,
+      obrigatorio: true,
+      validadeMeses: 12,
+      concluidosCount: 45,
+      vencendoCount: 3,
+      status: "VIGENTE"
+    }
+  ],
+
+  rhReembolsos: [
+    {
+      id: "reemb-001",
+      colaboradorNome: "Carlos Eduardo Mendes",
+      categoria: "DESLOCAMENTO_EVENTO",
+      eventoNome: "Festival Curitiba 2026",
+      centroCusto: "CC-2040 (Operações)",
+      descricao: "Combustível e pedágio para alinhamento técnico prévio na Pedreira Paulo Leminski",
+      valor: 186.40,
+      status: "PENDENTE_GESTOR",
+      comprovanteUrl: "comprovantes/recibo_combustivel_001.pdf",
+      dataSolicitacao: "04/10/2026"
+    },
+    {
+      id: "reemb-002",
+      colaboradorNome: "Beatriz Nogueira Ramos",
+      categoria: "ALIMENTACAO_PLANTAO",
+      eventoNome: "Show Artista A",
+      centroCusto: "CC-1020 (Financeiro)",
+      descricao: "Alimentação em regime de plantão no fechamento financeiro do evento",
+      valor: 92.00,
+      status: "APROVADO",
+      comprovanteUrl: "comprovantes/recibo_refeicao_002.pdf",
+      dataSolicitacao: "02/10/2026"
+    }
+  ],
+
+  rhIntegracoesStatus: [
+    {
+      modulo: "Módulo Financeiro V1 (ERP Disk)",
+      tipo: "CONTAS_A_PAGAR_E_PIX",
+      status: "CONECTADO_ATIVO",
+      descricao: "Fila de lotes PIX de folha e diárias de freelancers enviadas diretamente à Tesouraria.",
+      ultimaSincronizacao: "Hoje às 15:30"
+    },
+    {
+      modulo: "Contabilidade Corporativa",
+      tipo: "LANCAMENTOS_DRE",
+      status: "CONECTADO_ATIVO",
+      descricao: "Apropriação automática de mão de obra direta e encargos nas contas de cada Evento.",
+      ultimaSincronizacao: "Hoje às 15:30"
+    },
+    {
+      modulo: "eSocial (Governo Federal)",
+      tipo: "WEBSERVICE_XSD",
+      status: "HOMOLOGADO_PRODUCAO_RESTRITA",
+      descricao: "Transmissão dos eventos S-1000, S-2200, S-1200 e S-1210 com recibos canônicos.",
+      ultimaSincronizacao: "Hoje às 12:00"
+    }
+  ],
+
+  rhComunicadosMural: [
+    {
+      id: "com-01",
+      titulo: "Operação Especial de Outubro: Ligga Arena e Pedreira",
+      conteudo: "Reforçamos a todas as equipes de bilheteria e atendimento sobre a checagem prévia da bateria dos celulares e validação de presença dentro da cerca virtual com 30 minutos de antecedência.",
+      autor: "Diretoria de Operações & RH",
+      data: "04/10/2026",
+      prioridade: "ALTA",
+      lidoPor: 48
+    }
+  ]
 };
 
 // Cópia profunda para permitir reset instantâneo na demo

@@ -39,6 +39,18 @@ export class CoreFinanceiroStore {
     if (!this.data.rhDiariasStaff) this.data.rhDiariasStaff = fresh.rhDiariasStaff;
     if (!this.data.rhEventosESocial) this.data.rhEventosESocial = fresh.rhEventosESocial;
     if (!this.data.rhPeopleAnalytics) this.data.rhPeopleAnalytics = fresh.rhPeopleAnalytics;
+    if (!this.data.rhCentralAprovacoes) this.data.rhCentralAprovacoes = fresh.rhCentralAprovacoes;
+    if (!this.data.rhCargosSalarios) this.data.rhCargosSalarios = fresh.rhCargosSalarios;
+    if (!this.data.rhVagas) this.data.rhVagas = fresh.rhVagas;
+    if (!this.data.rhCandidatos) this.data.rhCandidatos = fresh.rhCandidatos;
+    if (!this.data.rhDesligamentos) this.data.rhDesligamentos = fresh.rhDesligamentos;
+    if (!this.data.rhExamesSst) this.data.rhExamesSst = fresh.rhExamesSst;
+    if (!this.data.rhPatrimonio) this.data.rhPatrimonio = fresh.rhPatrimonio;
+    if (!this.data.rhAvaliacoesPdi) this.data.rhAvaliacoesPdi = fresh.rhAvaliacoesPdi;
+    if (!this.data.rhTreinamentos) this.data.rhTreinamentos = fresh.rhTreinamentos;
+    if (!this.data.rhReembolsos) this.data.rhReembolsos = fresh.rhReembolsos;
+    if (!this.data.rhIntegracoesStatus) this.data.rhIntegracoesStatus = fresh.rhIntegracoesStatus;
+    if (!this.data.rhComunicadosMural) this.data.rhComunicadosMural = fresh.rhComunicadosMural;
 
     this.state = {
       isLoggedIn: true,
@@ -4988,6 +5000,362 @@ export class CoreFinanceiroStore {
     this.persist();
     this.notify();
     return dia;
+  }
+
+  // --- RH DISK V2 - MÉTODOS CORPORATIVOS AVANÇADOS ---
+
+  aprovarSolicitacaoCentralRH(solicitacaoId, parecer = "Aprovado via Central de Governança") {
+    const item = (this.data.rhCentralAprovacoes || []).find(s => s.id === solicitacaoId);
+    if (!item) return;
+
+    item.status = "APROVADO";
+    item.aprovadoPor = this.state.currentUser.name || "Diretoria RH Disk";
+    item.dataAprovacao = new Date().toLocaleDateString('pt-BR');
+    item.parecer = parecer;
+
+    // Sincroniza entidade de origem
+    if (item.tipo === 'FERIAS') {
+      const ferias = (this.data.rhFerias || []).find(f => f.colaboradorNome === item.solicitante);
+      if (ferias) ferias.status = "APROVADA";
+    } else if (item.tipo === 'AJUSTE_PONTO') {
+      const ajuste = (this.data.rhAjustesPonto || []).find(a => a.colaboradorNome === item.solicitante);
+      if (ajuste) {
+        ajuste.status = "APROVADO";
+        ajuste.parecerRH = parecer;
+      }
+    } else if (item.tipo === 'REEMBOLSO') {
+      const reemb = (this.data.rhReembolsos || []).find(r => r.colaboradorNome === item.solicitante);
+      if (reemb) reemb.status = "APROVADO";
+    } else if (item.tipo === 'ADMISSAO') {
+      const adm = (this.data.rhAdmissoes || []).find(a => a.candidatoNome === item.solicitante);
+      if (adm) adm.status = "CONCLUIDA";
+    }
+
+    if (!this.data.rhAuditLogs) this.data.rhAuditLogs = [];
+    this.data.rhAuditLogs.unshift({
+      id: `log-rh-${Date.now()}`,
+      timestamp: new Date().toISOString(),
+      action: "CENTRAL_APROVACOES_HOMOLOGACAO",
+      entity: "rhCentralAprovacoes",
+      entityId: solicitacaoId,
+      by: this.state.currentUser.name || "Diretoria RH Disk",
+      details: `Solicitação ${solicitacaoId} (${item.tipo}) de ${item.solicitante} deferida com sucesso.`
+    });
+
+    this.showToast("✓ Solicitação Homologada", `${item.tipo} de ${item.solicitante} foi aprovada na Central.`, "success");
+    this.persist();
+    this.notify();
+    return item;
+  }
+
+  reprovarSolicitacaoCentralRH(solicitacaoId, motivo = "Não atende aos critérios normativos internos") {
+    const item = (this.data.rhCentralAprovacoes || []).find(s => s.id === solicitacaoId);
+    if (!item) return;
+
+    item.status = "REPROVADO";
+    item.aprovadoPor = this.state.currentUser.name || "Diretoria RH Disk";
+    item.dataAprovacao = new Date().toLocaleDateString('pt-BR');
+    item.motivoReprovacao = motivo;
+
+    if (!this.data.rhAuditLogs) this.data.rhAuditLogs = [];
+    this.data.rhAuditLogs.unshift({
+      id: `log-rh-${Date.now()}`,
+      timestamp: new Date().toISOString(),
+      action: "CENTRAL_APROVACOES_INDEFERIMENTO",
+      entity: "rhCentralAprovacoes",
+      entityId: solicitacaoId,
+      by: this.state.currentUser.name || "Diretoria RH Disk",
+      details: `Solicitação ${solicitacaoId} (${item.tipo}) reprovada. Motivo: ${motivo}`
+    });
+
+    this.showToast("✕ Solicitação Indeferida", `${item.tipo} de ${item.solicitante} foi reprovada.`, "warning");
+    this.persist();
+    this.notify();
+    return item;
+  }
+
+  converterCandidatoEmColaboradorRH(candidatoId) {
+    const cand = (this.data.rhCandidatos || []).find(c => c.id === candidatoId);
+    if (!cand) return;
+
+    cand.status = "CONVERTIDO_COLABORADOR";
+    const novaAdmissao = {
+      id: `adm-conv-${Date.now()}`,
+      candidatoNome: cand.nome,
+      email: cand.email,
+      cargoSugerido: "Operador de Bilheteria / Caixa",
+      departamento: "Operações e Eventos",
+      dataEnvioLink: new Date().toLocaleDateString('pt-BR'),
+      status: "DOCUMENTOS_ENVIADOS",
+      documentosRecebidos: 6,
+      documentosValidados: 5,
+      previsaoInicio: "15/10/2026",
+      remuneracaoProposta: 2450.00
+    };
+
+    if (!this.data.rhAdmissoes) this.data.rhAdmissoes = [];
+    this.data.rhAdmissoes.unshift(novaAdmissao);
+
+    if (!this.data.rhAuditLogs) this.data.rhAuditLogs = [];
+    this.data.rhAuditLogs.unshift({
+      id: `log-rh-${Date.now()}`,
+      timestamp: new Date().toISOString(),
+      action: "RECRUTAMENTO_CONVERSAO_COLABORADOR",
+      entity: "rhCandidatos",
+      entityId: candidatoId,
+      by: this.state.currentUser.name || "RH Disk Recrutamento",
+      details: `Candidato ${cand.nome} convertido em processo de admissão digital ${novaAdmissao.id}.`
+    });
+
+    this.showToast("✓ Candidato Convertido!", `${cand.nome} encaminhado diretamente para Admissão Digital sem redigitação.`, "success");
+    this.persist();
+    this.notify();
+    return novaAdmissao;
+  }
+
+  cadastrarCargoSalarioRH(dados) {
+    const novoCargo = {
+      id: `cs-${Date.now()}`,
+      cargo: dados.cargo || "Novo Cargo Especialista",
+      departamento: dados.departamento || "Operações",
+      cbo: dados.cbo || "3513-05",
+      nivel: dados.nivel || "Pleno",
+      piso: Number(dados.piso) || 3000,
+      medio: Number(dados.medio) || 4500,
+      teto: Number(dados.teto) || 6000,
+      colaboradoresNaFaixa: 0,
+      statusFaixa: "EM_CONFORMIDADE"
+    };
+
+    if (!this.data.rhCargosSalarios) this.data.rhCargosSalarios = [];
+    this.data.rhCargosSalarios.unshift(novoCargo);
+
+    this.showToast("✓ Cargo Cadastrado", `${novoCargo.cargo} adicionado à estrutura salarial Disk.`, "success");
+    this.persist();
+    this.notify();
+    return novoCargo;
+  }
+
+  cadastrarVagaRH(dados) {
+    const novaVaga = {
+      id: `vaga-${Date.now()}`,
+      titulo: dados.titulo || "Operador de Acesso",
+      departamento: dados.departamento || "Operações e Eventos",
+      tipoContrato: dados.tipoContrato || "FREELANCER_EVENTO",
+      quantidade: Number(dados.quantidade) || 5,
+      candidatosInscritos: 0,
+      status: "ABERTA",
+      prazoEncerramento: dados.prazoEncerramento || "30/10/2026",
+      remuneracao: dados.remuneracao || "R$ 180,00/diária + Benefícios"
+    };
+
+    if (!this.data.rhVagas) this.data.rhVagas = [];
+    this.data.rhVagas.unshift(novaVaga);
+
+    this.showToast("✓ Vaga Aberta", `${novaVaga.titulo} publicada com sucesso.`, "success");
+    this.persist();
+    this.notify();
+    return novaVaga;
+  }
+
+  iniciarDesligamentoRH(dados) {
+    const novoDesligamento = {
+      id: `desl-${Date.now()}`,
+      colaboradorId: dados.colaboradorId || "colab-001",
+      colaboradorNome: dados.colaboradorNome || "Colaborador",
+      cargo: dados.cargo || "Operador",
+      departamento: dados.departamento || "Operações",
+      dataPrevista: dados.dataPrevista || new Date().toLocaleDateString('pt-BR'),
+      motivo: dados.motivo || "Pedido de Demissão",
+      tipo: dados.tipo || "PEDIDO_DEMISSAO",
+      statusChecklist: "EM_ANDAMENTO",
+      devolucaoPatrimonio: "PENDENTE",
+      exameDemissionalAgendado: true
+    };
+
+    if (!this.data.rhDesligamentos) this.data.rhDesligamentos = [];
+    this.data.rhDesligamentos.unshift(novoDesligamento);
+
+    this.showToast("✓ Desligamento Iniciado", `Processo de offboarding aberto para ${novoDesligamento.colaboradorNome}.`, "info");
+    this.persist();
+    this.notify();
+    return novoDesligamento;
+  }
+
+  concluirChecklistDesligamentoRH(desligamentoId) {
+    const desl = (this.data.rhDesligamentos || []).find(d => d.id === desligamentoId);
+    if (!desl) return;
+
+    desl.statusChecklist = "100%_CONCLUIDO";
+    desl.devolucaoPatrimonio = "CONCLUIDA_EM_ESTOQUE";
+
+    // Atualiza status do colaborador
+    const colab = (this.data.rhColaboradores || []).find(c => c.id === desl.colaboradorId || c.nome === desl.colaboradorNome);
+    if (colab) colab.status = "DESLIGADO";
+
+    this.showToast("✓ Offboarding Concluído", `Checklist finalizado e acessos revogados para ${desl.colaboradorNome}.`, "success");
+    this.persist();
+    this.notify();
+    return desl;
+  }
+
+  agendarExameSstRH(dados) {
+    const novoExame = {
+      id: `sst-${Date.now()}`,
+      colaboradorNome: dados.colaboradorNome || "Colaborador Disk",
+      tipoExame: dados.tipoExame || "ASO_PERIODICO",
+      dataRealizacao: new Date().toLocaleDateString('pt-BR'),
+      validade: "04/10/2027",
+      medicoCoordenador: dados.medico || "Dr. Roberto Guimarães (CRM 29845-PR)",
+      resultado: "APTO",
+      riscosMapeados: dados.riscos || "Ergonômico e Ruído Ocupacional",
+      status: "VIGENTE"
+    };
+
+    if (!this.data.rhExamesSst) this.data.rhExamesSst = [];
+    this.data.rhExamesSst.unshift(novoExame);
+
+    this.showToast("✓ ASO Registrado", `Exame ocupacional para ${novoExame.colaboradorNome} registrado com conformidade.`, "success");
+    this.persist();
+    this.notify();
+    return novoExame;
+  }
+
+  cautelarPatrimonioRH(dados) {
+    const item = {
+      id: `pat-${Date.now()}`,
+      patrimonio: `PAT-2026-${Math.floor(1000 + Math.random() * 9000)}`,
+      itemNome: dados.itemNome || "Smartphone REP-P Samsung Galaxy A54",
+      categoria: dados.categoria || "DISPOSITIVO_MOVEL",
+      serial: dados.serial || `SER-${Math.random().toString(36).substr(2, 8).toUpperCase()}`,
+      cauteladoPara: dados.cauteladoPara || "Colaborador",
+      dataEntrega: new Date().toLocaleDateString('pt-BR'),
+      termoAssinado: true,
+      status: "EM_USO"
+    };
+
+    if (!this.data.rhPatrimonio) this.data.rhPatrimonio = [];
+    this.data.rhPatrimonio.unshift(item);
+
+    this.showToast("✓ Equipamento Cautelado", `${item.itemNome} entregue e termo assinado digitalmente.`, "success");
+    this.persist();
+    this.notify();
+    return item;
+  }
+
+  registrarDevolucaoPatrimonioRH(patrimonioId) {
+    const pat = (this.data.rhPatrimonio || []).find(p => p.id === patrimonioId);
+    if (!pat) return;
+
+    pat.status = "DEVOLVIDO_ESTOQUE";
+
+    this.showToast("✓ Devolução Registrada", `${pat.itemNome} retornado ao estoque central de TI/Operações.`, "info");
+    this.persist();
+    this.notify();
+    return pat;
+  }
+
+  salvarAvaliacaoPdiRH(dados) {
+    const novaAvaliacao = {
+      id: `pdi-${Date.now()}`,
+      colaboradorNome: dados.colaboradorNome || "Colaborador Disk",
+      cargo: dados.cargo || "Especialista",
+      ciclo: dados.ciclo || "2026.2 (2º Semestre)",
+      notaCompetencias: Number(dados.notaCompetencias) || 9.0,
+      notaMetas: Number(dados.notaMetas) || 9.2,
+      status: "CONCLUIDO",
+      feedbackGestor: dados.feedbackGestor || "Excelente desempenho com alta entrega e espírito de equipe.",
+      acoesPdi: dados.acoesPdi || "Treinamento em liderança e novas tecnologias."
+    };
+
+    if (!this.data.rhAvaliacoesPdi) this.data.rhAvaliacoesPdi = [];
+    this.data.rhAvaliacoesPdi.unshift(novaAvaliacao);
+
+    this.showToast("✓ Avaliação de PDI Salva", `Ciclo registrado para ${novaAvaliacao.colaboradorNome}.`, "success");
+    this.persist();
+    this.notify();
+    return novaAvaliacao;
+  }
+
+  inscreverTreinamentoRH(treinamentoId, colaboradorId) {
+    const tr = (this.data.rhTreinamentos || []).find(t => t.id === treinamentoId);
+    if (!tr) return;
+
+    tr.concluidosCount = (tr.concluidosCount || 0) + 1;
+
+    this.showToast("✓ Certificação Concluída", `Colaborador qualificado com sucesso em ${tr.titulo}.`, "success");
+    this.persist();
+    this.notify();
+    return tr;
+  }
+
+  solicitarReembolsoRH(dados) {
+    const novoReembolso = {
+      id: `reemb-${Date.now()}`,
+      colaboradorNome: dados.colaboradorNome || this.state.currentUser.name || "Carlos Eduardo Mendes",
+      categoria: dados.categoria || "DESLOCAMENTO_EVENTO",
+      eventoNome: dados.eventoNome || "Festival Curitiba 2026",
+      centroCusto: dados.centroCusto || "CC-2040 (Operações)",
+      descricao: dados.descricao || "Despesas com deslocamento e combustível",
+      valor: Number(dados.valor) || 120.00,
+      status: "PENDENTE_GESTOR",
+      comprovanteUrl: "comprovantes/recibo_anexo.pdf",
+      dataSolicitacao: new Date().toLocaleDateString('pt-BR')
+    };
+
+    if (!this.data.rhReembolsos) this.data.rhReembolsos = [];
+    this.data.rhReembolsos.unshift(novoReembolso);
+
+    if (!this.data.rhCentralAprovacoes) this.data.rhCentralAprovacoes = [];
+    this.data.rhCentralAprovacoes.unshift({
+      id: `apr-reemb-${Date.now()}`,
+      tipo: "REEMBOLSO",
+      solicitante: novoReembolso.colaboradorNome,
+      departamento: "Operações",
+      detalhes: `${novoReembolso.descricao} - Evento: ${novoReembolso.eventoNome}`,
+      dataSolicitacao: novoReembolso.dataSolicitacao,
+      valor: novoReembolso.valor,
+      status: "PENDENTE",
+      alcadaExigida: "GESTOR_DIRETO",
+      prioridade: "NORMAL"
+    });
+
+    this.showToast("✓ Reembolso Solicitado", `Protocolo gerado e enviado para a Central de Aprovações.`, "success");
+    this.persist();
+    this.notify();
+    return novoReembolso;
+  }
+
+  aprovarReembolsoRH(reembolsoId) {
+    const reemb = (this.data.rhReembolsos || []).find(r => r.id === reembolsoId);
+    if (!reemb) return;
+
+    reemb.status = "APROVADO";
+
+    this.showToast("✓ Reembolso Autorizado", `Valor de R$ ${reemb.valor.toFixed(2)} liberado para crédito via Tesouraria Disk.`, "success");
+    this.persist();
+    this.notify();
+    return reemb;
+  }
+
+  publicarComunicadoMuralRH(dados) {
+    const com = {
+      id: `com-${Date.now()}`,
+      titulo: dados.titulo || "Comunicado Oficial RH",
+      conteudo: dados.conteudo || "Aviso geral para todos os colaboradores DiskIngressos.",
+      autor: dados.autor || "Diretoria & RH",
+      data: new Date().toLocaleDateString('pt-BR'),
+      prioridade: dados.prioridade || "NORMAL",
+      lidoPor: 1
+    };
+
+    if (!this.data.rhComunicadosMural) this.data.rhComunicadosMural = [];
+    this.data.rhComunicadosMural.unshift(com);
+
+    this.showToast("✓ Comunicado Publicado", "Mensagem enviada ao Mural do Portal do Colaborador.", "success");
+    this.persist();
+    this.notify();
+    return com;
   }
 
   resetDemoData() {

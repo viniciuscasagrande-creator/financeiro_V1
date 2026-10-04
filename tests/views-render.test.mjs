@@ -59,7 +59,19 @@ import {
   renderDiskRHEsocial,
   renderDiskRHEquipesEvento,
   renderDiskRHCustosEvento,
-  renderDiskRHAuditoria
+  renderDiskRHAuditoria,
+  renderDiskRHAprovacoesCentral,
+  renderDiskRHCargosSalarios,
+  renderDiskRHRecrutamento,
+  renderDiskRHDesligamentos,
+  renderDiskRHSst,
+  renderDiskRHPatrimonio,
+  renderDiskRHDesempenho,
+  renderDiskRHTreinamentos,
+  renderDiskRHReembolsos,
+  renderDiskRHPortalColaborador,
+  renderDiskRHPortalGestor,
+  renderDiskRHIntegracoes
 } from '../js/views/rh/rhViews.js';
 
 let passed = 0;
@@ -154,7 +166,19 @@ const diskViews = [
   ['Disk: RH Equipes Evento', () => renderDiskRHEquipesEvento(stateDisk)],
   ['Disk: RH Custos Evento', () => renderDiskRHCustosEvento(stateDisk)],
   ['Disk: RH Folha', () => renderDiskRHFolha(stateDisk)],
-  ['Disk: RH Auditoria & LGPD', () => renderDiskRHAuditoria(stateDisk)]
+  ['Disk: RH Auditoria & LGPD', () => renderDiskRHAuditoria(stateDisk)],
+  ['Disk: RH Central de Aprovacoes', () => renderDiskRHAprovacoesCentral(stateDisk)],
+  ['Disk: RH Cargos e Salarios', () => renderDiskRHCargosSalarios(stateDisk)],
+  ['Disk: RH Recrutamento e Selecao', () => renderDiskRHRecrutamento(stateDisk)],
+  ['Disk: RH Desligamentos', () => renderDiskRHDesligamentos(stateDisk)],
+  ['Disk: RH SST Medicina Ocupacional', () => renderDiskRHSst(stateDisk)],
+  ['Disk: RH Patrimonio e EPIs', () => renderDiskRHPatrimonio(stateDisk)],
+  ['Disk: RH Desempenho e PDI', () => renderDiskRHDesempenho(stateDisk)],
+  ['Disk: RH Treinamentos e NRs', () => renderDiskRHTreinamentos(stateDisk)],
+  ['Disk: RH Reembolsos de Despesas', () => renderDiskRHReembolsos(stateDisk)],
+  ['Disk: RH Portal do Colaborador', () => renderDiskRHPortalColaborador(stateDisk)],
+  ['Disk: RH Portal do Gestor', () => renderDiskRHPortalGestor(stateDisk)],
+  ['Disk: RH Integracoes ERP e eSocial', () => renderDiskRHIntegracoes(stateDisk)]
 ];
 
 for (const [name, fn] of diskViews) {

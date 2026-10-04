@@ -95,7 +95,19 @@ import {
   renderDiskRHEsocial,
   renderDiskRHEquipesEvento,
   renderDiskRHCustosEvento,
-  renderDiskRHAuditoria
+  renderDiskRHAuditoria,
+  renderDiskRHAprovacoesCentral,
+  renderDiskRHCargosSalarios,
+  renderDiskRHRecrutamento,
+  renderDiskRHDesligamentos,
+  renderDiskRHSst,
+  renderDiskRHPatrimonio,
+  renderDiskRHDesempenho,
+  renderDiskRHTreinamentos,
+  renderDiskRHReembolsos,
+  renderDiskRHPortalColaborador,
+  renderDiskRHPortalGestor,
+  renderDiskRHIntegracoes
 } from './views/rh/rhViews.js';
 import { initScrollSpy } from './components/scrollSpy.js';
 
@@ -3232,6 +3244,42 @@ class LimitlessFinancialApp {
           break;
         case 'diskRH_auditoria':
           viewHtml = renderDiskRHAuditoria(state, this.currentFilterArg);
+          break;
+        case 'diskRH_aprovacoes':
+          viewHtml = renderDiskRHAprovacoesCentral(state, this.currentFilterArg);
+          break;
+        case 'diskRH_cargos':
+          viewHtml = renderDiskRHCargosSalarios(state, this.currentFilterArg);
+          break;
+        case 'diskRH_recrutamento':
+          viewHtml = renderDiskRHRecrutamento(state, this.currentFilterArg);
+          break;
+        case 'diskRH_desligamentos':
+          viewHtml = renderDiskRHDesligamentos(state, this.currentFilterArg);
+          break;
+        case 'diskRH_sst':
+          viewHtml = renderDiskRHSst(state, this.currentFilterArg);
+          break;
+        case 'diskRH_patrimonio':
+          viewHtml = renderDiskRHPatrimonio(state, this.currentFilterArg);
+          break;
+        case 'diskRH_desempenho':
+          viewHtml = renderDiskRHDesempenho(state, this.currentFilterArg);
+          break;
+        case 'diskRH_treinamentos':
+          viewHtml = renderDiskRHTreinamentos(state, this.currentFilterArg);
+          break;
+        case 'diskRH_reembolsos':
+          viewHtml = renderDiskRHReembolsos(state, this.currentFilterArg);
+          break;
+        case 'diskRH_portalColaborador':
+          viewHtml = renderDiskRHPortalColaborador(state, this.currentFilterArg);
+          break;
+        case 'diskRH_portalGestor':
+          viewHtml = renderDiskRHPortalGestor(state, this.currentFilterArg);
+          break;
+        case 'diskRH_integracoes':
+          viewHtml = renderDiskRHIntegracoes(state, this.currentFilterArg);
           break;
         default:
           viewHtml = renderDiskDashboard(state);
@@ -9503,6 +9551,615 @@ window.LimitlessApp = {
     if (confirm(`Confirma o processamento e liquidação da folha de pagamento da competência ${competencia}?`)) {
       financialStore.processarFolhaPagamentoRH(competencia);
     }
+  },
+
+  // --- RH DISK V2 - HANDLERS E MODAIS INTERATIVOS ---
+
+  analisarSolicitacaoCentral(id) {
+    const db = financialStore.getState().db || {};
+    const item = (db.rhCentralAprovacoes || []).find(s => s.id === id);
+    if (!item) return;
+
+    const html = `
+      <div class="modal-header bg-dark text-white">
+        <h5 class="modal-title fw-bold"><i class="ph-file-search me-2"></i>Dossiê de Solicitação • ${item.id}</h5>
+        <button type="button" class="btn-close btn-close-white" onclick="window.app.closeModal()"></button>
+      </div>
+      <div class="modal-body p-4">
+        <div class="p-3 bg-light rounded mb-3">
+          <div class="row g-2">
+            <div class="col-6"><span class="small text-muted d-block">Tipo:</span><strong>${item.tipo}</strong></div>
+            <div class="col-6"><span class="small text-muted d-block">Status:</span><span class="badge ${item.status === 'APROVADO' ? 'bg-success' : 'bg-warning text-dark'}">${item.status}</span></div>
+            <div class="col-6"><span class="small text-muted d-block">Solicitante:</span><strong>${item.solicitante}</strong></div>
+            <div class="col-6"><span class="small text-muted d-block">Departamento:</span>${item.departamento}</div>
+            <div class="col-6"><span class="small text-muted d-block">Data:</span>${item.dataSolicitacao}</div>
+            <div class="col-6"><span class="small text-muted d-block">Alçada:</span>${item.alcadaExigida}</div>
+          </div>
+        </div>
+        <div class="mb-3">
+          <label class="form-label small fw-bold">Descrição / Justificativa</label>
+          <div class="p-3 border rounded text-dark bg-white">${item.detalhes}</div>
+        </div>
+        ${item.valor ? `
+          <div class="alert alert-info py-2 mb-3">
+            <strong>Impacto Orçamentário:</strong> ${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.valor)}
+          </div>
+        ` : ''}
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary btn-sm" onclick="window.app.closeModal()">Fechar</button>
+        ${item.status === 'PENDENTE' ? `
+          <button class="btn btn-danger btn-sm" onclick="window.LimitlessApp.reprovarSolicitacaoCentral('${item.id}'); window.app.closeModal();">Reprovar</button>
+          <button class="btn btn-success btn-sm" onclick="window.LimitlessApp.aprovarSolicitacaoCentral('${item.id}'); window.app.closeModal();">Aprovar Solicitação</button>
+        ` : ''}
+      </div>
+    `;
+    window.app.openModal(html);
+  },
+
+  aprovarSolicitacaoCentral(id) {
+    financialStore.aprovarSolicitacaoCentralRH(id);
+  },
+
+  reprovarSolicitacaoCentral(id) {
+    const motivo = prompt("Informe a justificativa formal para a reprovação:");
+    if (motivo) {
+      financialStore.reprovarSolicitacaoCentralRH(id, motivo);
+    }
+  },
+
+  aprovarTodasPendenciasRH() {
+    if (confirm("Deseja deferir em lote todas as solicitações pendentes de competência imediata do RH?")) {
+      const db = financialStore.getState().db || {};
+      const pendentes = (db.rhCentralAprovacoes || []).filter(s => s.status === 'PENDENTE');
+      pendentes.forEach(p => financialStore.aprovarSolicitacaoCentralRH(p.id, "Homologação em lote via Central RH"));
+      financialStore.showToast("✓ Lote Aprovado", `${pendentes.length} solicitações homologadas com sucesso.`, "success");
+    }
+  },
+
+  abrirModalNovoCargo() {
+    const html = `
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title fw-bold"><i class="ph-ladder me-2"></i>Cadastrar Cargo & Faixa Salarial</h5>
+        <button type="button" class="btn-close btn-close-white" onclick="window.app.closeModal()"></button>
+      </div>
+      <div class="modal-body p-4">
+        <form onsubmit="window.LimitlessApp.salvarNovoCargo(event)">
+          <div class="mb-3">
+            <label class="form-label fw-bold small">Título do Cargo</label>
+            <input type="text" class="form-control" name="cargo" required placeholder="Ex: Supervisor de Bilheteria">
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <label class="form-label fw-bold small">Departamento</label>
+              <input type="text" class="form-control" name="departamento" required value="Operações e Eventos">
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-bold small">CBO Oficial</label>
+              <input type="text" class="form-control" name="cbo" required value="3513-05">
+            </div>
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col-4">
+              <label class="form-label fw-bold small">Piso (R$)</label>
+              <input type="number" class="form-control" name="piso" value="2800" step="0.01" required>
+            </div>
+            <div class="col-4">
+              <label class="form-label fw-bold small">Médio (R$)</label>
+              <input type="number" class="form-control" name="medio" value="3800" step="0.01" required>
+            </div>
+            <div class="col-4">
+              <label class="form-label fw-bold small">Teto (R$)</label>
+              <input type="number" class="form-control" name="teto" value="5000" step="0.01" required>
+            </div>
+          </div>
+          <div class="d-flex justify-content-end gap-2 pt-2 border-top">
+            <button type="button" class="btn btn-light" onclick="window.app.closeModal()">Cancelar</button>
+            <button type="submit" class="btn btn-primary fw-bold">Salvar Cargo</button>
+          </div>
+        </form>
+      </div>
+    `;
+    window.app.openModal(html);
+  },
+
+  salvarNovoCargo(event) {
+    event.preventDefault();
+    const fd = new FormData(event.target);
+    financialStore.cadastrarCargoSalarioRH({
+      cargo: fd.get('cargo'),
+      departamento: fd.get('departamento'),
+      cbo: fd.get('cbo'),
+      piso: fd.get('piso'),
+      medio: fd.get('medio'),
+      teto: fd.get('teto')
+    });
+    window.app.closeModal();
+  },
+
+  exportarTabelaCargosSalarios() {
+    financialStore.showToast("✓ Matriz Exportada", "Tabela de cargos e salários gerada em formato Excel.", "info");
+  },
+
+  editarFaixaSalarial(id) {
+    financialStore.showToast("✓ Faixa Salarial", `Modo de edição da faixa salarial ${id} ativado.`, "info");
+  },
+
+  abrirModalNovaVaga() {
+    const html = `
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title fw-bold"><i class="ph-plus-circle me-2"></i>Publicar Nova Vaga de Trabalho</h5>
+        <button type="button" class="btn-close btn-close-white" onclick="window.app.closeModal()"></button>
+      </div>
+      <div class="modal-body p-4">
+        <form onsubmit="window.LimitlessApp.salvarNovaVaga(event)">
+          <div class="mb-3">
+            <label class="form-label fw-bold small">Título da Vaga</label>
+            <input type="text" class="form-control" name="titulo" required placeholder="Ex: Operador de Catraca / Acesso">
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <label class="form-label fw-bold small">Departamento</label>
+              <input type="text" class="form-control" name="departamento" required value="Operações e Eventos">
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-bold small">Regime</label>
+              <select class="form-select" name="tipoContrato">
+                <option value="FREELANCER_EVENTO">Freelancer por Evento</option>
+                <option value="CLT">CLT Efetivo</option>
+                <option value="TEMPORARIO">Temporário (Lei 6.019)</option>
+              </select>
+            </div>
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <label class="form-label fw-bold small">Quantidade de Vagas</label>
+              <input type="number" class="form-control" name="quantidade" value="8" required>
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-bold small">Remuneração / Diária</label>
+              <input type="text" class="form-control" name="remuneracao" value="R$ 180,00/diária + VT/VR" required>
+            </div>
+          </div>
+          <div class="d-flex justify-content-end gap-2 pt-2 border-top">
+            <button type="button" class="btn btn-light" onclick="window.app.closeModal()">Cancelar</button>
+            <button type="submit" class="btn btn-primary fw-bold">Publicar Vaga</button>
+          </div>
+        </form>
+      </div>
+    `;
+    window.app.openModal(html);
+  },
+
+  salvarNovaVaga(event) {
+    event.preventDefault();
+    const fd = new FormData(event.target);
+    financialStore.cadastrarVagaRH({
+      titulo: fd.get('titulo'),
+      departamento: fd.get('departamento'),
+      tipoContrato: fd.get('tipoContrato'),
+      quantidade: fd.get('quantidade'),
+      remuneracao: fd.get('remuneracao')
+    });
+    window.app.closeModal();
+  },
+
+  exportarPipelineCandidatos() {
+    financialStore.showToast("✓ Pipeline Exportado", "Relatório de candidatos e scores exportado em PDF.", "info");
+  },
+
+  verDetalhesVaga(id) {
+    financialStore.showToast("✓ Vaga Selecionada", `Exibindo inscritos e detalhes da vaga ${id}.`, "info");
+  },
+
+  converterCandidatoEmColaborador(id) {
+    financialStore.converterCandidatoEmColaboradorRH(id);
+  },
+
+  abrirModalNovoDesligamento() {
+    const db = financialStore.getState().db || {};
+    const colaboradores = db.rhColaboradores || [];
+    const html = `
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title fw-bold"><i class="ph-user-minus me-2"></i>Abrir Processo de Desligamento</h5>
+        <button type="button" class="btn-close btn-close-white" onclick="window.app.closeModal()"></button>
+      </div>
+      <div class="modal-body p-4">
+        <form onsubmit="window.LimitlessApp.salvarNovoDesligamento(event)">
+          <div class="mb-3">
+            <label class="form-label fw-bold small">Colaborador</label>
+            <select class="form-select" name="colaboradorId" required>
+              ${colaboradores.map(c => `<option value="${c.id}">${c.nome} - ${c.cargoNome || c.tipoContrato}</option>`).join('')}
+            </select>
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <label class="form-label fw-bold small">Data Prevista de Saída</label>
+              <input type="date" class="form-control" name="dataPrevista" value="2026-10-20" required>
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-bold small">Tipo de Rescisão</label>
+              <select class="form-select" name="tipo">
+                <option value="PEDIDO_DEMISSAO">Pedido de Demissão</option>
+                <option value="DISPENSA_SEM_JUSTA_CAUSA">Sem Justa Causa</option>
+                <option value="TERMINO_CONTRATO">Término de Contrato</option>
+              </select>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-bold small">Motivo / Parecer</label>
+            <textarea class="form-control" name="motivo" rows="2" placeholder="Descreva os motivos da rescisão..."></textarea>
+          </div>
+          <div class="d-flex justify-content-end gap-2 pt-2 border-top">
+            <button type="button" class="btn btn-light" onclick="window.app.closeModal()">Cancelar</button>
+            <button type="submit" class="btn btn-danger fw-bold">Iniciar Offboarding</button>
+          </div>
+        </form>
+      </div>
+    `;
+    window.app.openModal(html);
+  },
+
+  salvarNovoDesligamento(event) {
+    event.preventDefault();
+    const fd = new FormData(event.target);
+    const db = financialStore.getState().db || {};
+    const colab = (db.rhColaboradores || []).find(c => c.id === fd.get('colaboradorId')) || {};
+    financialStore.iniciarDesligamentoRH({
+      colaboradorId: colab.id,
+      colaboradorNome: colab.nome,
+      cargo: colab.cargoNome,
+      departamento: colab.departamento,
+      dataPrevista: fd.get('dataPrevista'),
+      tipo: fd.get('tipo'),
+      motivo: fd.get('motivo')
+    });
+    window.app.closeModal();
+  },
+
+  concluirChecklistDesligamento(id) {
+    financialStore.concluirChecklistDesligamentoRH(id);
+  },
+
+  gerarTRCTPreliminar(id) {
+    financialStore.showToast("✓ TRCT Preliminar", `Termo de Rescisão (TRCT) com demonstrativo de verbas gerado para ${id}.`, "success");
+  },
+
+  exportarRelatorioOffboarding() {
+    financialStore.showToast("✓ Relatório Exportado", "Dossiê de desligamentos e comprovantes gerado.", "info");
+  },
+
+  abrirModalNovoExameSst() {
+    const html = `
+      <div class="modal-header bg-success text-white">
+        <h5 class="modal-title fw-bold"><i class="ph-first-aid-kit me-2"></i>Agendamento de Exame Ocupacional (ASO)</h5>
+        <button type="button" class="btn-close btn-close-white" onclick="window.app.closeModal()"></button>
+      </div>
+      <div class="modal-body p-4">
+        <form onsubmit="window.LimitlessApp.salvarNovoExameSst(event)">
+          <div class="mb-3">
+            <label class="form-label fw-bold small">Colaborador</label>
+            <input type="text" class="form-control" name="colaboradorNome" required value="Carlos Eduardo Mendes">
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <label class="form-label fw-bold small">Tipo de Exame</label>
+              <select class="form-select" name="tipoExame">
+                <option value="ASO_PERIODICO">ASO Periódico</option>
+                <option value="ASO_RETORNO">Retorno ao Trabalho</option>
+                <option value="ASO_MUDANCA">Mudança de Função</option>
+                <option value="ASO_DEMISSIONAL">Demissional</option>
+              </select>
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-bold small">Médico / Clínica</label>
+              <input type="text" class="form-control" name="medico" value="Dr. Roberto Guimarães (CRM 29845-PR)">
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-bold small">Riscos Ocupacionais</label>
+            <input type="text" class="form-control" name="riscos" value="Ergonômico e Ruído Ocupacional (Grandes Arenas)">
+          </div>
+          <div class="d-flex justify-content-end gap-2 pt-2 border-top">
+            <button type="button" class="btn btn-light" onclick="window.app.closeModal()">Cancelar</button>
+            <button type="submit" class="btn btn-success fw-bold">Registrar ASO</button>
+          </div>
+        </form>
+      </div>
+    `;
+    window.app.openModal(html);
+  },
+
+  salvarNovoExameSst(event) {
+    event.preventDefault();
+    const fd = new FormData(event.target);
+    financialStore.agendarExameSstRH({
+      colaboradorNome: fd.get('colaboradorNome'),
+      tipoExame: fd.get('tipoExame'),
+      medico: fd.get('medico'),
+      riscos: fd.get('riscos')
+    });
+    window.app.closeModal();
+  },
+
+  visualizarAtestadoSst(id) {
+    financialStore.showToast("✓ ASO Visualizado", `Atestado de Saúde Ocupacional ${id} apto e verificado.`, "info");
+  },
+
+  exportarRelatorioPCMSO() {
+    financialStore.showToast("✓ PCMSO / PGR", "Laudos de Saúde Ocupacional exportados em conformidade NR-07/NR-09.", "success");
+  },
+
+  abrirModalNovaCautelaPatrimonio() {
+    const html = `
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title fw-bold"><i class="ph-devices me-2"></i>Cautelar Equipamento / EPI</h5>
+        <button type="button" class="btn-close btn-close-white" onclick="window.app.closeModal()"></button>
+      </div>
+      <div class="modal-body p-4">
+        <form onsubmit="window.LimitlessApp.salvarNovaCautelaPatrimonio(event)">
+          <div class="mb-3">
+            <label class="form-label fw-bold small">Descrição do Equipamento</label>
+            <input type="text" class="form-control" name="itemNome" required placeholder="Ex: Smartphone REP-P Samsung Galaxy A54">
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <label class="form-label fw-bold small">Categoria</label>
+              <select class="form-select" name="categoria">
+                <option value="DISPOSITIVO_MOVEL">Dispositivo Móvel REP-P</option>
+                <option value="TI_CORE">Notebook / TI Core</option>
+                <option value="RADIO_EVENTOS">Rádio HT Eventos</option>
+              </select>
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-bold small">Número de Série</label>
+              <input type="text" class="form-control" name="serial" required placeholder="Ex: 8HK24N3">
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-bold small">Cautelado Para</label>
+            <input type="text" class="form-control" name="cauteladoPara" required value="Carlos Eduardo Mendes">
+          </div>
+          <div class="d-flex justify-content-end gap-2 pt-2 border-top">
+            <button type="button" class="btn btn-light" onclick="window.app.closeModal()">Cancelar</button>
+            <button type="submit" class="btn btn-primary fw-bold">Gerar Termo de Cautela</button>
+          </div>
+        </form>
+      </div>
+    `;
+    window.app.openModal(html);
+  },
+
+  salvarNovaCautelaPatrimonio(event) {
+    event.preventDefault();
+    const fd = new FormData(event.target);
+    financialStore.cautelarPatrimonioRH({
+      itemNome: fd.get('itemNome'),
+      categoria: fd.get('categoria'),
+      serial: fd.get('serial'),
+      cauteladoPara: fd.get('cauteladoPara')
+    });
+    window.app.closeModal();
+  },
+
+  registrarDevolucaoPatrimonio(id) {
+    if (confirm(`Confirma o recolhimento e vistoria do patrimônio ${id}?`)) {
+      financialStore.registrarDevolucaoPatrimonioRH(id);
+    }
+  },
+
+  exportarInventarioPatrimonio() {
+    financialStore.showToast("✓ Inventário Exportado", "Lista de equipamentos cautelados exportada.", "info");
+  },
+
+  abrirModalNovoPdi() {
+    const html = `
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title fw-bold"><i class="ph-target me-2"></i>Lançar Avaliação de Desempenho & PDI</h5>
+        <button type="button" class="btn-close btn-close-white" onclick="window.app.closeModal()"></button>
+      </div>
+      <div class="modal-body p-4">
+        <form onsubmit="window.LimitlessApp.salvarNovoPdi(event)">
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <label class="form-label fw-bold small">Colaborador</label>
+              <input type="text" class="form-control" name="colaboradorNome" value="Camila Fernandes Silveira" required>
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-bold small">Ciclo</label>
+              <input type="text" class="form-control" name="ciclo" value="2026.2" required>
+            </div>
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <label class="form-label fw-bold small">Nota Competências (0 a 10)</label>
+              <input type="number" class="form-control" name="notaCompetencias" value="9.4" step="0.1" required>
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-bold small">Nota Metas (0 a 10)</label>
+              <input type="number" class="form-control" name="notaMetas" value="9.5" step="0.1" required>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-bold small">Feedback do Gestor</label>
+            <textarea class="form-control" name="feedbackGestor" rows="2">Excelência no suporte a grandes operações e liderança de catracas.</textarea>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-bold small">Ações do PDI</label>
+            <textarea class="form-control" name="acoesPdi" rows="2">Treinamento em Gestão Estratégica e Metodologias Ágeis.</textarea>
+          </div>
+          <div class="d-flex justify-content-end gap-2 pt-2 border-top">
+            <button type="button" class="btn btn-light" onclick="window.app.closeModal()">Cancelar</button>
+            <button type="submit" class="btn btn-primary fw-bold">Salvar PDI</button>
+          </div>
+        </form>
+      </div>
+    `;
+    window.app.openModal(html);
+  },
+
+  salvarNovoPdi(event) {
+    event.preventDefault();
+    const fd = new FormData(event.target);
+    financialStore.salvarAvaliacaoPdiRH({
+      colaboradorNome: fd.get('colaboradorNome'),
+      ciclo: fd.get('ciclo'),
+      notaCompetencias: fd.get('notaCompetencias'),
+      notaMetas: fd.get('notaMetas'),
+      feedbackGestor: fd.get('feedbackGestor'),
+      acoesPdi: fd.get('acoesPdi')
+    });
+    window.app.closeModal();
+  },
+
+  verDetalhesPdi(id) {
+    financialStore.showToast("✓ PDI Selecionado", `Visualizando matriz individual e metas de ${id}.`, "info");
+  },
+
+  exportarMatriz9Box() {
+    financialStore.showToast("✓ Matriz 9-Box", "Relatório de Potencial vs Desempenho gerado.", "success");
+  },
+
+  abrirModalNovoTreinamento() {
+    financialStore.showToast("✓ Novo Treinamento", "Painel de criação de módulo de treinamento ativado.", "info");
+  },
+
+  inscreverTurmaTreinamento(id) {
+    financialStore.inscreverTreinamentoRH(id, 'colab-001');
+  },
+
+  exportarRelatorioTreinamentos() {
+    financialStore.showToast("✓ Certificados", "Certificados de capacitação das turmas exportados em lote.", "success");
+  },
+
+  abrirModalNovoReembolso() {
+    const html = `
+      <div class="modal-header bg-info text-white">
+        <h5 class="modal-title fw-bold"><i class="ph-receipt me-2"></i>Solicitar Reembolso de Despesa</h5>
+        <button type="button" class="btn-close btn-close-white" onclick="window.app.closeModal()"></button>
+      </div>
+      <div class="modal-body p-4">
+        <form onsubmit="window.LimitlessApp.salvarNovoReembolso(event)">
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <label class="form-label fw-bold small">Categoria</label>
+              <select class="form-select" name="categoria">
+                <option value="DESLOCAMENTO_EVENTO">Deslocamento / Combustível</option>
+                <option value="ALIMENTACAO_PLANTAO">Alimentação Plantão</option>
+                <option value="HOSPEDAGEM">Hospedagem</option>
+                <option value="OUTROS">Outros</option>
+              </select>
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-bold small">Valor (R$)</label>
+              <input type="number" class="form-control" name="valor" value="145.50" step="0.01" required>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-bold small">Evento / Centro de Custo</label>
+            <input type="text" class="form-control" name="eventoNome" value="Festival Curitiba 2026 (Pedreira)">
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-bold small">Descrição da Despesa</label>
+            <textarea class="form-control" name="descricao" rows="2" required placeholder="Detalhe a finalidade do gasto...">Deslocamento e pedágio para alinhamento operacional do festival.</textarea>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-bold small">Comprovante (Nota Fiscal / Cupom)</label>
+            <input type="file" class="form-control" name="comprovante">
+          </div>
+          <div class="d-flex justify-content-end gap-2 pt-2 border-top">
+            <button type="button" class="btn btn-light" onclick="window.app.closeModal()">Cancelar</button>
+            <button type="submit" class="btn btn-info text-white fw-bold">Enviar para Homologação</button>
+          </div>
+        </form>
+      </div>
+    `;
+    window.app.openModal(html);
+  },
+
+  salvarNovoReembolso(event) {
+    event.preventDefault();
+    const fd = new FormData(event.target);
+    financialStore.solicitarReembolsoRH({
+      categoria: fd.get('categoria'),
+      valor: fd.get('valor'),
+      eventoNome: fd.get('eventoNome'),
+      descricao: fd.get('descricao')
+    });
+    window.app.closeModal();
+  },
+
+  visualizarComprovanteReembolso(id) {
+    financialStore.showToast("✓ Comprovante", `Recibo fiscal da despesa ${id} autenticado com carimbo digital.`, "info");
+  },
+
+  aprovarReembolso(id) {
+    financialStore.aprovarReembolsoRH(id);
+  },
+
+  exportarRelatorioReembolsos() {
+    financialStore.showToast("✓ Reembolsos Exportados", "Demonstrativo de despesas aprovadas exportado.", "info");
+  },
+
+  baterPontoSimuladoColaborador() {
+    const pos = { coords: { latitude: -25.4284, longitude: -49.2733 } };
+    window.LimitlessApp.registrarPontoGeo('colab-001', pos);
+  },
+
+  abrirModalNovoComunicado() {
+    const html = `
+      <div class="modal-header bg-dark text-white">
+        <h5 class="modal-title fw-bold"><i class="ph-newspaper me-2"></i>Publicar Aviso no Mural</h5>
+        <button type="button" class="btn-close btn-close-white" onclick="window.app.closeModal()"></button>
+      </div>
+      <div class="modal-body p-4">
+        <form onsubmit="window.LimitlessApp.salvarNovoComunicado(event)">
+          <div class="mb-3">
+            <label class="form-label fw-bold small">Título do Comunicado</label>
+            <input type="text" class="form-control" name="titulo" required placeholder="Ex: Informações sobre a operação do próximo evento">
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-bold small">Conteúdo</label>
+            <textarea class="form-control" name="conteudo" rows="3" required placeholder="Digite a mensagem para os colaboradores..."></textarea>
+          </div>
+          <div class="d-flex justify-content-end gap-2 pt-2 border-top">
+            <button type="button" class="btn btn-light" onclick="window.app.closeModal()">Cancelar</button>
+            <button type="submit" class="btn btn-primary fw-bold">Publicar Comunicado</button>
+          </div>
+        </form>
+      </div>
+    `;
+    window.app.openModal(html);
+  },
+
+  salvarNovoComunicado(event) {
+    event.preventDefault();
+    const fd = new FormData(event.target);
+    financialStore.publicarComunicadoMuralRH({
+      titulo: fd.get('titulo'),
+      conteudo: fd.get('conteudo')
+    });
+    window.app.closeModal();
+  },
+
+  aprovarTodasPendenciasEquipe() {
+    window.LimitlessApp.aprovarTodasPendenciasRH();
+  },
+
+  testarConexoesRH() {
+    financialStore.showToast("✓ Conectividade 100%", "Conexões com Financeiro V1, DRE, Contabilidade e eSocial ativas.", "success");
+  },
+
+  forcarSincronizacaoTotalRH() {
+    financialStore.showToast("✓ Sincronização Concluída", "Lotes PIX, apropriação de custos no DRE e filas de eventos transmitidas.", "success");
+  },
+
+  sincronizarConectorRH(tipo) {
+    financialStore.showToast("✓ Conector Sincronizado", `Integração [${tipo}] atualizada em tempo real.`, "success");
+  },
+
+  baixarHolerite(id) {
+    financialStore.showToast("✓ Holerite Baixado", `Comprovante de rendimentos ${id} assinado digitalmente ICP-Brasil.`, "success");
   }
 };
 

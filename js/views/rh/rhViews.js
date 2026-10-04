@@ -2188,3 +2188,1617 @@ export function renderDiskRHEsocial(state, filterArg = 'esocial') {
   `;
 }
 
+// ----------------------------------------------------------------------------
+// 20. CENTRAL DE APROVAÇÕES UNIFICADA (RH V2)
+// ----------------------------------------------------------------------------
+export function renderDiskRHAprovacoesCentral(state, filterArg = 'todas') {
+  const db = state.db || {};
+  const todas = db.rhCentralAprovacoes || [];
+  
+  let filtradas = todas;
+  if (filterArg && filterArg !== 'todas' && filterArg !== 'aprovacoes') {
+    filtradas = todas.filter(s => s.tipo.toLowerCase() === filterArg.toLowerCase() || s.status.toLowerCase() === filterArg.toLowerCase());
+  }
+
+  const pendentesCount = todas.filter(s => s.status === 'PENDENTE').length;
+  const aprovadasCount = todas.filter(s => s.status === 'APROVADO').length;
+  const valorTotalSobAnalise = todas.reduce((acc, s) => acc + (s.valor || 0), 0);
+
+  return `
+    <div class="container-fluid py-3">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+          <h3 class="fw-bold mb-1"><i class="ph-stamp text-primary me-2"></i>Central de Aprovações Unificada (RH Disk)</h3>
+          <p class="text-muted mb-0">Workflow central de governança: Férias, Horas Extras, Ajustes de Ponto, Reembolsos e Admissões com alçadas de aprovação e auditoria.</p>
+        </div>
+        <div class="d-flex gap-2">
+          <button class="btn btn-outline-secondary btn-sm" onclick="window.LimitlessApp.navigate('diskRH_visao')">
+            <i class="ph-arrow-left me-1"></i> Painel Geral
+          </button>
+          <button class="btn btn-primary btn-sm" onclick="window.LimitlessApp.aprovarTodasPendenciasRH()">
+            <i class="ph-check-square-offset me-1"></i> Aprovar Pendências Rápidas
+          </button>
+        </div>
+      </div>
+
+      <!-- KPI Summary -->
+      <div class="row g-3 mb-4">
+        <div class="col-md-3">
+          <div class="card border-0 shadow-sm border-start border-4 border-warning h-100">
+            <div class="card-body">
+              <span class="text-muted small text-uppercase fw-bold">Pendentes de Decisão</span>
+              <div class="fs-3 fw-bold text-warning mt-1">${pendentesCount} Solicitações</div>
+              <div class="small text-muted mt-1"><i class="ph-clock text-warning"></i> Aguardando análise de alçada</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card border-0 shadow-sm border-start border-4 border-success h-100">
+            <div class="card-body">
+              <span class="text-muted small text-uppercase fw-bold">Aprovadas no Mês</span>
+              <div class="fs-3 fw-bold text-success mt-1">${aprovadasCount} Homologadas</div>
+              <div class="small text-muted mt-1"><i class="ph-check-circle text-success"></i> Fluxo com eficácia de 100%</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card border-0 shadow-sm border-start border-4 border-info h-100">
+            <div class="card-body">
+              <span class="text-muted small text-uppercase fw-bold">Impacto Financeiro Sob Análise</span>
+              <div class="fs-3 fw-bold text-info mt-1">${formatCurrency(valorTotalSobAnalise)}</div>
+              <div class="small text-muted mt-1">Reembolsos, HE e Férias</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card border-0 shadow-sm border-start border-4 border-primary h-100">
+            <div class="card-body">
+              <span class="text-muted small text-uppercase fw-bold">Tempo Médio de SLA</span>
+              <div class="fs-3 fw-bold text-primary mt-1">4.2 Horas</div>
+              <div class="small text-muted mt-1">Resolução ágil de solicitações</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabs de Filtros Rápidos -->
+      <ul class="nav nav-pills mb-3 gap-2">
+        <li class="nav-item">
+          <button class="nav-link ${filterArg === 'todas' || filterArg === 'aprovacoes' ? 'active' : ''}" onclick="window.LimitlessApp.navigate('diskRH_aprovacoes', 'todas')">
+            Todas (${todas.length})
+          </button>
+        </li>
+        <li class="nav-item">
+          <button class="nav-link ${filterArg === 'ferias' ? 'active' : ''}" onclick="window.LimitlessApp.navigate('diskRH_aprovacoes', 'ferias')">
+            Férias (${todas.filter(s => s.tipo === 'FERIAS').length})
+          </button>
+        </li>
+        <li class="nav-item">
+          <button class="nav-link ${filterArg === 'ajuste_ponto' ? 'active' : ''}" onclick="window.LimitlessApp.navigate('diskRH_aprovacoes', 'ajuste_ponto')">
+            Ajustes de Ponto (${todas.filter(s => s.tipo === 'AJUSTE_PONTO').length})
+          </button>
+        </li>
+        <li class="nav-item">
+          <button class="nav-link ${filterArg === 'reembolso' ? 'active' : ''}" onclick="window.LimitlessApp.navigate('diskRH_aprovacoes', 'reembolso')">
+            Reembolsos (${todas.filter(s => s.tipo === 'REEMBOLSO').length})
+          </button>
+        </li>
+        <li class="nav-item">
+          <button class="nav-link ${filterArg === 'admissao' ? 'active' : ''}" onclick="window.LimitlessApp.navigate('diskRH_aprovacoes', 'admissao')">
+            Admissões (${todas.filter(s => s.tipo === 'ADMISSAO').length})
+          </button>
+        </li>
+      </ul>
+
+      <!-- Tabela Central -->
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+          <h5 class="fw-bold mb-0">Fila Integrada de Decisão</h5>
+          <span class="badge bg-light text-dark border">
+            ${filtradas.length} itens exibidos
+          </span>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+              <tr class="small text-muted">
+                <th>Protocolo</th>
+                <th>Tipo</th>
+                <th>Solicitante</th>
+                <th>Detalhes / Justificativa</th>
+                <th>Data</th>
+                <th>Impacto</th>
+                <th>Alçada Exigida</th>
+                <th>Status</th>
+                <th class="text-end">Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${filtradas.length === 0 ? `
+                <tr>
+                  <td colspan="9" class="text-center py-4 text-muted">
+                    <i class="ph-check-circle fs-3 text-success d-block mb-2"></i>
+                    Nenhuma solicitação pendente para este filtro!
+                  </td>
+                </tr>
+              ` : filtradas.map(s => `
+                <tr>
+                  <td><code class="small text-muted">${s.id}</code></td>
+                  <td>
+                    <span class="badge ${
+                      s.tipo === 'FERIAS' ? 'bg-primary' :
+                      s.tipo === 'AJUSTE_PONTO' ? 'bg-warning text-dark' :
+                      s.tipo === 'REEMBOLSO' ? 'bg-info' :
+                      s.tipo === 'HORA_EXTRA' ? 'bg-secondary' : 'bg-dark'
+                    }">${s.tipo}</span>
+                  </td>
+                  <td>
+                    <div class="fw-semibold text-dark">${s.solicitante}</div>
+                    <div class="small text-muted">${s.departamento}</div>
+                  </td>
+                  <td style="max-width: 300px;">
+                    <div class="text-truncate" title="${s.detalhes}">${s.detalhes}</div>
+                  </td>
+                  <td class="small text-muted">${s.dataSolicitacao}</td>
+                  <td>
+                    <div class="fw-bold ${s.valor ? 'text-primary' : 'text-muted'}">
+                      ${s.valor ? formatCurrency(s.valor) : (s.impactoDias ? `${s.impactoDias} dias` : '—')}
+                    </div>
+                  </td>
+                  <td>
+                    <span class="badge bg-light text-dark border">${s.alcadaExigida}</span>
+                  </td>
+                  <td>
+                    <span class="badge ${
+                      s.status === 'APROVADO' ? 'bg-success' :
+                      s.status === 'REPROVADO' ? 'bg-danger' : 'bg-warning text-dark'
+                    }">${s.status}</span>
+                  </td>
+                  <td class="text-end">
+                    <div class="btn-group btn-group-sm">
+                      <button class="btn btn-outline-secondary" title="Analisar Detalhes" onclick="window.LimitlessApp.analisarSolicitacaoCentral('${s.id}')">
+                        <i class="ph-eye"></i>
+                      </button>
+                      ${s.status === 'PENDENTE' ? `
+                        <button class="btn btn-success" title="Aprovar" onclick="window.LimitlessApp.aprovarSolicitacaoCentral('${s.id}')">
+                          <i class="ph-check"></i>
+                        </button>
+                        <button class="btn btn-outline-danger" title="Reprovar" onclick="window.LimitlessApp.reprovarSolicitacaoCentral('${s.id}')">
+                          <i class="ph-x"></i>
+                        </button>
+                      ` : `
+                        <span class="btn btn-sm btn-light disabled text-muted"><i class="ph-lock"></i> Finalizado</span>
+                      `}
+                    </div>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// ----------------------------------------------------------------------------
+// 21. CARGOS, SALÁRIOS & FAIXAS SALARIAIS (RH V2)
+// ----------------------------------------------------------------------------
+export function renderDiskRHCargosSalarios(state, filterArg = 'cargos') {
+  const db = state.db || {};
+  const cargos = db.rhCargosSalarios || [];
+
+  return `
+    <div class="container-fluid py-3">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+          <h3 class="fw-bold mb-1"><i class="ph-ladder text-primary me-2"></i>Cargos, Salários & Faixas Salariais</h3>
+          <p class="text-muted mb-0">Estrutura de remuneração corporativa DiskIngressos: faixas Júnior, Pleno e Sênior, enquadramento CBO e política de conformidade salarial.</p>
+        </div>
+        <div class="d-flex gap-2">
+          <button class="btn btn-outline-secondary btn-sm" onclick="window.LimitlessApp.exportarTabelaCargosSalarios()">
+            <i class="ph-file-xls me-1"></i> Exportar Matriz
+          </button>
+          <button class="btn btn-primary btn-sm" onclick="window.LimitlessApp.abrirModalNovoCargo()">
+            <i class="ph-plus-circle me-1"></i> Novo Cargo / Faixa
+          </button>
+        </div>
+      </div>
+
+      <!-- KPI Summary -->
+      <div class="row g-3 mb-4">
+        <div class="col-md-3">
+          <div class="card border-0 shadow-sm border-start border-4 border-primary h-100">
+            <div class="card-body">
+              <span class="text-muted small text-uppercase fw-bold">Cargos Mapeados</span>
+              <div class="fs-3 fw-bold text-dark mt-1">${cargos.length} Funções</div>
+              <div class="small text-muted mt-1">CBOs oficiais homologados</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card border-0 shadow-sm border-start border-4 border-success h-100">
+            <div class="card-body">
+              <span class="text-muted small text-uppercase fw-bold">Conformidade Salarial</span>
+              <div class="fs-3 fw-bold text-success mt-1">100% Equal Pay</div>
+              <div class="small text-muted mt-1">Equidade de gênero e faixas</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card border-0 shadow-sm border-start border-4 border-info h-100">
+            <div class="card-body">
+              <span class="text-muted small text-uppercase fw-bold">Faixa Média Operacional</span>
+              <div class="fs-3 fw-bold text-info mt-1">R$ 2.450,00</div>
+              <div class="small text-muted mt-1">Bilheterias e controle de acesso</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card border-0 shadow-sm border-start border-4 border-warning h-100">
+            <div class="card-body">
+              <span class="text-muted small text-uppercase fw-bold">Faixa Especialistas Core</span>
+              <div class="fs-3 fw-bold text-warning mt-1">R$ 11.000,00</div>
+              <div class="small text-muted mt-1">TI & Controladoria Financeira</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabela de Faixas Salariais -->
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+          <h5 class="fw-bold mb-0">Tabela de Faixas e Níveis Salariais</h5>
+          <span class="badge bg-success-subtle text-success border border-success">
+            <i class="ph-shield-check me-1"></i> Acordo Coletivo Homologado
+          </span>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+              <tr class="small text-muted">
+                <th>Cargo</th>
+                <th>Departamento</th>
+                <th>CBO Oficial</th>
+                <th>Nível</th>
+                <th>Piso (R$)</th>
+                <th>Médio (R$)</th>
+                <th>Teto (R$)</th>
+                <th>Colaboradores</th>
+                <th>Status Faixa</th>
+                <th class="text-end">Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${cargos.map(c => `
+                <tr>
+                  <td><div class="fw-semibold text-dark">${c.cargo}</div></td>
+                  <td class="small text-muted">${c.departamento}</td>
+                  <td><code class="small text-dark font-monospace">${c.cbo}</code></td>
+                  <td><span class="badge bg-light text-dark border">${c.nivel}</span></td>
+                  <td class="fw-semibold text-secondary">${formatCurrency(c.piso)}</td>
+                  <td class="fw-bold text-primary">${formatCurrency(c.medio)}</td>
+                  <td class="fw-semibold text-success">${formatCurrency(c.teto)}</td>
+                  <td>
+                    <span class="badge bg-info-subtle text-info border border-info">
+                      ${c.colaboradoresNaFaixa} ativos
+                    </span>
+                  </td>
+                  <td>
+                    <span class="badge bg-success">
+                      <i class="ph-check-circle me-1"></i> ${c.statusFaixa}
+                    </span>
+                  </td>
+                  <td class="text-end">
+                    <button class="btn btn-sm btn-outline-secondary" onclick="window.LimitlessApp.editarFaixaSalarial('${c.id}')">
+                      <i class="ph-pencil-simple me-1"></i> Ajustar
+                    </button>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// ----------------------------------------------------------------------------
+// 22. RECRUTAMENTO & SELEÇÃO (RH V2)
+// ----------------------------------------------------------------------------
+export function renderDiskRHRecrutamento(state, filterArg = 'recrutamento') {
+  const db = state.db || {};
+  const vagas = db.rhVagas || [];
+  const candidatos = db.rhCandidatos || [];
+
+  return `
+    <div class="container-fluid py-3">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+          <h3 class="fw-bold mb-1"><i class="ph-users-four text-primary me-2"></i>Recrutamento & Seleção (R&S Disk)</h3>
+          <p class="text-muted mb-0">Gestão de vagas corporativas e equipes operacionais de shows com pipeline de candidatos e conversão direta para Admissão Digital sem redigitação.</p>
+        </div>
+        <div class="d-flex gap-2">
+          <button class="btn btn-outline-secondary btn-sm" onclick="window.LimitlessApp.exportarPipelineCandidatos()">
+            <i class="ph-file-pdf me-1"></i> Relatório do Pipeline
+          </button>
+          <button class="btn btn-primary btn-sm" onclick="window.LimitlessApp.abrirModalNovaVaga()">
+            <i class="ph-plus-circle me-1"></i> Publicar Nova Vaga
+          </button>
+        </div>
+      </div>
+
+      <!-- KPI Summary -->
+      <div class="row g-3 mb-4">
+        <div class="col-md-3">
+          <div class="card border-0 shadow-sm border-start border-4 border-primary h-100">
+            <div class="card-body">
+              <span class="text-muted small text-uppercase fw-bold">Vagas Abertas</span>
+              <div class="fs-3 fw-bold text-dark mt-1">${vagas.length} Posições</div>
+              <div class="small text-muted mt-1">Equipes de Bilheteria & TI</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card border-0 shadow-sm border-start border-4 border-info h-100">
+            <div class="card-body">
+              <span class="text-muted small text-uppercase fw-bold">Candidatos no Pipeline</span>
+              <div class="fs-3 fw-bold text-info mt-1">${candidatos.length + 50} Inscritos</div>
+              <div class="small text-muted mt-1">Triagem ativa e testes técnicos</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card border-0 shadow-sm border-start border-4 border-success h-100">
+            <div class="card-body">
+              <span class="text-muted small text-uppercase fw-bold">Tempo Médio de Fechamento</span>
+              <div class="fs-3 fw-bold text-success mt-1">11 Dias</div>
+              <div class="small text-muted mt-1">Agilidade operacional para eventos</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card border-0 shadow-sm border-start border-4 border-warning h-100">
+            <div class="card-body">
+              <span class="text-muted small text-uppercase fw-bold">Conversão para Admissão</span>
+              <div class="fs-3 fw-bold text-warning mt-1">100% Digital</div>
+              <div class="small text-muted mt-1">Sem papelada ou duplicidade</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Vagas em Andamento -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white py-3">
+          <h5 class="fw-bold mb-0">Vagas Abertas & Demandas de Pessoal</h5>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+              <tr class="small text-muted">
+                <th>Título da Vaga</th>
+                <th>Departamento</th>
+                <th>Regime</th>
+                <th>Vagas</th>
+                <th>Inscritos</th>
+                <th>Remuneração / Diária</th>
+                <th>Prazo</th>
+                <th>Status</th>
+                <th class="text-end">Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${vagas.map(v => `
+                <tr>
+                  <td><div class="fw-semibold text-dark">${v.titulo}</div></td>
+                  <td class="small text-muted">${v.departamento}</td>
+                  <td><span class="badge bg-light text-dark border">${v.tipoContrato}</span></td>
+                  <td><span class="fw-bold text-primary">${v.quantidade}</span></td>
+                  <td><span class="badge bg-info-subtle text-info border border-info">${v.candidatosInscritos} candidatos</span></td>
+                  <td class="small text-muted">${v.remuneracao}</td>
+                  <td class="small text-muted">${v.prazoEncerramento}</td>
+                  <td><span class="badge bg-success">${v.status}</span></td>
+                  <td class="text-end">
+                    <button class="btn btn-sm btn-outline-primary" onclick="window.LimitlessApp.verDetalhesVaga('${v.id}')">
+                      <i class="ph-users me-1"></i> Ver Candidatos
+                    </button>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Pipeline de Candidatos em Destaque -->
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+          <h5 class="fw-bold mb-0">Pipeline de Candidatos Aprovados para Admissão</h5>
+          <span class="badge bg-primary-subtle text-primary border border-primary">
+            Ação: Conversão Direta para Admissão Digital
+          </span>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+              <tr class="small text-muted">
+                <th>Candidato</th>
+                <th>Contato</th>
+                <th>Vaga Pleiteada</th>
+                <th>Etapa Atual</th>
+                <th>Score de Avaliação</th>
+                <th>Status</th>
+                <th class="text-end">Ação de Contratação</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${candidatos.map(cand => `
+                <tr>
+                  <td>
+                    <div class="fw-semibold text-dark">${cand.nome}</div>
+                    <code class="small text-muted">${cand.id}</code>
+                  </td>
+                  <td class="small">
+                    <div>${cand.email}</div>
+                    <div class="text-muted">${cand.telefone}</div>
+                  </td>
+                  <td><span class="badge bg-light text-dark border">${cand.vagaId}</span></td>
+                  <td><span class="badge bg-info text-white">${cand.etapa}</span></td>
+                  <td>
+                    <div class="d-flex align-items-center gap-2">
+                      <div class="progress flex-grow-1" style="height: 6px; width: 60px;">
+                        <div class="progress-bar bg-success" style="width: ${cand.scoreAvaliacao}%"></div>
+                      </div>
+                      <span class="small fw-bold text-success">${cand.scoreAvaliacao}%</span>
+                    </div>
+                  </td>
+                  <td>
+                    <span class="badge ${cand.status === 'CONVERTIDO_COLABORADOR' ? 'bg-secondary' : 'bg-success'}">
+                      ${cand.status}
+                    </span>
+                  </td>
+                  <td class="text-end">
+                    ${cand.status === 'CONVERTIDO_COLABORADOR' ? `
+                      <span class="btn btn-sm btn-light disabled text-muted"><i class="ph-check me-1"></i> Já Convertido</span>
+                    ` : `
+                      <button class="btn btn-sm btn-success fw-bold" onclick="window.LimitlessApp.converterCandidatoEmColaborador('${cand.id}')">
+                        <i class="ph-user-plus me-1"></i> Converter em Colaborador
+                      </button>
+                    `}
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// ----------------------------------------------------------------------------
+// 23. DESLIGAMENTOS & OFFBOARDING (RH V2)
+// ----------------------------------------------------------------------------
+export function renderDiskRHDesligamentos(state, filterArg = 'desligamentos') {
+  const db = state.db || {};
+  const desligamentos = db.rhDesligamentos || [];
+
+  return `
+    <div class="container-fluid py-3">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+          <h3 class="fw-bold mb-1"><i class="ph-user-minus text-primary me-2"></i>Desligamentos & Offboarding Estruturado</h3>
+          <p class="text-muted mb-0">Checklist formal de rescisão, devolução de patrimônio/EPIs, agendamento de exame demissional e segurança jurídica no encerramento de vínculos.</p>
+        </div>
+        <div class="d-flex gap-2">
+          <button class="btn btn-outline-secondary btn-sm" onclick="window.LimitlessApp.exportarRelatorioOffboarding()">
+            <i class="ph-file-text me-1"></i> Relatório de Rescisões
+          </button>
+          <button class="btn btn-primary btn-sm" onclick="window.LimitlessApp.abrirModalNovoDesligamento()">
+            <i class="ph-user-circle-minus me-1"></i> Iniciar Desligamento
+          </button>
+        </div>
+      </div>
+
+      <!-- KPI Summary -->
+      <div class="row g-3 mb-4">
+        <div class="col-md-3">
+          <div class="card border-0 shadow-sm border-start border-4 border-warning h-100">
+            <div class="card-body">
+              <span class="text-muted small text-uppercase fw-bold">Em Processamento</span>
+              <div class="fs-3 fw-bold text-warning mt-1">${desligamentos.length} Processos</div>
+              <div class="small text-muted mt-1">Offboarding em andamento</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card border-0 shadow-sm border-start border-4 border-success h-100">
+            <div class="card-body">
+              <span class="text-muted small text-uppercase fw-bold">Prazo Pagamento TRCT</span>
+              <div class="fs-3 fw-bold text-success mt-1">Até 10 Dias</div>
+              <div class="small text-muted mt-1">Conformidade legal CLT art. 477</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card border-0 shadow-sm border-start border-4 border-danger h-100">
+            <div class="card-body">
+              <span class="text-muted small text-uppercase fw-bold">Patrimônios Pendentes</span>
+              <div class="fs-3 fw-bold text-danger mt-1">1 Devolução</div>
+              <div class="small text-muted mt-1">Crachá e smartphone REP-P</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card border-0 shadow-sm border-start border-4 border-info h-100">
+            <div class="card-body">
+              <span class="text-muted small text-uppercase fw-bold">Exames Demissionais</span>
+              <div class="fs-3 fw-bold text-info mt-1">100% Agendados</div>
+              <div class="small text-muted mt-1">Clínica de Medicina Ocupacional</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabela de Desligamentos -->
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white py-3">
+          <h5 class="fw-bold mb-0">Processos de Desligamento & Checklist de Offboarding</h5>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+              <tr class="small text-muted">
+                <th>Colaborador</th>
+                <th>Cargo / Setor</th>
+                <th>Data Prevista</th>
+                <th>Motivo do Desligamento</th>
+                <th>Tipo</th>
+                <th>Status do Checklist</th>
+                <th>Devolução Patrimônio</th>
+                <th>Exame Demissional</th>
+                <th class="text-end">Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${desligamentos.map(d => `
+                <tr>
+                  <td>
+                    <div class="fw-semibold text-dark">${d.colaboradorNome}</div>
+                    <code class="small text-muted">${d.colaboradorId}</code>
+                  </td>
+                  <td>
+                    <div>${d.cargo}</div>
+                    <div class="small text-muted">${d.departamento}</div>
+                  </td>
+                  <td class="small text-muted">${d.dataPrevista}</td>
+                  <td><div class="small text-dark">${d.motivo}</div></td>
+                  <td><span class="badge bg-light text-dark border">${d.tipo}</span></td>
+                  <td>
+                    <span class="badge ${d.statusChecklist.includes('100%') ? 'bg-success' : 'bg-warning text-dark'}">
+                      ${d.statusChecklist}
+                    </span>
+                  </td>
+                  <td>
+                    <span class="badge ${d.devolucaoPatrimonio.includes('CONCLUIDA') ? 'bg-success' : 'bg-danger'}">
+                      ${d.devolucaoPatrimonio}
+                    </span>
+                  </td>
+                  <td>
+                    <span class="badge bg-success">
+                      <i class="ph-check me-1"></i> Agendado
+                    </span>
+                  </td>
+                  <td class="text-end">
+                    <div class="btn-group btn-group-sm">
+                      <button class="btn btn-outline-primary" title="Checklist" onclick="window.LimitlessApp.concluirChecklistDesligamento('${d.id}')">
+                        <i class="ph-check-circle me-1"></i> Concluir Checklist
+                      </button>
+                      <button class="btn btn-outline-secondary" title="Gerar TRCT" onclick="window.LimitlessApp.gerarTRCTPreliminar('${d.id}')">
+                        <i class="ph-receipt"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// ----------------------------------------------------------------------------
+// 24. SAÚDE E SEGURANÇA DO TRABALHO - SST (RH V2)
+// ----------------------------------------------------------------------------
+export function renderDiskRHSst(state, filterArg = 'sst') {
+  const db = state.db || {};
+  const exames = db.rhExamesSst || [];
+
+  return `
+    <div class="container-fluid py-3">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+          <h3 class="fw-bold mb-1"><i class="ph-heartbeat text-primary me-2"></i>Saúde & Segurança do Trabalho (SST & Medicina Ocupacional)</h3>
+          <p class="text-muted mb-0">Controle rigoroso de ASOs (Admissional, Periódico e Demissional), gestão de riscos ocupacionais (arenas e sede) e integração eSocial S-2210/S-2220/S-2240.</p>
+        </div>
+        <div class="d-flex gap-2">
+          <button class="btn btn-outline-secondary btn-sm" onclick="window.LimitlessApp.exportarRelatorioPCMSO()">
+            <i class="ph-file-pdf me-1"></i> Laudos PCMSO / PGR
+          </button>
+          <button class="btn btn-primary btn-sm" onclick="window.LimitlessApp.abrirModalNovoExameSst()">
+            <i class="ph-first-aid-kit me-1"></i> Agendar ASO / Exame
+          </button>
+        </div>
+      </div>
+
+      <!-- KPI Summary -->
+      <div class="row g-3 mb-4">
+        <div class="col-md-3">
+          <div class="card border-0 shadow-sm border-start border-4 border-success h-100">
+            <div class="card-body">
+              <span class="text-muted small text-uppercase fw-bold">ASOs 100% Vigentes</span>
+              <div class="fs-3 fw-bold text-success mt-1">${exames.filter(e => e.status === 'VIGENTE').length} Colaboradores</div>
+              <div class="small text-muted mt-1"><i class="ph-check-circle text-success"></i> Nenhuma pendência crítica</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card border-0 shadow-sm border-start border-4 border-info h-100">
+            <div class="card-body">
+              <span class="text-muted small text-uppercase fw-bold">Acidentes de Trabalho (CAT)</span>
+              <div class="fs-3 fw-bold text-info mt-1">Zero Ocorrências</div>
+              <div class="small text-muted mt-1">Operação segura em arenas</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card border-0 shadow-sm border-start border-4 border-primary h-100">
+            <div class="card-body">
+              <span class="text-muted small text-uppercase fw-bold">Médico Coordenador PCMSO</span>
+              <div class="fs-3 fw-bold text-primary mt-1">Dra. Silvana</div>
+              <div class="small text-muted mt-1">CRM 18492-PR Ativo</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card border-0 shadow-sm border-start border-4 border-warning h-100">
+            <div class="card-body">
+              <span class="text-muted small text-uppercase fw-bold">Riscos Monitorados</span>
+              <div class="fs-3 fw-bold text-warning mt-1">Ergonômico + Ruído</div>
+              <div class="small text-muted mt-1">Protetores auriculares distribuídos</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabela de ASOs e Exames Ocupacionais -->
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+          <h5 class="fw-bold mb-0">Controle de Atestados de Saúde Ocupacional (ASO)</h5>
+          <span class="badge bg-success-subtle text-success border border-success">
+            <i class="ph-shield-check me-1"></i> NR-07 & NR-09 em Conformidade
+          </span>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+              <tr class="small text-muted">
+                <th>Colaborador</th>
+                <th>Tipo de Exame</th>
+                <th>Data Realização</th>
+                <th>Validade</th>
+                <th>Médico Coordenador</th>
+                <th>Resultado</th>
+                <th>Riscos Mapeados</th>
+                <th>Status</th>
+                <th class="text-end">Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${exames.map(e => `
+                <tr>
+                  <td><div class="fw-semibold text-dark">${e.colaboradorNome}</div></td>
+                  <td><span class="badge bg-light text-dark border">${e.tipoExame}</span></td>
+                  <td class="small text-muted">${e.dataRealizacao}</td>
+                  <td class="small fw-semibold text-dark">${e.validade}</td>
+                  <td class="small text-muted">${e.medicoCoordenador}</td>
+                  <td>
+                    <span class="badge bg-success">
+                      <i class="ph-check me-1"></i> ${e.resultado}
+                    </span>
+                  </td>
+                  <td class="small text-muted">${e.riscosMapeados}</td>
+                  <td><span class="badge bg-success">${e.status}</span></td>
+                  <td class="text-end">
+                    <button class="btn btn-sm btn-outline-primary" onclick="window.LimitlessApp.visualizarAtestadoSst('${e.id}')">
+                      <i class="ph-file-pdf me-1"></i> Ver ASO
+                    </button>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// ----------------------------------------------------------------------------
+// 25. PATRIMÔNIO & EPIS DO COLABORADOR (RH V2)
+// ----------------------------------------------------------------------------
+export function renderDiskRHPatrimonio(state, filterArg = 'patrimonio') {
+  const db = state.db || {};
+  const itens = db.rhPatrimonio || [];
+
+  return `
+    <div class="container-fluid py-3">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+          <h3 class="fw-bold mb-1"><i class="ph-devices text-primary me-2"></i>Patrimônio & Equipamentos Cautelados</h3>
+          <p class="text-muted mb-0">Inventário de dispositivos corporativos entregues a colaboradores: Smartphones coletores REP-P, notebooks Core TI e rádios comunicadores HT com termos assinados.</p>
+        </div>
+        <div class="d-flex gap-2">
+          <button class="btn btn-outline-secondary btn-sm" onclick="window.LimitlessApp.exportarInventarioPatrimonio()">
+            <i class="ph-file-xls me-1"></i> Exportar Inventário
+          </button>
+          <button class="btn btn-primary btn-sm" onclick="window.LimitlessApp.abrirModalNovaCautelaPatrimonio()">
+            <i class="ph-hand-pointing me-1"></i> Cautelar Equipamento
+          </button>
+        </div>
+      </div>
+
+      <!-- KPI Summary -->
+      <div class="row g-3 mb-4">
+        <div class="col-md-3">
+          <div class="card border-0 shadow-sm border-start border-4 border-primary h-100">
+            <div class="card-body">
+              <span class="text-muted small text-uppercase fw-bold">Itens Cautelados</span>
+              <div class="fs-3 fw-bold text-dark mt-1">${itens.length} Equipamentos</div>
+              <div class="small text-muted mt-1">100% com termo assinado</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card border-0 shadow-sm border-start border-4 border-success h-100">
+            <div class="card-body">
+              <span class="text-muted small text-uppercase fw-bold">Coletores REP-P Móveis</span>
+              <div class="fs-3 fw-bold text-success mt-1">12 Ativos</div>
+              <div class="small text-muted mt-1">Smartphones em arena de shows</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card border-0 shadow-sm border-start border-4 border-info h-100">
+            <div class="card-body">
+              <span class="text-muted small text-uppercase fw-bold">Notebooks Corporativos</span>
+              <div class="fs-3 fw-bold text-info mt-1">8 Máquinas</div>
+              <div class="small text-muted mt-1">TI & Controladoria Financeira</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card border-0 shadow-sm border-start border-4 border-warning h-100">
+            <div class="card-body">
+              <span class="text-muted small text-uppercase fw-bold">Rádios HT Operacionais</span>
+              <div class="fs-3 fw-bold text-warning mt-1">18 Unidades</div>
+              <div class="small text-muted mt-1">Comunicação direta em eventos</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabela de Patrimônio -->
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white py-3">
+          <h5 class="fw-bold mb-0">Controle de Cautelas & Equipamentos Entregues</h5>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+              <tr class="small text-muted">
+                <th>Plaqueta Patrimônio</th>
+                <th>Equipamento / Modelo</th>
+                <th>Categoria</th>
+                <th>Número de Série</th>
+                <th>Cautelado Para</th>
+                <th>Data da Entrega</th>
+                <th>Termo de Responsabilidade</th>
+                <th>Status</th>
+                <th class="text-end">Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${itens.map(p => `
+                <tr>
+                  <td><code class="fw-bold text-dark font-monospace">${p.patrimonio}</code></td>
+                  <td><div class="fw-semibold text-dark">${p.itemNome}</div></td>
+                  <td><span class="badge bg-light text-dark border">${p.categoria}</span></td>
+                  <td><code class="small text-muted font-monospace">${p.serial}</code></td>
+                  <td class="fw-semibold text-primary">${p.cauteladoPara}</td>
+                  <td class="small text-muted">${p.dataEntrega}</td>
+                  <td>
+                    <span class="badge bg-success-subtle text-success border border-success">
+                      <i class="ph-seal-check me-1"></i> Assinado Digitalmente
+                    </span>
+                  </td>
+                  <td>
+                    <span class="badge ${p.status === 'EM_USO' ? 'bg-primary' : 'bg-secondary'}">${p.status}</span>
+                  </td>
+                  <td class="text-end">
+                    <button class="btn btn-sm btn-outline-danger" onclick="window.LimitlessApp.registrarDevolucaoPatrimonio('${p.id}')">
+                      <i class="ph-arrow-u-up-left me-1"></i> Devolução
+                    </button>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// ----------------------------------------------------------------------------
+// 26. DESEMPENHO & PDI (RH V2)
+// ----------------------------------------------------------------------------
+export function renderDiskRHDesempenho(state, filterArg = 'desempenho') {
+  const db = state.db || {};
+  const avaliacoes = db.rhAvaliacoesPdi || [];
+
+  return `
+    <div class="container-fluid py-3">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+          <h3 class="fw-bold mb-1"><i class="ph-target text-primary me-2"></i>Desempenho, Metas & PDI (Plano de Carreira)</h3>
+          <p class="text-muted mb-0">Ciclos de avaliação de competências técnicas e comportamentais, acompanhamento de metas setoriais e planos de desenvolvimento individual.</p>
+        </div>
+        <div class="d-flex gap-2">
+          <button class="btn btn-outline-secondary btn-sm" onclick="window.LimitlessApp.exportarMatriz9Box()">
+            <i class="ph-grid-four me-1"></i> Matriz 9-Box
+          </button>
+          <button class="btn btn-primary btn-sm" onclick="window.LimitlessApp.abrirModalNovoPdi()">
+            <i class="ph-plus-circle me-1"></i> Nova Avaliação / PDI
+          </button>
+        </div>
+      </div>
+
+      <!-- KPI Summary -->
+      <div class="row g-3 mb-4">
+        <div class="col-md-3">
+          <div class="card border-0 shadow-sm border-start border-4 border-success h-100">
+            <div class="card-body">
+              <span class="text-muted small text-uppercase fw-bold">Média de Competências</span>
+              <div class="fs-3 fw-bold text-success mt-1">9.4 / 10</div>
+              <div class="small text-muted mt-1"><i class="ph-trend-up text-success"></i> Alta aderência à cultura Disk</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card border-0 shadow-sm border-start border-4 border-primary h-100">
+            <div class="card-body">
+              <span class="text-muted small text-uppercase fw-bold">Atingimento de Metas</span>
+              <div class="fs-3 fw-bold text-primary mt-1">93.2%</div>
+              <div class="small text-muted mt-1">Superação de metas do 1º Semestre</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card border-0 shadow-sm border-start border-4 border-info h-100">
+            <div class="card-body">
+              <span class="text-muted small text-uppercase fw-bold">Planos PDI em Execução</span>
+              <div class="fs-3 fw-bold text-info mt-1">100% com Ações</div>
+              <div class="small text-muted mt-1">Cursos e capacitações corporativas</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card border-0 shadow-sm border-start border-4 border-warning h-100">
+            <div class="card-body">
+              <span class="text-muted small text-uppercase fw-bold">Próximo Ciclo</span>
+              <div class="fs-3 fw-bold text-warning mt-1">2026.2</div>
+              <div class="small text-muted mt-1">Abertura em Dezembro/2026</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabela de Avaliações -->
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white py-3">
+          <h5 class="fw-bold mb-0">Resultados dos Ciclos de Avaliação & Feedback 1:1</h5>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+              <tr class="small text-muted">
+                <th>Colaborador</th>
+                <th>Cargo Atual</th>
+                <th>Ciclo</th>
+                <th>Competências</th>
+                <th>Metas</th>
+                <th>Feedback do Gestor</th>
+                <th>Ações de PDI</th>
+                <th>Status</th>
+                <th class="text-end">Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${avaliacoes.map(a => `
+                <tr>
+                  <td><div class="fw-semibold text-dark">${a.colaboradorNome}</div></td>
+                  <td class="small text-muted">${a.cargo}</td>
+                  <td><span class="badge bg-light text-dark border">${a.ciclo}</span></td>
+                  <td>
+                    <span class="badge bg-success-subtle text-success border border-success fw-bold">
+                      ${a.notaCompetencias} / 10
+                    </span>
+                  </td>
+                  <td>
+                    <span class="badge bg-primary-subtle text-primary border border-primary fw-bold">
+                      ${a.notaMetas} / 10
+                    </span>
+                  </td>
+                  <td style="max-width: 250px;">
+                    <div class="small text-truncate" title="${a.feedbackGestor}">${a.feedbackGestor}</div>
+                  </td>
+                  <td style="max-width: 250px;">
+                    <div class="small text-truncate text-primary" title="${a.acoesPdi}">${a.acoesPdi}</div>
+                  </td>
+                  <td><span class="badge bg-success">${a.status}</span></td>
+                  <td class="text-end">
+                    <button class="btn btn-sm btn-outline-primary" onclick="window.LimitlessApp.verDetalhesPdi('${a.id}')">
+                      <i class="ph-file-text me-1"></i> Ver PDI
+                    </button>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// ----------------------------------------------------------------------------
+// 27. CATÁLOGO DE TREINAMENTOS CORPORATIVOS & NRs (RH V2)
+// ----------------------------------------------------------------------------
+export function renderDiskRHTreinamentos(state, filterArg = 'treinamentos') {
+  const db = state.db || {};
+  const treinamentos = db.rhTreinamentos || [];
+
+  return `
+    <div class="container-fluid py-3">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+          <h3 class="fw-bold mb-1"><i class="ph-graduation-cap text-primary me-2"></i>Treinamentos Corporativos & NRs Obrigatórias</h3>
+          <p class="text-muted mb-0">Qualificação contínua das equipes: Segurança em Grandes Arenas (NR-23), Operação do REP-P com Geofence, LGPD e atendimento de excelência.</p>
+        </div>
+        <div class="d-flex gap-2">
+          <button class="btn btn-outline-secondary btn-sm" onclick="window.LimitlessApp.exportarRelatorioTreinamentos()">
+            <i class="ph-file-pdf me-1"></i> Certificados
+          </button>
+          <button class="btn btn-primary btn-sm" onclick="window.LimitlessApp.abrirModalNovoTreinamento()">
+            <i class="ph-plus-circle me-1"></i> Novo Treinamento
+          </button>
+        </div>
+      </div>
+
+      <!-- KPI Summary -->
+      <div class="row g-3 mb-4">
+        <div class="col-md-3">
+          <div class="card border-0 shadow-sm border-start border-4 border-primary h-100">
+            <div class="card-body">
+              <span class="text-muted small text-uppercase fw-bold">Treinamentos no Catálogo</span>
+              <div class="fs-3 fw-bold text-dark mt-1">${treinamentos.length} Cursos</div>
+              <div class="small text-muted mt-1">NRs Obrigatórias e Operacionais</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card border-0 shadow-sm border-start border-4 border-success h-100">
+            <div class="card-body">
+              <span class="text-muted small text-uppercase fw-bold">Colaboradores Certificados</span>
+              <div class="fs-3 fw-bold text-success mt-1">135 Conclusões</div>
+              <div class="small text-muted mt-1"><i class="ph-check-circle text-success"></i> Certificados emitidos digitalmente</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card border-0 shadow-sm border-start border-4 border-warning h-100">
+            <div class="card-body">
+              <span class="text-muted small text-uppercase fw-bold">Certificados a Renovar</span>
+              <div class="fs-3 fw-bold text-warning mt-1">5 Posições</div>
+              <div class="small text-muted mt-1">Validade próxima (60 dias)</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card border-0 shadow-sm border-start border-4 border-info h-100">
+            <div class="card-body">
+              <span class="text-muted small text-uppercase fw-bold">Carga Horária Acumulada</span>
+              <div class="fs-3 fw-bold text-info mt-1">480 Horas</div>
+              <div class="small text-muted mt-1">Investimento em capital humano</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabela de Treinamentos -->
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white py-3">
+          <h5 class="fw-bold mb-0">Catálogo de Cursos & Situação das Turmas</h5>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+              <tr class="small text-muted">
+                <th>Título do Treinamento</th>
+                <th>Categoria</th>
+                <th>Carga Horária</th>
+                <th>Obrigatoriedade</th>
+                <th>Validade (Meses)</th>
+                <th>Concluídos</th>
+                <th>Vencendo</th>
+                <th>Status</th>
+                <th class="text-end">Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${treinamentos.map(t => `
+                <tr>
+                  <td><div class="fw-semibold text-dark">${t.titulo}</div></td>
+                  <td><span class="badge bg-light text-dark border">${t.categoria}</span></td>
+                  <td><span class="fw-bold text-primary">${t.cargaHoraria} Horas</span></td>
+                  <td>
+                    <span class="badge ${t.obrigatorio ? 'bg-danger-subtle text-danger border border-danger' : 'bg-light text-dark'}">
+                      ${t.obrigatorio ? 'Obrigatório (NR)' : 'Eletivo'}
+                    </span>
+                  </td>
+                  <td class="small text-muted">${t.validadeMeses} Meses</td>
+                  <td><span class="badge bg-success">${t.concluidosCount} Certificados</span></td>
+                  <td>
+                    ${t.vencendoCount > 0 ? `
+                      <span class="badge bg-warning text-dark">${t.vencendoCount} a renovar</span>
+                    ` : `
+                      <span class="badge bg-light text-muted">0</span>
+                    `}
+                  </td>
+                  <td><span class="badge bg-success">${t.status}</span></td>
+                  <td class="text-end">
+                    <button class="btn btn-sm btn-outline-primary" onclick="window.LimitlessApp.inscreverTurmaTreinamento('${t.id}')">
+                      <i class="ph-user-plus me-1"></i> Inscrever Turma
+                    </button>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// ----------------------------------------------------------------------------
+// 28. DESPESAS & REEMBOLSOS OPERACIONAIS (RH V2)
+// ----------------------------------------------------------------------------
+export function renderDiskRHReembolsos(state, filterArg = 'reembolsos') {
+  const db = state.db || {};
+  const reembolsos = db.rhReembolsos || [];
+  const pendentes = reembolsos.filter(r => r.status.includes('PENDENTE'));
+  const totalPendente = pendentes.reduce((acc, r) => acc + (r.valor || 0), 0);
+
+  return `
+    <div class="container-fluid py-3">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+          <h3 class="fw-bold mb-1"><i class="ph-receipt text-primary me-2"></i>Despesas & Reembolsos Operacionais</h3>
+          <p class="text-muted mb-0">Gestão de gastos em viagens, alimentação em regime de plantão e combustível para eventos, com anexação de comprovantes e aprovação em alçadas.</p>
+        </div>
+        <div class="d-flex gap-2">
+          <button class="btn btn-outline-secondary btn-sm" onclick="window.LimitlessApp.exportarRelatorioReembolsos()">
+            <i class="ph-file-xls me-1"></i> Exportar
+          </button>
+          <button class="btn btn-primary btn-sm" onclick="window.LimitlessApp.abrirModalNovoReembolso()">
+            <i class="ph-plus-circle me-1"></i> Solicitar Reembolso
+          </button>
+        </div>
+      </div>
+
+      <!-- KPI Summary -->
+      <div class="row g-3 mb-4">
+        <div class="col-md-3">
+          <div class="card border-0 shadow-sm border-start border-4 border-warning h-100">
+            <div class="card-body">
+              <span class="text-muted small text-uppercase fw-bold">Pendentes de Homologação</span>
+              <div class="fs-3 fw-bold text-warning mt-1">${formatCurrency(totalPendente)}</div>
+              <div class="small text-muted mt-1">${pendentes.length} Solicitações sob análise</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card border-0 shadow-sm border-start border-4 border-success h-100">
+            <div class="card-body">
+              <span class="text-muted small text-uppercase fw-bold">Aprovados para Pagamento</span>
+              <div class="fs-3 fw-bold text-success mt-1">100% em Dia</div>
+              <div class="small text-muted mt-1">Crédito via Lote PIX Tesouraria</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card border-0 shadow-sm border-start border-4 border-info h-100">
+            <div class="card-body">
+              <span class="text-muted small text-uppercase fw-bold">Maior Categoria de Gasto</span>
+              <div class="fs-3 fw-bold text-info mt-1">Deslocamento</div>
+              <div class="small text-muted mt-1">Pedreira Paulo Leminski e Arenas</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card border-0 shadow-sm border-start border-4 border-primary h-100">
+            <div class="card-body">
+              <span class="text-muted small text-uppercase fw-bold">Auditoria de Comprovantes</span>
+              <div class="fs-3 fw-bold text-primary mt-1">100% com Anexo</div>
+              <div class="small text-muted mt-1">Notas fiscais e cupons válidos</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabela de Reembolsos -->
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white py-3">
+          <h5 class="fw-bold mb-0">Solicitações de Reembolso de Despesas</h5>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+              <tr class="small text-muted">
+                <th>Solicitante</th>
+                <th>Categoria</th>
+                <th>Evento Vinculado</th>
+                <th>Centro de Custo</th>
+                <th>Descrição</th>
+                <th>Data</th>
+                <th>Valor (R$)</th>
+                <th>Comprovante</th>
+                <th>Status</th>
+                <th class="text-end">Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${reembolsos.map(r => `
+                <tr>
+                  <td><div class="fw-semibold text-dark">${r.colaboradorNome}</div></td>
+                  <td><span class="badge bg-light text-dark border">${r.categoria}</span></td>
+                  <td><div class="small fw-semibold text-dark">${r.eventoNome}</div></td>
+                  <td><code class="small text-muted font-monospace">${r.centroCusto}</code></td>
+                  <td style="max-width: 250px;"><div class="small text-truncate" title="${r.descricao}">${r.descricao}</div></td>
+                  <td class="small text-muted">${r.dataSolicitacao}</td>
+                  <td class="fw-bold text-primary">${formatCurrency(r.valor)}</td>
+                  <td>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="window.LimitlessApp.visualizarComprovanteReembolso('${r.id}')">
+                      <i class="ph-file-pdf me-1"></i> Recibo
+                    </button>
+                  </td>
+                  <td>
+                    <span class="badge ${r.status === 'APROVADO' ? 'bg-success' : 'bg-warning text-dark'}">
+                      ${r.status}
+                    </span>
+                  </td>
+                  <td class="text-end">
+                    ${r.status.includes('PENDENTE') ? `
+                      <button class="btn btn-sm btn-success fw-bold" onclick="window.LimitlessApp.aprovarReembolso('${r.id}')">
+                        <i class="ph-check me-1"></i> Aprovar
+                      </button>
+                    ` : `
+                      <span class="badge bg-light text-muted"><i class="ph-check-circle"></i> Homologado</span>
+                    `}
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// ----------------------------------------------------------------------------
+// 29. PORTAL DO COLABORADOR - AUTOATENDIMENTO (RH V2)
+// ----------------------------------------------------------------------------
+export function renderDiskRHPortalColaborador(state, filterArg = 'portal_colaborador') {
+  const db = state.db || {};
+  const colab = (db.rhColaboradores || [])[0] || {
+    nome: "Carlos Eduardo Mendes",
+    cargo: "Coordenador Geral de Operações de Eventos",
+    departamento: "Operações e Bilheteria",
+    matricula: "MAT-0041",
+    dataAdmissao: "15/03/2021",
+    tipoContrato: "CLT",
+    saldoBancoHoras: 12.67
+  };
+
+  const holerites = db.rhHolerites || [];
+  const comunicados = db.rhComunicadosMural || [];
+
+  return `
+    <div class="container-fluid py-3">
+      <!-- Banner de Boas-Vindas do Colaborador -->
+      <div class="card bg-dark text-white border-0 shadow-sm mb-4">
+        <div class="card-body p-4">
+          <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <div class="d-flex align-items-center gap-3">
+              <div class="rounded-circle bg-primary p-3 text-white fs-2 fw-bold text-center" style="width: 64px; height: 64px; line-height: 38px;">
+                ${colab.nome.charAt(0)}
+              </div>
+              <div>
+                <span class="badge bg-primary px-3 py-1 mb-1">Meu Espaço • Portal do Colaborador</span>
+                <h3 class="fw-bold mb-0">Olá, ${colab.nome}!</h3>
+                <p class="text-white-50 mb-0">${colab.cargo} • ${colab.departamento} • Matrícula: ${colab.matricula || 'MAT-0041'}</p>
+              </div>
+            </div>
+            <div class="d-flex gap-2">
+              <button class="btn btn-outline-light btn-sm" onclick="window.LimitlessApp.abrirModalNovoReembolso()">
+                <i class="ph-receipt me-1"></i> Pedir Reembolso
+              </button>
+              <button class="btn btn-success btn-sm" onclick="window.LimitlessApp.abrirModalSolicitarFerias()">
+                <i class="ph-airplane-takeoff me-1"></i> Solicitar Férias
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row g-4 mb-4">
+        <!-- Widget Meu Ponto Hoje -->
+        <div class="col-md-6">
+          <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+              <h5 class="fw-bold mb-0"><i class="ph-clock-countdown text-primary me-2"></i>Meu Ponto Hoje (REP-P 671 MTE)</h5>
+              <span class="badge bg-success-subtle text-success border border-success">
+                <i class="ph-map-pin me-1"></i> Dentro da Cerca Sede Curitiba
+              </span>
+            </div>
+            <div class="card-body">
+              <div class="row g-2 text-center mb-3">
+                <div class="col-3">
+                  <div class="p-2 border rounded bg-light">
+                    <span class="small text-muted d-block">Entrada 1</span>
+                    <strong class="text-dark">08:02</strong>
+                  </div>
+                </div>
+                <div class="col-3">
+                  <div class="p-2 border rounded bg-light">
+                    <span class="small text-muted d-block">Saída Int.</span>
+                    <strong class="text-dark">12:05</strong>
+                  </div>
+                </div>
+                <div class="col-3">
+                  <div class="p-2 border rounded bg-light">
+                    <span class="small text-muted d-block">Retorno Int.</span>
+                    <strong class="text-dark">13:08</strong>
+                  </div>
+                </div>
+                <div class="col-3">
+                  <div class="p-2 border rounded bg-primary bg-opacity-10 border-primary">
+                    <span class="small text-primary fw-bold d-block">Saída 2</span>
+                    <strong class="text-primary">Prev. 18:00</strong>
+                  </div>
+                </div>
+              </div>
+              <div class="d-flex justify-content-between align-items-center p-3 bg-light rounded">
+                <div>
+                  <span class="small text-muted d-block">Meu Saldo no Banco de Horas:</span>
+                  <span class="fs-4 fw-bold text-success">+12h 40min</span>
+                </div>
+                <button class="btn btn-primary" onclick="window.LimitlessApp.baterPontoSimuladoColaborador()">
+                  <i class="ph-fingerprint me-1"></i> Bater Ponto Agora
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Widget Férias & Benefícios -->
+        <div class="col-md-6">
+          <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-white py-3">
+              <h5 class="fw-bold mb-0"><i class="ph-sun text-warning me-2"></i>Meu Saldo de Férias & Benefícios</h5>
+            </div>
+            <div class="card-body">
+              <div class="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom">
+                <div>
+                  <div class="fw-semibold text-dark">Período Aquisitivo Vigente (2025/2026)</div>
+                  <div class="small text-muted">Limite Concessivo: 14/03/2027</div>
+                </div>
+                <div class="text-end">
+                  <span class="badge bg-success fs-6">30 Dias Disponíveis</span>
+                </div>
+              </div>
+              <div class="d-flex justify-content-between align-items-center">
+                <div>
+                  <div class="fw-semibold text-dark">Benefícios Ativos</div>
+                  <div class="small text-muted">VT Cartão Transporte + VR R$ 38,00/dia + Unimed Nacional</div>
+                </div>
+                <button class="btn btn-outline-secondary btn-sm" onclick="window.LimitlessApp.navigate('diskRH_beneficios')">
+                  <i class="ph-pencil-simple me-1"></i> Ajustar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Meus Holerites & Mural de Comunicados -->
+      <div class="row g-4">
+        <div class="col-md-6">
+          <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+              <h5 class="fw-bold mb-0"><i class="ph-file-text text-primary me-2"></i>Meus Holerites Recentes</h5>
+              <span class="badge bg-light text-dark border">Assinados ICP-Brasil</span>
+            </div>
+            <div class="table-responsive">
+              <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                  <tr class="small text-muted">
+                    <th>Competência</th>
+                    <th>Líquido</th>
+                    <th>Status</th>
+                    <th class="text-end">Download</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${holerites.slice(0, 3).map(h => `
+                    <tr>
+                      <td><span class="badge bg-light text-dark border">${h.competencia}</span></td>
+                      <td class="fw-bold text-success">${formatCurrency(h.valorLiquido)}</td>
+                      <td><span class="badge bg-success">${h.status}</span></td>
+                      <td class="text-end">
+                        <button class="btn btn-sm btn-outline-primary" onclick="window.LimitlessApp.baixarHolerite('${h.id}')">
+                          <i class="ph-download-simple me-1"></i> PDF
+                        </button>
+                      </td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-md-6">
+          <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+              <h5 class="fw-bold mb-0"><i class="ph-newspaper text-info me-2"></i>Mural de Comunicados Internos</h5>
+              <button class="btn btn-sm btn-outline-secondary" onclick="window.LimitlessApp.abrirModalNovoComunicado()">
+                <i class="ph-plus me-1"></i> Novo Aviso
+              </button>
+            </div>
+            <div class="card-body">
+              ${comunicados.length === 0 ? `
+                <p class="text-muted small mb-0">Nenhum aviso no momento.</p>
+              ` : comunicados.map(c => `
+                <div class="p-3 border rounded mb-2 bg-light">
+                  <div class="d-flex justify-content-between align-items-center mb-1">
+                    <strong class="text-dark">${c.titulo}</strong>
+                    <span class="badge bg-danger">${c.prioridade}</span>
+                  </div>
+                  <p class="small text-muted mb-2">${c.conteudo}</p>
+                  <div class="d-flex justify-content-between align-items-center small text-muted">
+                    <span>${c.autor} • ${c.data}</span>
+                    <span class="text-success"><i class="ph-check-circle me-1"></i> ${c.lidoPor} confirmações</span>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// ----------------------------------------------------------------------------
+// 30. PORTAL DO GESTOR - MINHA EQUIPE (RH V2)
+// ----------------------------------------------------------------------------
+export function renderDiskRHPortalGestor(state, filterArg = 'portal_gestor') {
+  const db = state.db || {};
+  const colaboradores = db.rhColaboradores || [];
+  const pendencias = (db.rhCentralAprovacoes || []).filter(a => a.status === 'PENDENTE');
+
+  return `
+    <div class="container-fluid py-3">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+          <h3 class="fw-bold mb-1"><i class="ph-user-gear text-primary me-2"></i>Portal do Gestor (Minha Equipe Operacional)</h3>
+          <p class="text-muted mb-0">Visão panorâmica em tempo real da equipe sob liderança: presença em arenas, controle de horas extras, férias e aprovações rápidas.</p>
+        </div>
+        <div class="d-flex gap-2">
+          <button class="btn btn-outline-secondary btn-sm" onclick="window.LimitlessApp.navigate('diskRH_ponto')">
+            <i class="ph-broadcast me-1"></i> Radar de Ponto
+          </button>
+          <button class="btn btn-primary btn-sm" onclick="window.LimitlessApp.aprovarTodasPendenciasEquipe()">
+            <i class="ph-check-circle me-1"></i> Aprovar Pendências da Equipe
+          </button>
+        </div>
+      </div>
+
+      <!-- KPI Summary -->
+      <div class="row g-3 mb-4">
+        <div class="col-md-3">
+          <div class="card border-0 shadow-sm border-start border-4 border-primary h-100">
+            <div class="card-body">
+              <span class="text-muted small text-uppercase fw-bold">Minha Equipe</span>
+              <div class="fs-3 fw-bold text-dark mt-1">${colaboradores.length} Pessoas</div>
+              <div class="small text-muted mt-1">Sede Curitiba e Equipes de Shows</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card border-0 shadow-sm border-start border-4 border-success h-100">
+            <div class="card-body">
+              <span class="text-muted small text-uppercase fw-bold">Presentes Agora</span>
+              <div class="fs-3 fw-bold text-success mt-1">${Math.round(colaboradores.length * 0.88)} Em Campo</div>
+              <div class="small text-muted mt-1"><i class="ph-map-pin text-success"></i> Dentro da cerca virtual</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card border-0 shadow-sm border-start border-4 border-warning h-100">
+            <div class="card-body">
+              <span class="text-muted small text-uppercase fw-bold">Aprovações Pendentes</span>
+              <div class="fs-3 fw-bold text-warning mt-1">${pendencias.length} Itens</div>
+              <div class="small text-muted mt-1">Férias, Ponto e Reembolsos</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card border-0 shadow-sm border-start border-4 border-info h-100">
+            <div class="card-body">
+              <span class="text-muted small text-uppercase fw-bold">Banco de Horas da Equipe</span>
+              <div class="fs-3 fw-bold text-info mt-1">+48.5 Horas</div>
+              <div class="small text-muted mt-1">Saldo positivo na competência</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabela da Equipe Sob Liderança -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white py-3">
+          <h5 class="fw-bold mb-0">Status da Equipe em Tempo Real</h5>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+              <tr class="small text-muted">
+                <th>Colaborador</th>
+                <th>Cargo</th>
+                <th>Regime</th>
+                <th>Local / Arena Atual</th>
+                <th>Presença Hoje</th>
+                <th>Banco de Horas</th>
+                <th>Ocorrências</th>
+                <th class="text-end">Ações Rápidas</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${colaboradores.map(c => `
+                <tr>
+                  <td>
+                    <div class="fw-semibold text-dark">${c.nome}</div>
+                    <code class="small text-muted">${c.matricula}</code>
+                  </td>
+                  <td class="small text-muted">${c.cargo}</td>
+                  <td><span class="badge bg-light text-dark border">${c.tipoContrato}</span></td>
+                  <td>
+                    <span class="badge bg-info-subtle text-info border border-info">
+                      <i class="ph-map-pin me-1"></i> Sede Curitiba
+                    </span>
+                  </td>
+                  <td>
+                    <span class="badge bg-success">
+                      <i class="ph-check-circle me-1"></i> PRESENTE (08:02)
+                    </span>
+                  </td>
+                  <td class="fw-bold text-primary">+${c.saldoBancoHoras || 5.2}h</td>
+                  <td>
+                    <span class="badge bg-light text-success border border-success">
+                      Sem Pendências
+                    </span>
+                  </td>
+                  <td class="text-end">
+                    <button class="btn btn-sm btn-outline-secondary" onclick="window.LimitlessApp.verEspelhoColaborador('${c.id}')">
+                      <i class="ph-calendar me-1"></i> Espelho
+                    </button>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// ----------------------------------------------------------------------------
+// 31. INTEGRAÇÕES CORPORATIVAS RH -> FINANCEIRO -> CONTABILIDADE (RH V2)
+// ----------------------------------------------------------------------------
+export function renderDiskRHIntegracoes(state, filterArg = 'integracoes') {
+  const db = state.db || {};
+  const conectores = db.rhIntegracoesStatus || [];
+
+  return `
+    <div class="container-fluid py-3">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+          <h3 class="fw-bold mb-1"><i class="ph-plugs-connected text-primary me-2"></i>Integrações Corporativas (RH Disk)</h3>
+          <p class="text-muted mb-0">Camada de conectores enterprise entre o RH Disk, o Módulo Financeiro V1 (Contas a Pagar/PIX), Contabilidade (DRE por Evento) e eSocial.</p>
+        </div>
+        <div class="d-flex gap-2">
+          <button class="btn btn-outline-secondary btn-sm" onclick="window.LimitlessApp.testarConexoesRH()">
+            <i class="ph-wifi-high me-1"></i> Testar Conectividade
+          </button>
+          <button class="btn btn-primary btn-sm" onclick="window.LimitlessApp.forcarSincronizacaoTotalRH()">
+            <i class="ph-arrows-clockwise me-1"></i> Sincronizar Tudo Agora
+          </button>
+        </div>
+      </div>
+
+      <!-- Grid de Conectores -->
+      <div class="row g-4 mb-4">
+        ${conectores.map(c => `
+          <div class="col-md-4">
+            <div class="card border-0 shadow-sm h-100 border-top border-4 ${
+              c.tipo.includes('PIX') ? 'border-success' :
+              c.tipo.includes('DRE') ? 'border-primary' : 'border-info'
+            }">
+              <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <span class="badge ${c.status.includes('ATIVO') ? 'bg-success' : 'bg-info'}">${c.status}</span>
+                  <small class="text-muted">${c.ultimaSincronizacao}</small>
+                </div>
+                <h5 class="fw-bold text-dark mb-1">${c.modulo}</h5>
+                <span class="badge bg-light text-dark border mb-3">${c.tipo}</span>
+                <p class="text-muted small mb-3">${c.descricao}</p>
+                <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+                  <span class="small text-success fw-bold"><i class="ph-circle text-success me-1"></i> Latência: 42ms</span>
+                  <button class="btn btn-sm btn-outline-primary" onclick="window.LimitlessApp.sincronizarConectorRH('${c.tipo}')">
+                    <i class="ph-arrows-clockwise me-1"></i> Sincronizar
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+
+      <!-- Logs de Sincronização em Tempo Real -->
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+          <h5 class="fw-bold mb-0">Logs de Transmissão & Sincronização Intermódulos</h5>
+          <span class="badge bg-light text-dark border">Atualizado a cada 60s</span>
+        </div>
+        <div class="card-body font-monospace small bg-light p-3 rounded">
+          <div class="text-success mb-1">[2026-10-04 15:30:12] [CONNECT] Conexão com Tesouraria V1 estabelecida com sucesso via API de Alta Performance.</div>
+          <div class="text-dark mb-1">[2026-10-04 15:30:14] [LOTE-PIX] 14 Diárias de Freelancers enviadas para Contas a Pagar (Total R$ 2.520,00).</div>
+          <div class="text-primary mb-1">[2026-10-04 15:30:16] [DRE-EVENTO] Custo Mão de Obra direta de R$ 3.850,00 apropriado no Festival Curitiba 2026.</div>
+          <div class="text-info mb-1">[2026-10-04 12:00:05] [ESOCIAL] Eventos S-1000 e S-2200 transmitidos. Protocolo Receita Federal: 1.2.202610.00041289.</div>
+          <div class="text-muted">[2026-10-04 12:00:06] [SECURITY] SHA-256 e assinatura digital verificadas com sucesso sem violação de integridade.</div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+
