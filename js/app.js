@@ -107,7 +107,8 @@ import {
   renderDiskRHReembolsos,
   renderDiskRHPortalColaborador,
   renderDiskRHPortalGestor,
-  renderDiskRHIntegracoes
+  renderDiskRHIntegracoes,
+  renderDiskRHModulo
 } from './views/rh/rhViews.js';
 import { initScrollSpy } from './components/scrollSpy.js';
 
@@ -705,14 +706,14 @@ class LimitlessFinancialApp {
       this.openedSubmenus.add(id);
       if (li) {
         li.classList.add('is-open', 'nav-item-open');
-        const sub = li.querySelector('.nav-group-sub');
+        const sub = li.querySelector(':scope > .nav-group-sub') || li.querySelector('.nav-group-sub');
         if (sub) sub.style.display = 'flex';
       }
     } else {
       this.openedSubmenus.delete(id);
       if (li) {
         li.classList.remove('is-open', 'nav-item-open');
-        const sub = li.querySelector('.nav-group-sub');
+        const sub = li.querySelector(':scope > .nav-group-sub') || li.querySelector('.nav-group-sub');
         if (sub) sub.style.display = 'none';
       }
     }
@@ -3249,16 +3250,35 @@ class LimitlessFinancialApp {
           viewHtml = renderDiskRHAprovacoesCentral(state, this.currentFilterArg);
           break;
         case 'diskRH_cargos':
+        case 'diskRH_cargosSalarios':
           viewHtml = renderDiskRHCargosSalarios(state, this.currentFilterArg);
           break;
         case 'diskRH_recrutamento':
           viewHtml = renderDiskRHRecrutamento(state, this.currentFilterArg);
           break;
+        case 'diskRH_onboarding':
+          viewHtml = renderDiskRHModulo(state, 'onboarding');
+          break;
         case 'diskRH_desligamentos':
           viewHtml = renderDiskRHDesligamentos(state, this.currentFilterArg);
           break;
+        case 'diskRH_ausencias':
+          viewHtml = renderDiskRHModulo(state, 'ausencias');
+          break;
+        case 'diskRH_folhaCompleta':
+          viewHtml = renderDiskRHModulo(state, 'folha_completa');
+          break;
+        case 'diskRH_decimo':
+          viewHtml = renderDiskRHModulo(state, 'decimo');
+          break;
+        case 'diskRH_rescisoes':
+          viewHtml = renderDiskRHModulo(state, 'rescisoes');
+          break;
         case 'diskRH_sst':
           viewHtml = renderDiskRHSst(state, this.currentFilterArg);
+          break;
+        case 'diskRH_epis':
+          viewHtml = renderDiskRHModulo(state, 'epis');
           break;
         case 'diskRH_patrimonio':
           viewHtml = renderDiskRHPatrimonio(state, this.currentFilterArg);
@@ -3269,6 +3289,12 @@ class LimitlessFinancialApp {
         case 'diskRH_treinamentos':
           viewHtml = renderDiskRHTreinamentos(state, this.currentFilterArg);
           break;
+        case 'diskRH_freelancers':
+          viewHtml = renderDiskRHStaff(state, this.currentFilterArg);
+          break;
+        case 'diskRH_centroCustos':
+          viewHtml = renderDiskRHModulo(state, 'centro_custos');
+          break;
         case 'diskRH_reembolsos':
           viewHtml = renderDiskRHReembolsos(state, this.currentFilterArg);
           break;
@@ -3278,8 +3304,17 @@ class LimitlessFinancialApp {
         case 'diskRH_portalGestor':
           viewHtml = renderDiskRHPortalGestor(state, this.currentFilterArg);
           break;
+        case 'diskRH_documentos':
+          viewHtml = renderDiskRHGed(state, this.currentFilterArg);
+          break;
+        case 'diskRH_relatorios':
+          viewHtml = renderDiskRHEsocial(state, this.currentFilterArg);
+          break;
         case 'diskRH_integracoes':
           viewHtml = renderDiskRHIntegracoes(state, this.currentFilterArg);
+          break;
+        case 'diskRH_configuracoes':
+          viewHtml = renderDiskRHModulo(state, 'configuracoes');
           break;
         default:
           viewHtml = renderDiskDashboard(state);
@@ -3844,7 +3879,12 @@ class LimitlessFinancialApp {
         : '';
 
       if (hasSubs) {
-        const isChildActive = item.subItems.some(sub => sub.id === currentView);
+        const isChildActive = item.subItems.some(sub => {
+          if (Array.isArray(sub.subItems)) {
+            return sub.subItems.some(nested => nested.id === currentView);
+          }
+          return sub.id === currentView;
+        });
         if (isParentActive || isChildActive) {
           this.openedSubmenus.add(item.id);
         }
@@ -3864,6 +3904,42 @@ class LimitlessFinancialApp {
             </a>
             <ul class="nav-group-sub" style="display: ${isOpen ? 'flex' : 'none'};">
               ${item.subItems.map(sub => {
+                if (Array.isArray(sub.subItems) && sub.subItems.length > 0) {
+                  const isNestedChildActive = sub.subItems.some(nested => nested.id === currentView);
+                  if (isNestedChildActive) {
+                    this.openedSubmenus.add(sub.id);
+                  }
+                  const isNestedOpen = this.openedSubmenus.has(sub.id);
+
+                  return `
+                    <li class="nav-item nav-item-submenu nav-item-group ${isNestedOpen ? 'is-open nav-item-open' : ''}" data-submenu-id="${sub.id}">
+                      <a class="nav-link nav-link-group" href="javascript:void(0)" onclick="window.app && window.app.toggleSubmenu(event, this, '${sub.id}')">
+                        <div class="nav-item-left">
+                          <i class="${sub.icon || 'ph-folder'} nav-item-icon"></i>
+                          <span class="nav-item-title">${sub.label}</span>
+                        </div>
+                        <div class="nav-item-right">
+                          <span class="badge rounded-pill bg-light text-dark fs-xxs me-1" style="font-size: 9px; padding: 2px 5px;">${sub.subItems.length}</span>
+                          <i class="ph-caret-right nav-arrow"></i>
+                        </div>
+                      </a>
+                      <ul class="nav-group-sub nav-group-sub-nested" style="display: ${isNestedOpen ? 'flex' : 'none'};">
+                        ${sub.subItems.map(nested => {
+                          const isNestedActive = currentView === nested.id && (!this.currentFilterArg || this.currentFilterArg === nested.filterArg);
+                          return `
+                            <li class="nav-item">
+                              <a class="nav-link ${isNestedActive ? 'active' : ''}" href="javascript:void(0)" onclick="window.app && window.app.navigate('${nested.id}', '${nested.filterArg || 'all'}')">
+                                <i class="ph-caret-right"></i>
+                                <span>${nested.label}</span>
+                              </a>
+                            </li>
+                          `;
+                        }).join('')}
+                      </ul>
+                    </li>
+                  `;
+                }
+
                 if (sub.action === 'openPayoutModal') {
                   return `
                     <li class="nav-item">

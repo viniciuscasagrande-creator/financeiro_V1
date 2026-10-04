@@ -310,37 +310,102 @@ export const menuFinanceiroCompleto = [
     label: 'RECURSOS HUMANOS (RH DISK)',
     icon: 'ph-users-three',
     subItems: [
-      { id: 'diskRH_visao', label: 'Visão Geral Executiva', filterArg: 'visao' },
-      { id: 'diskRH_aprovacoes', label: 'Central de Aprovações Unificada', filterArg: 'aprovacoes' },
-      { id: 'diskRH_colaboradores', label: 'Pessoas & Colaboradores (CLT/PJ)', filterArg: 'colaboradores' },
-      { id: 'diskRH_organograma', label: 'Estrutura & Centros de Custo', filterArg: 'organograma' },
-      { id: 'diskRH_cargos', label: 'Cargos, Salários & Faixas', filterArg: 'cargos' },
-      { id: 'diskRH_recrutamento', label: 'Recrutamento & Seleção (R&S)', filterArg: 'recrutamento' },
-      { id: 'diskRH_admissao', label: 'Admissão Digital & Onboarding', filterArg: 'admissao' },
-      { id: 'diskRH_ponto', label: 'Ponto & Jornada (REP-P 671 MTE)', filterArg: 'ponto' },
-      { id: 'diskRH_geofences', label: 'Cercas Virtuais (Geofences Arenas)', filterArg: 'geofences' },
-      { id: 'diskRH_bancoHoras', label: 'Banco de Horas & Horas Extras', filterArg: 'banco' },
-      { id: 'diskRH_fechamento', label: 'Fechamento Mensal & Espelho Oficial', filterArg: 'fechamento' },
-      { id: 'diskRH_dispositivos', label: 'Dispositivos Móveis & Anti-Fraude', filterArg: 'dispositivos' },
-      { id: 'diskRH_equipesEvento', label: 'Escalas & Equipes por Evento', filterArg: 'equipes_evento' },
-      { id: 'diskRH_staff', label: 'Temporários & Freelancers de Eventos', filterArg: 'staff' },
-      { id: 'diskRH_custosEvento', label: 'Centro de Custos de Pessoal (DRE)', filterArg: 'custos_evento' },
-      { id: 'diskRH_ferias', label: 'Férias Completas & Programação', filterArg: 'ferias' },
-      { id: 'diskRH_atestados', label: 'Ausências & Atestados (CID-10)', filterArg: 'atestados' },
-      { id: 'diskRH_folha', label: 'Folha de Pagamento & Holerites', filterArg: 'folha' },
-      { id: 'diskRH_beneficios', label: 'Gestão de Benefícios (VT/VR/Saúde)', filterArg: 'beneficios' },
-      { id: 'diskRH_sst', label: 'SST & Medicina do Trabalho (ASO/CAT)', filterArg: 'sst' },
-      { id: 'diskRH_patrimonio', label: 'Patrimônio do Colaborador & EPIs', filterArg: 'patrimonio' },
-      { id: 'diskRH_desempenho', label: 'Desempenho, Metas & PDI', filterArg: 'desempenho' },
-      { id: 'diskRH_treinamentos', label: 'Treinamentos & NRs Obrigatórias', filterArg: 'treinamentos' },
-      { id: 'diskRH_reembolsos', label: 'Despesas & Reembolsos Operacionais', filterArg: 'reembolsos' },
-      { id: 'diskRH_desligamentos', label: 'Desligamentos & Offboarding', filterArg: 'desligamentos' },
-      { id: 'diskRH_portalColaborador', label: 'Portal do Colaborador (Autoatendimento)', filterArg: 'portal_colaborador' },
-      { id: 'diskRH_portalGestor', label: 'Portal do Gestor (Minha Equipe)', filterArg: 'portal_gestor' },
-      { id: 'diskRH_ged', label: 'Gestão de Documentos (GED & Assinatura)', filterArg: 'ged' },
-      { id: 'diskRH_esocial', label: 'eSocial & People Analytics', filterArg: 'esocial' },
-      { id: 'diskRH_integracoes', label: 'Integrações Corporativas (RH ➔ ERP)', filterArg: 'integracoes' },
-      { id: 'diskRH_auditoria', label: 'Auditoria & Governança LGPD', filterArg: 'auditoria' }
+      {
+        id: 'diskRH_grp_pessoas',
+        label: 'Pessoas',
+        icon: 'ph-users',
+        subItems: [
+          { id: 'diskRH_visao', label: 'Visão Geral RH', filterArg: 'visao' },
+          { id: 'diskRH_colaboradores', label: 'Colaboradores', filterArg: 'colaboradores' },
+          { id: 'diskRH_organograma', label: 'Estrutura Organizacional', filterArg: 'organograma' },
+          { id: 'diskRH_admissao', label: 'Admissão Digital', filterArg: 'admissao' },
+          { id: 'diskRH_onboarding', label: 'Onboarding', filterArg: 'onboarding' },
+          { id: 'diskRH_desligamentos', label: 'Desligamentos e Offboarding', filterArg: 'desligamentos' },
+          { id: 'diskRH_aprovacoes', label: 'Central de Aprovações', filterArg: 'aprovacoes' }
+        ]
+      },
+      {
+        id: 'diskRH_grp_dp',
+        label: 'Departamento Pessoal',
+        icon: 'ph-calculator',
+        subItems: [
+          { id: 'diskRH_folha', label: 'Folha e Pagamentos RH', filterArg: 'folha' },
+          { id: 'diskRH_folhaCompleta', label: 'Folha de Pagamento Completa', filterArg: 'folha_completa' },
+          { id: 'diskRH_decimo', label: '13º Salário', filterArg: 'decimo' },
+          { id: 'diskRH_ferias', label: 'Férias', filterArg: 'ferias' },
+          { id: 'diskRH_ausencias', label: 'Ausências e Afastamentos', filterArg: 'ausencias' },
+          { id: 'diskRH_atestados', label: 'Atestados', filterArg: 'atestados' },
+          { id: 'diskRH_rescisoes', label: 'Rescisões', filterArg: 'rescisoes' },
+          { id: 'diskRH_beneficios', label: 'Benefícios', filterArg: 'beneficios' }
+        ]
+      },
+      {
+        id: 'diskRH_grp_ponto',
+        label: 'Ponto e Jornada',
+        icon: 'ph-clock',
+        subItems: [
+          { id: 'diskRH_ponto', label: 'Ponto e Jornada (REP-P 671)', filterArg: 'ponto' },
+          { id: 'diskRH_geofences', label: 'Cercas Virtuais (Geofences)', filterArg: 'geofences' },
+          { id: 'diskRH_bancoHoras', label: 'Banco de Horas & Extras', filterArg: 'banco' },
+          { id: 'diskRH_fechamento', label: 'Fechamento Mensal & Espelho', filterArg: 'fechamento' },
+          { id: 'diskRH_dispositivos', label: 'Dispositivos Móveis (Disk Ponto)', filterArg: 'dispositivos' }
+        ]
+      },
+      {
+        id: 'diskRH_grp_talentos',
+        label: 'Talentos',
+        icon: 'ph-sparkle',
+        subItems: [
+          { id: 'diskRH_recrutamento', label: 'Recrutamento e Seleção', filterArg: 'recrutamento' },
+          { id: 'diskRH_desempenho', label: 'Desempenho e PDI', filterArg: 'desempenho' },
+          { id: 'diskRH_treinamentos', label: 'Treinamentos', filterArg: 'treinamentos' },
+          { id: 'diskRH_cargosSalarios', label: 'Cargos e Salários', filterArg: 'cargos_salarios' }
+        ]
+      },
+      {
+        id: 'diskRH_grp_sst',
+        label: 'SST e Segurança',
+        icon: 'ph-shield-plus',
+        subItems: [
+          { id: 'diskRH_sst', label: 'SST e Medicina do Trabalho', filterArg: 'sst' },
+          { id: 'diskRH_epis', label: 'EPIs e Segurança', filterArg: 'epis' },
+          { id: 'diskRH_patrimonio', label: 'Patrimônio do Colaborador', filterArg: 'patrimonio' }
+        ]
+      },
+      {
+        id: 'diskRH_grp_eventos',
+        label: 'Eventos e Custos',
+        icon: 'ph-ticket',
+        subItems: [
+          { id: 'diskRH_equipesEvento', label: 'Equipes por Evento', filterArg: 'equipes_evento' },
+          { id: 'diskRH_freelancers', label: 'Temporários e Freelancers', filterArg: 'freelancers' },
+          { id: 'diskRH_custosEvento', label: 'Custos de Pessoal por Evento', filterArg: 'custos_evento' },
+          { id: 'diskRH_centroCustos', label: 'Centro de Custos de RH', filterArg: 'centro_custos' },
+          { id: 'diskRH_reembolsos', label: 'Despesas e Reembolsos', filterArg: 'reembolsos' }
+        ]
+      },
+      {
+        id: 'diskRH_grp_portais',
+        label: 'Portais',
+        icon: 'ph-browsers',
+        subItems: [
+          { id: 'diskRH_portalColaborador', label: 'Portal do Colaborador', filterArg: 'portal_colaborador' },
+          { id: 'diskRH_portalGestor', label: 'Portal do Gestor', filterArg: 'portal_gestor' }
+        ]
+      },
+      {
+        id: 'diskRH_grp_admin',
+        label: 'Administração',
+        icon: 'ph-gear-six',
+        subItems: [
+          { id: 'diskRH_esocial', label: 'eSocial', filterArg: 'esocial' },
+          { id: 'diskRH_documentos', label: 'Documentos e Assinaturas (GED)', filterArg: 'documentos' },
+          { id: 'diskRH_relatorios', label: 'Relatórios e People Analytics', filterArg: 'relatorios' },
+          { id: 'diskRH_integracoes', label: 'Integrações de RH', filterArg: 'integracoes' },
+          { id: 'diskRH_configuracoes', label: 'Configurações de RH', filterArg: 'configuracoes' },
+          { id: 'diskRH_auditoria', label: 'Auditoria e LGPD', filterArg: 'auditoria' }
+        ]
+      }
     ]
   }
 ];

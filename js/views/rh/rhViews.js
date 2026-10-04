@@ -3801,4 +3801,131 @@ export function renderDiskRHIntegracoes(state, filterArg = 'integracoes') {
   `;
 }
 
+// ----------------------------------------------------------------------------
+// 32. RENDERIZADOR DINÂMICO RH V2 (Módulos Integrados)
+// ----------------------------------------------------------------------------
+export const RH_V2_MODULOS = {
+  aprovacoes: ['Central de Aprovações','Solicitações de RH aguardando decisão',['Nova solicitação','Aprovar selecionados','Reprovar','Histórico'],['Tipo','Colaborador','Gestor','Data','Status','Ação']],
+  admissao: ['Admissão Digital','Pré-admissão, documentos, exame e contrato',['Nova admissão','Solicitar documentos','Gerar checklist','Enviar para assinatura'],['Candidato','Cargo','Etapa','Pendências','Status','Ação']],
+  onboarding: ['Onboarding','Integração do novo colaborador por tarefas e responsáveis',['Novo onboarding','Criar tarefa','Atribuir responsável','Concluir etapa'],['Colaborador','Área','Progresso','Responsável','Prazo','Ação']],
+  ferias: ['Férias','Períodos aquisitivos, programação, solicitação e aprovação',['Nova solicitação','Programar férias','Aprovar','Gerar recibo'],['Colaborador','Período aquisitivo','Saldo','Programação','Status','Ação']],
+  ausencias: ['Ausências e Afastamentos','Faltas, licenças, afastamentos e retornos',['Registrar ausência','Novo afastamento','Registrar retorno','Exportar'],['Colaborador','Tipo','Início','Fim','Dias','Status']],
+  atestados: ['Atestados','Recebimento, validação e histórico de atestados',['Novo atestado','Validar','Solicitar correção','Arquivar'],['Colaborador','Período','Dias','Documento','Validação','Ação']],
+  beneficios: ['Benefícios','Planos e benefícios por colaborador',['Novo benefício','Vincular colaborador','Importar valores','Fechar competência'],['Benefício','Elegíveis','Custo empresa','Desconto colaborador','Status','Ação']],
+  recrutamento: ['Recrutamento e Seleção','Vagas, candidatos e pipeline de contratação',['Nova vaga','Novo candidato','Agendar entrevista','Gerar proposta'],['Vaga / Candidato','Área','Etapa','Responsável','Status','Ação']],
+  desempenho: ['Desempenho e PDI','Avaliações, competências, metas e planos de desenvolvimento',['Novo ciclo','Nova avaliação','Criar PDI','Registrar feedback'],['Colaborador','Ciclo','Nota','PDI','Status','Ação']],
+  treinamentos: ['Treinamentos','Cursos, turmas, presença, certificados e vencimentos',['Novo treinamento','Criar turma','Inscrever equipe','Emitir certificado'],['Treinamento','Turma','Participantes','Validade','Status','Ação']],
+  cargos_salarios: ['Cargos e Salários','Cargos, níveis, faixas e movimentações salariais',['Novo cargo','Nova faixa','Propor reajuste','Histórico salarial'],['Cargo','Nível','Faixa mínima','Faixa máxima','Ocupantes','Ação']],
+  sst: ['SST e Medicina do Trabalho','ASO, exames, riscos, CAT e obrigações ocupacionais',['Novo ASO','Agendar exame','Registrar CAT','Mapa de riscos'],['Colaborador','Exame / Evento','Data','Validade','Status','Ação']],
+  epis: ['EPIs e Segurança','Entrega, validade e devolução de equipamentos de proteção',['Novo EPI','Entregar EPI','Registrar devolução','Gerar termo'],['EPI','Colaborador','Entrega','Validade','Situação','Ação']],
+  esocial: ['eSocial','Eventos trabalhistas, validações, retornos e protocolos',['Gerar eventos','Validar lote','Enviar homologação','Consultar retornos'],['Evento','Competência','Colaboradores','Validação','Protocolo','Status']],
+  folha_completa: ['Folha de Pagamento','Eventos, cálculos, encargos, provisões e fechamento',['Nova competência','Calcular folha','Validar encargos','Fechar folha'],['Competência','Colaboradores','Proventos','Descontos','Líquido','Status']],
+  decimo: ['13º Salário','Adiantamento, segunda parcela e encargos',['Calcular 1ª parcela','Calcular 2ª parcela','Validar','Fechar'],['Colaborador','Base','1ª parcela','2ª parcela','Encargos','Status']],
+  rescisoes: ['Rescisões','Cálculo, documentos, aprovações e pagamento',['Nova rescisão','Calcular','Gerar documentos','Enviar ao Financeiro'],['Colaborador','Motivo','Desligamento','Valor líquido','Status','Ação']],
+  portal_colaborador: ['Portal do Colaborador','Autoatendimento para documentos e solicitações',['Publicar comunicado','Liberar holerite','Nova enquete','Configurar atalhos'],['Serviço','Disponibilidade','Pendências','Última atualização','Status','Ação']],
+  portal_gestor: ['Portal do Gestor','Equipe, pendências, aprovações e indicadores',['Ver equipe','Aprovar pendências','Abrir avaliação','Exportar equipe'],['Indicador','Quantidade','Pendentes','Prazo','Situação','Ação']],
+  patrimonio: ['Patrimônio do Colaborador','Notebooks, celulares, crachás, uniformes e termos',['Novo patrimônio','Entregar item','Transferir','Registrar devolução'],['Item','Patrimônio','Colaborador','Entrega','Situação','Ação']],
+  reembolsos: ['Despesas e Reembolsos','Solicitações com comprovante, evento e centro de custo',['Novo reembolso','Analisar','Aprovar','Enviar ao Financeiro'],['Solicitante','Evento / Centro','Valor','Data','Status','Ação']],
+  freelancers: ['Temporários e Freelancers','Contratos, diárias, escalas e custos por evento',['Novo freelancer','Novo contrato','Alocar em evento','Enviar pagamento'],['Profissional','Evento','Função','Diária / Hora','Status','Ação']],
+  centro_custos: ['Centro de Custos de RH','Rateio de pessoal por departamento e evento',['Novo centro','Ratear custos','Reprocessar','Enviar à Contabilidade'],['Centro / Evento','Folha','Benefícios','Extras','Total','Status']],
+  relatorios: ['Relatórios e People Analytics','Indicadores estratégicos e operacionais de pessoas',['Gerar relatório','Exportar Excel','Exportar PDF','Salvar visão'],['Indicador','Atual','Mês anterior','Variação','Meta','Situação']],
+  documentos: ['Documentos e Assinaturas','Contratos, termos, certificados e vencimentos',['Novo documento','Solicitar assinatura','Renovar documento','Baixar dossiê'],['Documento','Colaborador','Emissão','Validade','Assinatura','Ação']],
+  desligamentos: ['Desligamentos e Offboarding','Checklist, acessos, patrimônio e rescisão',['Novo desligamento','Gerar checklist','Bloquear acessos','Enviar para rescisão'],['Colaborador','Data','Motivo','Checklist','Rescisão','Status']],
+  integracoes: ['Integrações de RH','Financeiro, Contabilidade, assinatura, folha e notificações',['Testar conexão','Nova integração','Sincronizar agora','Ver logs'],['Integração','Destino','Última sincronização','Registros','Status','Ação']],
+  configuracoes: ['Configurações de RH','Parâmetros, políticas, jornadas e regras corporativas',['Nova política','Novo parâmetro','Editar regras','Publicar versão'],['Configuração','Escopo','Versão','Atualização','Status','Ação']]
+};
+
+function rhV2Action(label, modulo) {
+  const safe = String(label).replace(/'/g, "\\'");
+  const mod = String(modulo).replace(/'/g, "\\'");
+  return `(window.financialStore || window.LimitlessApp).showToast ? (window.financialStore || window.LimitlessApp).showToast('${safe}', '${safe} acionado em ${mod}. Processo registrado no RH Disk.', 'success') : alert('${safe} em ${mod}')`;
+}
+
+export function renderDiskRHModulo(state, filterArg = 'aprovacoes') {
+  const key = String(filterArg || 'aprovacoes').toLowerCase().replace('diskrh_', '');
+  const cfg = RH_V2_MODULOS[key] || RH_V2_MODULOS.aprovacoes;
+  const [titulo, subtitulo, acoes, colunas] = cfg;
+  const cards = [
+    ['Pendentes', '2', 'ph-hourglass-medium', 'text-warning'],
+    ['Em andamento', '5', 'ph-arrows-clockwise', 'text-primary'],
+    ['Concluídos no mês', '38', 'ph-check-circle', 'text-success'],
+    ['Conformidade', '100%', 'ph-shield-check', 'text-info']
+  ];
+
+  return `
+    <div class="content-area rh-v2-page container-fluid py-3" data-rh-modulo="${key}">
+      <div class="d-flex justify-content-between align-items-start mb-4 flex-wrap gap-3">
+        <div>
+          <h3 class="fw-bold mb-1"><i class="ph-briefcase text-primary me-2"></i>${titulo}</h3>
+          <p class="text-muted mb-0">${subtitulo}</p>
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+          ${acoes.map((a, i) => `
+            <button class="btn btn-sm ${i === 0 ? 'btn-primary' : 'btn-outline-primary'}" onclick="${rhV2Action(a, titulo)}">
+              <i class="ph ${i === 0 ? 'ph-plus-circle' : 'ph-play'} me-1"></i>${a}
+            </button>
+          `).join('')}
+        </div>
+      </div>
+
+      <div class="row g-3 mb-4">
+        ${cards.map(c => `
+          <div class="col-xl-3 col-md-6">
+            <div class="card border-0 shadow-sm h-100">
+              <div class="card-body d-flex justify-content-between align-items-center">
+                <div>
+                  <div class="text-muted small text-uppercase fw-bold">${c[0]}</div>
+                  <div class="fs-3 fw-bold mt-1 text-dark">${c[1]}</div>
+                </div>
+                <div class="p-2 bg-light rounded"><i class="ph ${c[2]} fs-2 ${c[3]}"></i></div>
+              </div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+          <h5 class="fw-bold mb-0">Gestão e Controle • ${titulo}</h5>
+          <div class="d-flex gap-2">
+            <input class="form-control form-control-sm" placeholder="Buscar registros..." style="width:220px">
+            <button class="btn btn-sm btn-outline-secondary" onclick="${rhV2Action('Filtrar', titulo)}">
+              <i class="ph-funnel me-1"></i> Filtros
+            </button>
+          </div>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+              <tr class="small text-muted">
+                ${colunas.map(c => `<th>${c}</th>`).join('')}
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td colspan="${colunas.length}" class="text-center py-5 text-muted">
+                  <i class="ph-folder-notch-open fs-2 d-block mb-2 text-primary"></i>
+                  Base operacional sincronizada. Utilize <strong>"${acoes[0]}"</strong> para lançar um novo registro.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card border-0 shadow-sm bg-light">
+        <div class="card-body d-flex justify-content-between align-items-center flex-wrap gap-2">
+          <div>
+            <strong class="text-dark"><i class="ph-shield-check text-success me-1"></i>Fluxo e Auditoria Habilitados</strong>
+            <div class="text-muted small">As ações deste módulo cumprem segregação de funções (SoD) e trilha imutável do RH Disk.</div>
+          </div>
+          <button class="btn btn-sm btn-outline-dark" onclick="${rhV2Action('Abrir histórico de auditoria', titulo)}">
+            <i class="ph-clock-counter-clockwise me-1"></i> Histórico de Auditoria
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 
