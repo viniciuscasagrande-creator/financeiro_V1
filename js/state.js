@@ -14,6 +14,16 @@ export class CoreFinanceiroStore {
     }
     this.ensureOperationModel();
 
+    const fresh = getFreshDatabase();
+    if (!this.data.rhColaboradores) this.data.rhColaboradores = fresh.rhColaboradores;
+    if (!this.data.rhDepartamentos) this.data.rhDepartamentos = fresh.rhDepartamentos;
+    if (!this.data.rhCargos) this.data.rhCargos = fresh.rhCargos;
+    if (!this.data.rhGeofences) this.data.rhGeofences = fresh.rhGeofences;
+    if (!this.data.rhRegistrosPonto) this.data.rhRegistrosPonto = fresh.rhRegistrosPonto;
+    if (!this.data.rhAjustesPonto) this.data.rhAjustesPonto = fresh.rhAjustesPonto;
+    if (!this.data.rhEquipesCustosEvento) this.data.rhEquipesCustosEvento = fresh.rhEquipesCustosEvento;
+    if (!this.data.rhAuditLogs) this.data.rhAuditLogs = fresh.rhAuditLogs;
+
     this.state = {
       isLoggedIn: true,
       currentUser: {
@@ -4345,6 +4355,227 @@ export class CoreFinanceiroStore {
     this.persist();
     this.notify();
     return { event, revenue: numAmount, amortizations };
+  }
+
+  cadastrarColaboradorRH(dados) {
+    if (!dados || !dados.nome || !dados.cpf) {
+      throw new Error("Nome e CPF são obrigatórios para cadastro do colaborador.");
+    }
+    const novoColab = {
+      id: `colab-${Date.now()}`,
+      matricula: dados.matricula || `DISK-${Math.floor(10000 + Math.random() * 90000)}`,
+      nome: dados.nome.trim(),
+      cpf: dados.cpf.trim(),
+      rg: dados.rg || '',
+      email: dados.email || '',
+      telefone: dados.telefone || '',
+      fotoUrl: dados.fotoUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80',
+      cargoId: dados.cargoId || 'crg-01',
+      cargoNome: dados.cargoNome || 'Colaborador Operacional',
+      departamentoId: dados.departamentoId || 'dep-01',
+      departamentoNome: dados.departamentoNome || 'Operações e Bilheteria de Eventos',
+      tipoContrato: dados.tipoContrato || 'CLT',
+      status: 'ATIVO',
+      dataAdmissao: new Date().toLocaleDateString('pt-BR'),
+      salario: Number(dados.salario) || 0,
+      valorDiariaEvento: Number(dados.valorDiariaEvento) || 0,
+      chavePix: dados.chavePix || '',
+      tipoChavePix: dados.tipoChavePix || 'CPF',
+      banco: dados.banco || '033 - Santander',
+      agencia: dados.agencia || '',
+      conta: dados.conta || '',
+      geofencePadraoId: dados.geofencePadraoId || 'geo-sede-disk',
+      jornada: dados.tipoContrato === 'FREELANCER_EVENTO' ? 'Por Escala de Evento' : '08:00 às 17:48 (Seg-Sex) - 44h',
+      saldoBancoHoras: '0h'
+    };
+
+    if (!this.data.rhColaboradores) this.data.rhColaboradores = [];
+    this.data.rhColaboradores.unshift(novoColab);
+
+    if (!this.data.rhAuditLogs) this.data.rhAuditLogs = [];
+    this.data.rhAuditLogs.unshift({
+      id: `log-rh-${Date.now()}`,
+      at: new Date().toLocaleString('pt-BR'),
+      by: this.state.currentUser.name || 'Gestor RH Disk',
+      colaboradorAfetado: `${novoColab.nome} (${novoColab.matricula})`,
+      acao: 'CADASTRO_COLABORADOR',
+      entidade: 'Colaborador',
+      detalhes: `Colaborador cadastrado sob regime ${novoColab.tipoContrato}.`,
+      ip: '127.0.0.1'
+    });
+
+    this.showToast("✓ Colaborador Cadastrado", `${novoColab.nome} foi cadastrado com sucesso.`, "success");
+    this.persist();
+    this.notify();
+    return novoColab;
+  }
+
+  registrarBatidaPontoRH(dados) {
+    if (!dados || !dados.colaboradorId) {
+      throw new Error("Colaborador é obrigatório.");
+    }
+    const colab = (this.data.rhColaboradores || []).find(c => c.id === dados.colaboradorId);
+    if (!colab) throw new Error("Colaborador não encontrado.");
+
+    const nsr = (this.data.rhRegistrosPonto?.length || 0) + 1005;
+    const now = new Date();
+    const hash = 'a' + Math.random().toString(16).substring(2) + Math.random().toString(16).substring(2);
+    const comprovante = `MTE671-${String(nsr).padStart(9, '0')}-${hash.substring(0, 8).toUpperCase()}`;
+
+    const novoPonto = {
+      id: `ponto-${nsr}`,
+      nsr,
+      colaboradorId: colab.id,
+      colaboradorNome: colab.nome,
+      tipo: dados.tipo || 'ENTRADA',
+      dataHoraMarcacao: now.toISOString(),
+      dataHoraFormatada: now.toLocaleString('pt-BR'),
+      latitude: dados.latitude || -25.4284,
+      longitude: dados.longitude || -49.2733,
+      precisaoMetros: dados.precisaoMetros || 7.8,
+      geofenceId: dados.geofenceId || colab.geofencePadraoId || 'geo-sede-disk',
+      geofenceNome: dados.geofenceNome || 'Sede DiskIngressos Curitiba',
+      dentroGeofence: dados.dentroGeofence !== undefined ? dados.dentroGeofence : true,
+      distanciaGeofence: dados.distanciaGeofence || 5.0,
+      modoCaptura: dados.modoCaptura || 'APP_ONLINE',
+      hashIntegridade: hash,
+      comprovanteNsr: comprovante,
+      dispositivoInfo: dados.dispositivoInfo || 'Disk Ponto Android APK v1.0',
+      sincronizado: true
+    };
+
+    if (!this.data.rhRegistrosPonto) this.data.rhRegistrosPonto = [];
+    this.data.rhRegistrosPonto.unshift(novoPonto);
+
+    if (!this.data.rhAuditLogs) this.data.rhAuditLogs = [];
+    this.data.rhAuditLogs.unshift({
+      id: `log-rh-${Date.now()}`,
+      at: now.toLocaleString('pt-BR'),
+      by: colab.nome,
+      colaboradorAfetado: `${colab.nome} (${colab.matricula})`,
+      acao: 'REGISTRO_PONTO',
+      entidade: 'RegistroPonto',
+      detalhes: `Ponto batido (${novoPonto.tipo}) via REP-P Disk Ponto APK. NSR ${nsr}.`,
+      ip: '127.0.0.1'
+    });
+
+    this.showToast("✓ Ponto Registrado", `${colab.nome}: ${novoPonto.tipo} às ${now.toLocaleTimeString('pt-BR')}`, "success");
+    this.persist();
+    this.notify();
+    return novoPonto;
+  }
+
+  aprovarAjustePontoRH(ajusteId, parecer = "Aprovado pelo RH") {
+    const ajuste = (this.data.rhAjustesPonto || []).find(a => a.id === ajusteId);
+    if (!ajuste) throw new Error("Ajuste de ponto não encontrado.");
+
+    ajuste.status = 'APROVADO';
+    ajuste.analisadoPor = this.state.currentUser.name || 'Gestor RH';
+    ajuste.analisadoEm = new Date().toLocaleString('pt-BR');
+    ajuste.parecerRH = parecer;
+
+    // Regulariza gerando a batida
+    const colab = (this.data.rhColaboradores || []).find(c => c.id === ajuste.colaboradorId);
+    if (colab) {
+      this.registrarBatidaPontoRH({
+        colaboradorId: colab.id,
+        tipo: ajuste.tipoAjuste,
+        modoCaptura: 'WEB_ADMIN',
+        dispositivoInfo: `Ajuste Administrativo RH: ${ajuste.id}`
+      });
+    }
+
+    this.showToast("✓ Ajuste Aprovado", `Solicitação ${ajusteId} aprovada e ponto regularizado.`, "success");
+    this.persist();
+    this.notify();
+    return ajuste;
+  }
+
+  rejeitarAjustePontoRH(ajusteId, motivo = "Horário não confirmado pelo gestor direto") {
+    const ajuste = (this.data.rhAjustesPonto || []).find(a => a.id === ajusteId);
+    if (!ajuste) throw new Error("Ajuste de ponto não encontrado.");
+
+    ajuste.status = 'REJEITADO';
+    ajuste.analisadoPor = this.state.currentUser.name || 'Gestor RH';
+    ajuste.analisadoEm = new Date().toLocaleString('pt-BR');
+    ajuste.motivoRejeicao = motivo;
+
+    this.showToast("Ajuste Rejeitado", `Solicitação ${ajusteId} foi recusada.`, "warning");
+    this.persist();
+    this.notify();
+    return ajuste;
+  }
+
+  alocarEquipeEventoRH(dados) {
+    const novoCusto = {
+      id: `custo-mo-${Date.now()}`,
+      eventoId: dados.eventoId || 'evt-xyz-1',
+      eventoNome: dados.eventoNome || 'Show Nacional de Rock Curitiba',
+      produtorId: dados.produtorId || 'prod-xyz',
+      colaboradorId: dados.colaboradorId,
+      colaboradorNome: dados.colaboradorNome,
+      cargoFuncao: dados.cargoFuncao || 'Operador de Equipe',
+      tipoContratacao: dados.tipoContratacao || 'FREELANCER_EVENTO',
+      valorDiaria: Number(dados.valorDiaria) || 180,
+      horasTrabalhadas: 8.0,
+      valorHorasExtras: Number(dados.valorHorasExtras) || 0,
+      auxilioAlimentacao: Number(dados.auxilioAlimentacao) || 40,
+      auxilioTransporte: Number(dados.auxilioTransporte) || 30,
+      valorTotal: (Number(dados.valorDiaria) || 180) + (Number(dados.auxilioAlimentacao) || 40) + (Number(dados.auxilioTransporte) || 30),
+      statusPagamento: 'PREVISTO',
+      chavePix: dados.chavePix || '',
+      tipoChavePix: dados.tipoChavePix || 'CPF',
+      banco: dados.banco || 'Banco Padrão'
+    };
+
+    if (!this.data.rhEquipesCustosEvento) this.data.rhEquipesCustosEvento = [];
+    this.data.rhEquipesCustosEvento.unshift(novoCusto);
+
+    this.showToast("✓ Profissional Alocado", `${novoCusto.colaboradorNome} alocado no evento.`, "success");
+    this.persist();
+    this.notify();
+    return novoCusto;
+  }
+
+  enviarPagamentosEquipeParaTesourariaRH(eventoId = 'evt-xyz-1') {
+    const pendentes = (this.data.rhEquipesCustosEvento || []).filter(
+      c => c.eventoId === eventoId && (c.statusPagamento === 'PREVISTO' || c.statusPagamento === 'AUTORIZADO_RH')
+    );
+
+    if (pendentes.length === 0) {
+      this.showToast("Aviso", "Não há pagamentos pendentes de mão de obra para este evento.", "info");
+      return;
+    }
+
+    const loteId = `LOTE-PIX-RH-${Date.now()}`;
+    const total = pendentes.reduce((acc, c) => acc + (c.valorTotal || 0), 0);
+
+    for (const c of pendentes) {
+      c.statusPagamento = 'ENVIADO_TESOURARIA';
+      c.lotePagamentoId = loteId;
+    }
+
+    if (!this.data.rhAuditLogs) this.data.rhAuditLogs = [];
+    this.data.rhAuditLogs.unshift({
+      id: `log-rh-${Date.now()}`,
+      at: new Date().toLocaleString('pt-BR'),
+      by: this.state.currentUser.name || 'Diretoria Financeira',
+      colaboradorAfetado: `${pendentes.length} Profissionais do Evento`,
+      acao: 'PAGAMENTOS_EQUIPE_ENVIADOS_TESOURARIA',
+      entidade: 'CustoMaoDeObraEvento',
+      detalhes: `Lote ${loteId} contendo ${pendentes.length} pagamentos enviado para Tesouraria PIX. Total: R$ ${total.toFixed(2)}`,
+      ip: '127.0.0.1'
+    });
+
+    this.showToast(
+      "✓ Lote Enviado para a Tesouraria",
+      `${pendentes.length} pagamento(s) de equipe (R$ ${total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}) adicionados à fila de PIX da Tesouraria.`,
+      "success"
+    );
+
+    this.persist();
+    this.notify();
+    return { loteId, total, pendentes };
   }
 
   resetDemoData() {

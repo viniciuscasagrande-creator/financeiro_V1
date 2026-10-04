@@ -76,6 +76,17 @@ import {
   renderDiskConfiguracoes,
   renderDiskFornecedores
 } from './views/disk/enterpriseViews.js';
+import {
+  renderDiskRHVisaoGeral,
+  renderDiskRHColaboradores,
+  renderDiskRHOrganograma,
+  renderDiskRHPonto,
+  renderDiskRHGeofences,
+  renderDiskRHEquipesEvento,
+  renderDiskRHCustosEvento,
+  renderDiskRHFolha,
+  renderDiskRHAuditoria
+} from './views/rh/rhViews.js';
 import { initScrollSpy } from './components/scrollSpy.js';
 
 class LimitlessFinancialApp {
@@ -3096,6 +3107,34 @@ class LimitlessFinancialApp {
           break;
         case 'diskCentralEstornos':
           viewHtml = renderDiskFinanceiroAvancado(state, 'estornos');
+          break;
+        case 'diskRH':
+        case 'diskRH_visao':
+          viewHtml = renderDiskRHVisaoGeral(state, this.currentFilterArg);
+          break;
+        case 'diskRH_colaboradores':
+          viewHtml = renderDiskRHColaboradores(state, this.currentFilterArg);
+          break;
+        case 'diskRH_organograma':
+          viewHtml = renderDiskRHOrganograma(state, this.currentFilterArg);
+          break;
+        case 'diskRH_ponto':
+          viewHtml = renderDiskRHPonto(state, this.currentFilterArg);
+          break;
+        case 'diskRH_geofences':
+          viewHtml = renderDiskRHGeofences(state, this.currentFilterArg);
+          break;
+        case 'diskRH_equipesEvento':
+          viewHtml = renderDiskRHEquipesEvento(state, this.currentFilterArg);
+          break;
+        case 'diskRH_custosEvento':
+          viewHtml = renderDiskRHCustosEvento(state, this.currentFilterArg);
+          break;
+        case 'diskRH_folha':
+          viewHtml = renderDiskRHFolha(state, this.currentFilterArg);
+          break;
+        case 'diskRH_auditoria':
+          viewHtml = renderDiskRHAuditoria(state, this.currentFilterArg);
           break;
         default:
           viewHtml = renderDiskDashboard(state);
@@ -8609,6 +8648,318 @@ window.handleRegisterRevenue = function(eventId) {
 window.openEventMovementModal = function(eventId) {
   if (window.app && typeof window.app.openEventMovementModal === 'function') {
     return window.app.openEventMovementModal(eventId);
+  }
+};
+
+// ============================================================================
+// BRIDGE GLOBAL RH DISK & DISK PONTO (INTERACTION HANDLERS)
+// ============================================================================
+
+window.LimitlessApp = {
+  navigate(viewId, filterArg) {
+    if (window.app) {
+      financialStore.setState({ currentView: viewId, viewMode: 'disk' });
+      if (filterArg) window.app.currentFilterArg = filterArg;
+    }
+  },
+
+  abrirModalNovoColaborador() {
+    const html = `
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title fw-bold"><i class="ph-user-plus me-2"></i>Novo Colaborador (RH Disk)</h5>
+        <button type="button" class="btn-close btn-close-white" onclick="window.app.closeModal()"></button>
+      </div>
+      <div class="modal-body p-4">
+        <form id="form-novo-colaborador" onsubmit="window.LimitlessApp.salvarNovoColaborador(event)">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label fw-bold small">Nome Completo *</label>
+              <input type="text" class="form-control" name="nome" required placeholder="Ex: Lucas Ferreira dos Santos">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label fw-bold small">CPF *</label>
+              <input type="text" class="form-control" name="cpf" required placeholder="000.000.000-00">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label fw-bold small">RG</label>
+              <input type="text" class="form-control" name="rg" placeholder="10.234.567-8 SSP/PR">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-bold small">E-mail Profissional</label>
+              <input type="email" class="form-control" name="email" placeholder="nome@diskingressos.com.br">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-bold small">Telefone / WhatsApp</label>
+              <input type="text" class="form-control" name="telefone" placeholder="(41) 99999-8888">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-bold small">Cargo / Função *</label>
+              <input type="text" class="form-control" name="cargoNome" required placeholder="Ex: Operador de Bilheteria">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-bold small">Departamento *</label>
+              <select class="form-select" name="departamentoNome">
+                <option value="Operações e Bilheteria de Eventos">Operações e Bilheteria de Eventos</option>
+                <option value="Financeiro, Controladoria e Tesouraria">Financeiro, Controladoria e Tesouraria</option>
+                <option value="Tecnologia da Informação & Core">Tecnologia da Informação & Core</option>
+                <option value="Comercial, Parcerias e Atendimento">Comercial, Parcerias e Atendimento</option>
+                <option value="Gente, Gestão & Recursos Humanos">Gente, Gestão & Recursos Humanos</option>
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-bold small">Regime de Contrato *</label>
+              <select class="form-select" name="tipoContrato" id="input-tipo-contrato">
+                <option value="CLT">CLT (Quadro Efetivo)</option>
+                <option value="FREELANCER_EVENTO">Freelancer de Evento (Diária)</option>
+                <option value="PJ">Pessoa Jurídica (PJ)</option>
+                <option value="ESTAGIO">Estágio</option>
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-bold small">Salário Base (CLT) R$</label>
+              <input type="number" step="0.01" class="form-control" name="salario" placeholder="0.00" value="3500.00">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-bold small">Valor Diária (Freelancer) R$</label>
+              <input type="number" step="0.01" class="form-control" name="valorDiariaEvento" placeholder="0.00" value="180.00">
+            </div>
+            <div class="col-12"><hr class="my-2 text-muted"></div>
+            <div class="col-12"><h6 class="fw-bold mb-0 text-primary"><i class="ph-bank me-1"></i>Dados Bancários & PIX para Pagamento Automático</h6></div>
+            <div class="col-md-4">
+              <label class="form-label fw-bold small">Banco</label>
+              <input type="text" class="form-control" name="banco" placeholder="Ex: 033 - Santander" value="033 - Santander">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-bold small">Tipo de Chave PIX</label>
+              <select class="form-select" name="tipoChavePix">
+                <option value="CPF">CPF</option>
+                <option value="EMAIL">E-mail</option>
+                <option value="TELEFONE">Telefone</option>
+                <option value="ALEATORIA">Chave Aleatória (EVP)</option>
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-bold small">Chave PIX *</label>
+              <input type="text" class="form-control" name="chavePix" required placeholder="Chave para transferências">
+            </div>
+          </div>
+          <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
+            <button type="button" class="btn btn-light" onclick="window.app.closeModal()">Cancelar</button>
+            <button type="submit" class="btn btn-primary fw-bold"><i class="ph-check me-1"></i> Salvar Colaborador</button>
+          </div>
+        </form>
+      </div>
+    `;
+    window.app.openModal(html);
+  },
+
+  salvarNovoColaborador(event) {
+    if (event) event.preventDefault();
+    const form = event.target;
+    const formData = new FormData(form);
+    const dados = Object.fromEntries(formData.entries());
+    try {
+      financialStore.cadastrarColaboradorRH(dados);
+      window.app.closeModal();
+    } catch (e) {
+      alert("Erro ao cadastrar: " + e.message);
+    }
+  },
+
+  abrirSimuladorPontoMobile() {
+    const db = financialStore.getState().db || {};
+    const colaboradores = db.rhColaboradores || [];
+    const geofences = db.rhGeofences || [];
+
+    const html = `
+      <div class="modal-header bg-dark text-white">
+        <h5 class="modal-title fw-bold"><i class="ph-device-mobile me-2 text-warning"></i>Simulador de Ponto (Disk Ponto Android APK)</h5>
+        <button type="button" class="btn-close btn-close-white" onclick="window.app.closeModal()"></button>
+      </div>
+      <div class="modal-body p-4 bg-light">
+        <div class="card border-0 shadow-sm mx-auto" style="max-width: 420px; border-radius: 20px; overflow: hidden;">
+          <div class="card-header bg-primary text-white text-center py-3">
+            <div class="small text-white-50 text-uppercase fw-bold">DiskIngressos • Registrador REP-P</div>
+            <h4 class="fw-bold mb-0">Disk Ponto Mobile</h4>
+            <span class="badge bg-success-subtle text-white border border-white mt-1">
+              <i class="ph-shield-check me-1"></i> Portaria 671 MTE
+            </span>
+          </div>
+          <div class="card-body p-4">
+            <form id="form-simulador-ponto" onsubmit="window.LimitlessApp.executarBatidaPontoSimulada(event)">
+              <div class="mb-3">
+                <label class="form-label fw-bold small text-muted">Selecione o Colaborador</label>
+                <select class="form-select" name="colaboradorId" required>
+                  ${colaboradores.map(c => `<option value="${c.id}">${c.nome} (${c.matricula}) - ${c.cargoNome}</option>`).join('')}
+                </select>
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label fw-bold small text-muted">Tipo de Marcação</label>
+                <select class="form-select fw-bold" name="tipo" required>
+                  <option value="ENTRADA">🟢 Entrada</option>
+                  <option value="INTERVALO_INICIO">🟡 Início Intervalo / Almoço</option>
+                  <option value="INTERVALO_FIM">🔵 Retorno Intervalo</option>
+                  <option value="SAIDA">🔴 Saída</option>
+                </select>
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label fw-bold small text-muted">Local / Geofence Alvo</label>
+                <select class="form-select" name="geofenceId" id="simulador-geofence-select">
+                  ${geofences.map(g => `<option value="${g.id}">${g.nome} (Raio ${g.raioMetros}m)</option>`).join('')}
+                </select>
+              </div>
+
+              <div class="p-3 bg-white border rounded-3 mb-4 text-center">
+                <div class="small text-muted mb-1"><i class="ph-map-pin text-danger"></i> Coordenadas GPS Capturadas no Toque</div>
+                <div class="fw-bold text-dark font-monospace" id="simulador-coords-display">-25.42841, -49.27329</div>
+                <span class="badge bg-success-subtle text-success border border-success mt-1">Precisão: 8.2m • DENTRO DO RAIO</span>
+              </div>
+
+              <div class="d-grid gap-2">
+                <button type="submit" class="btn btn-success btn-lg fw-bold py-3 shadow">
+                  <i class="ph-fingerprint me-2 fs-4 align-middle"></i> REGISTRAR PONTO AGORA
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    `;
+    window.app.openModal(html);
+  },
+
+  executarBatidaPontoSimulada(event) {
+    if (event) event.preventDefault();
+    const form = event.target;
+    const formData = new FormData(form);
+    const colabId = formData.get('colaboradorId');
+    const tipo = formData.get('tipo');
+    const geofenceId = formData.get('geofenceId');
+
+    try {
+      financialStore.registrarBatidaPontoRH({
+        colaboradorId: colabId,
+        tipo: tipo,
+        geofenceId: geofenceId,
+        modoCaptura: 'APP_ONLINE',
+        dispositivoInfo: 'Simulador Disk Ponto Android APK'
+      });
+      window.app.closeModal();
+    } catch (e) {
+      alert("Erro na batida: " + e.message);
+    }
+  },
+
+  aprovarAjustePonto(ajusteId) {
+    if (confirm(`Confirma aprovação do ajuste de ponto ${ajusteId}? O horário será regularizado retroativamente conforme Portaria 671 MTE.`)) {
+      financialStore.aprovarAjustePontoRH(ajusteId);
+    }
+  },
+
+  rejeitarAjustePonto(ajusteId) {
+    const motivo = prompt("Informe o motivo da recusa do ajuste de ponto:", "Horário inconsistente com a escala");
+    if (motivo) {
+      financialStore.rejeitarAjustePontoRH(ajusteId, motivo);
+    }
+  },
+
+  enviarPagamentoRHParaTesouraria(eventoId) {
+    financialStore.enviarPagamentosEquipeParaTesourariaRH(eventoId);
+  },
+
+  testarGeofence(geofenceId) {
+    const db = financialStore.getState().db || {};
+    const geo = (db.rhGeofences || []).find(g => g.id === geofenceId);
+    if (!geo) return;
+    alert(`Cerca Virtual: ${geo.nome}\nCentro: ${geo.latitude}, ${geo.longitude}\nRaio Permitido: ${geo.raioMetros} metros.\nStatus: Operacional e Ativa.`);
+  },
+
+  verEspelhoColaborador(colaboradorId) {
+    const db = financialStore.getState().db || {};
+    const colab = (db.rhColaboradores || []).find(c => c.id === colaboradorId);
+    const batidas = (db.rhRegistrosPonto || []).filter(b => b.colaboradorId === colaboradorId);
+
+    const html = `
+      <div class="modal-header bg-dark text-white">
+        <h5 class="modal-title fw-bold"><i class="ph-receipt me-2"></i>Espelho de Ponto • ${colab ? colab.nome : 'Colaborador'}</h5>
+        <button type="button" class="btn-close btn-close-white" onclick="window.app.closeModal()"></button>
+      </div>
+      <div class="modal-body p-4">
+        <div class="p-3 bg-light rounded-3 mb-3 d-flex justify-content-between align-items-center">
+          <div>
+            <div class="fw-bold">${colab ? colab.nome : ''} (${colab ? colab.matricula : ''})</div>
+            <div class="small text-muted">${colab ? colab.cargoNome : ''} • ${colab ? colab.departamentoNome : ''}</div>
+          </div>
+          <div class="text-end">
+            <div class="small text-muted">Competência: <strong>Outubro/2026</strong></div>
+            <span class="badge bg-primary">Banco de Horas: ${colab ? colab.saldoBancoHoras : '0h'}</span>
+          </div>
+        </div>
+
+        <h6 class="fw-bold mb-2">Batidas Registradas neste Mês:</h6>
+        ${batidas.length === 0 ? '<div class="alert alert-info small">Nenhum registro para este colaborador no período.</div>' : `
+          <div class="table-responsive">
+            <table class="table table-bordered table-sm align-middle small">
+              <thead class="table-light">
+                <tr>
+                  <th>NSR</th>
+                  <th>Tipo</th>
+                  <th>Data/Hora</th>
+                  <th>Local Autorizado</th>
+                  <th>Comprovante</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${batidas.map(b => `
+                  <tr>
+                    <td><span class="badge bg-dark">#${b.nsr}</span></td>
+                    <td><span class="badge bg-light text-dark border">${b.tipo}</span></td>
+                    <td class="fw-bold">${b.dataHoraFormatada || b.dataHoraMarcacao}</td>
+                    <td>${b.geofenceNome || 'Sede'}</td>
+                    <td><code>${b.comprovanteNsr}</code></td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        `}
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary btn-sm" onclick="window.app.closeModal()">Fechar</button>
+      </div>
+    `;
+    window.app.openModal(html);
+  },
+
+  filtrarColaboradoresTabela(query) {
+    const q = (query || '').toLowerCase().trim();
+    const rows = document.querySelectorAll('#tabela-rh-colaboradores tbody tr');
+    rows.forEach(r => {
+      const text = r.textContent.toLowerCase();
+      r.style.display = text.includes(q) ? '' : 'none';
+    });
+  },
+
+  filtrarColaboradoresRegime(regime) {
+    const rows = document.querySelectorAll('#tabela-rh-colaboradores tbody tr');
+    rows.forEach(r => {
+      if (regime === 'TODOS') {
+        r.style.display = '';
+      } else {
+        const text = r.textContent.toUpperCase();
+        r.style.display = text.includes(regime) ? '' : 'none';
+      }
+    });
+  },
+
+  exportarColaboradores() {
+    financialStore.showToast("Exportando CSV", "Relatório de Colaboradores e Dados PIX gerado.", "info");
+  },
+
+  gerarArquivoCnabRH() {
+    financialStore.showToast("✓ Arquivo CNAB 240 Gerado", "Remessa bancária de folha de pagamento pronta para transmissão ao banco.", "success");
   }
 };
 

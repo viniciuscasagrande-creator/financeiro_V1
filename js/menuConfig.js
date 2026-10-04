@@ -304,6 +304,22 @@ export const menuFinanceiroCompleto = [
       { id: 'diskGovernanca_acessos', label: 'Auditoria de Acessos', filterArg: 'acessos' },
       { id: 'diskGovernanca_configuracoes', label: 'Configurações', filterArg: 'configuracoes' }
     ]
+  },
+  {
+    id: 'diskRH',
+    label: 'RECURSOS HUMANOS (RH DISK)',
+    icon: 'ph-users-three',
+    subItems: [
+      { id: 'diskRH_visao', label: 'Visão Geral RH', filterArg: 'visao' },
+      { id: 'diskRH_colaboradores', label: 'Colaboradores', filterArg: 'colaboradores' },
+      { id: 'diskRH_organograma', label: 'Estrutura Organizacional', filterArg: 'organograma' },
+      { id: 'diskRH_ponto', label: 'Ponto e Jornada', filterArg: 'ponto' },
+      { id: 'diskRH_geofences', label: 'Cercas Virtuais (Geofences)', filterArg: 'geofences' },
+      { id: 'diskRH_equipesEvento', label: 'Equipes por Evento', filterArg: 'equipes_evento' },
+      { id: 'diskRH_custosEvento', label: 'Custos de Pessoal por Evento', filterArg: 'custos_evento' },
+      { id: 'diskRH_folha', label: 'Folha e Pagamentos RH', filterArg: 'folha' },
+      { id: 'diskRH_auditoria', label: 'Auditoria e LGPD', filterArg: 'auditoria' }
+    ]
   }
 ];
 

@@ -54,4 +54,7 @@ app.post('/api/solicitacoes/:id/liquidar-pix', authMiddleware, (req,res)=>{
 });
 app.get('/api/solicitacoes/:id', authMiddleware, (req,res)=>{ const sol=solicitacoes.get(req.params.id); if(!sol) return res.status(404).json({erro:'Não encontrada'}); res.json(sol); });
 
+import { rhRouter } from './rh/rh.routes';
+app.use('/api/rh', rhRouter);
+
 export default app;
