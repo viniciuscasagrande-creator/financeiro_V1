@@ -23,6 +23,22 @@ export class CoreFinanceiroStore {
     if (!this.data.rhAjustesPonto) this.data.rhAjustesPonto = fresh.rhAjustesPonto;
     if (!this.data.rhEquipesCustosEvento) this.data.rhEquipesCustosEvento = fresh.rhEquipesCustosEvento;
     if (!this.data.rhAuditLogs) this.data.rhAuditLogs = fresh.rhAuditLogs;
+    if (!this.data.rhJornadas) this.data.rhJornadas = fresh.rhJornadas;
+    if (!this.data.rhEscalas) this.data.rhEscalas = fresh.rhEscalas;
+    if (!this.data.rhBancoHoras) this.data.rhBancoHoras = fresh.rhBancoHoras;
+    if (!this.data.rhFechamentosPonto) this.data.rhFechamentosPonto = fresh.rhFechamentosPonto;
+    if (!this.data.rhDispositivos) this.data.rhDispositivos = fresh.rhDispositivos;
+    if (!this.data.rhFerias) this.data.rhFerias = fresh.rhFerias;
+    if (!this.data.rhAtestados) this.data.rhAtestados = fresh.rhAtestados;
+    if (!this.data.rhAdmissoes) this.data.rhAdmissoes = fresh.rhAdmissoes;
+    if (!this.data.rhGedDocumentos) this.data.rhGedDocumentos = fresh.rhGedDocumentos;
+    if (!this.data.rhBeneficios) this.data.rhBeneficios = fresh.rhBeneficios;
+    if (!this.data.rhPedidosBeneficios) this.data.rhPedidosBeneficios = fresh.rhPedidosBeneficios;
+    if (!this.data.rhFolhasPagamento) this.data.rhFolhasPagamento = fresh.rhFolhasPagamento;
+    if (!this.data.rhHolerites) this.data.rhHolerites = fresh.rhHolerites;
+    if (!this.data.rhDiariasStaff) this.data.rhDiariasStaff = fresh.rhDiariasStaff;
+    if (!this.data.rhEventosESocial) this.data.rhEventosESocial = fresh.rhEventosESocial;
+    if (!this.data.rhPeopleAnalytics) this.data.rhPeopleAnalytics = fresh.rhPeopleAnalytics;
 
     this.state = {
       isLoggedIn: true,
@@ -4576,6 +4592,402 @@ export class CoreFinanceiroStore {
     this.persist();
     this.notify();
     return { loteId, total, pendentes };
+  }
+
+  solicitarFeriasRH(dados) {
+    if (!dados || !dados.colaboradorId) throw new Error("Colaborador é obrigatório para agendamento de férias.");
+    const colab = (this.data.rhColaboradores || []).find(c => c.id === dados.colaboradorId);
+    if (!colab) throw new Error("Colaborador não encontrado.");
+
+    const diasGozo = Number(dados.diasGozo) || 20;
+    const diasAbono = Number(dados.diasAbonoPecuniario) || 0;
+    const salarioBase = Number(colab.salario) || 3500;
+    const valorDia = salarioBase / 30;
+    const valorBruto = (diasGozo + diasAbono) * valorDia;
+    const valorTerco = valorBruto / 3;
+    const totalAReceber = valorBruto + valorTerco;
+
+    const novaSolicitacao = {
+      id: `fer-${Date.now()}`,
+      colaboradorId: colab.id,
+      colaboradorNome: colab.nome,
+      cargo: colab.cargoNome,
+      periodoAquisitivo: dados.periodoAquisitivo || "01/01/2025 a 31/12/2025",
+      periodoConcessivoLimite: dados.periodoConcessivoLimite || "30/11/2026",
+      diasDireito: 30,
+      diasGozo,
+      diasAbonoPecuniario: diasAbono,
+      adiantamentoDecimoTerceiro: !!dados.adiantamentoDecimoTerceiro,
+      dataInicio: dados.dataInicio || "01/12/2026",
+      dataFim: dados.dataFim || "20/12/2026",
+      valorBruto,
+      valorTercoConstitucional: valorTerco,
+      totalAReceber,
+      status: "SOLICITADO",
+      solicitadoEm: new Date().toLocaleDateString('pt-BR'),
+      aprovadoPor: null
+    };
+
+    if (!this.data.rhFerias) this.data.rhFerias = [];
+    this.data.rhFerias.unshift(novaSolicitacao);
+
+    if (!this.data.rhAuditLogs) this.data.rhAuditLogs = [];
+    this.data.rhAuditLogs.unshift({
+      id: `log-rh-${Date.now()}`,
+      at: new Date().toLocaleString('pt-BR'),
+      by: colab.nome,
+      colaboradorAfetado: `${colab.nome} (${colab.matricula})`,
+      acao: 'SOLICITACAO_FERIAS',
+      entidade: 'Ferias',
+      detalhes: `Solicitação de férias de ${diasGozo} dias (+ ${diasAbono} dias abono pecuniário). Total estimado: R$ ${totalAReceber.toFixed(2)}`,
+      ip: '127.0.0.1'
+    });
+
+    this.showToast("✓ Férias Solicitadas", `Período agendado para ${colab.nome}. Enviado para homologação do RH.`, "success");
+    this.persist();
+    this.notify();
+    return novaSolicitacao;
+  }
+
+  aprovarFeriasRH(feriasId) {
+    const ferias = (this.data.rhFerias || []).find(f => f.id === feriasId);
+    if (!ferias) throw new Error("Registro de férias não encontrado.");
+
+    ferias.status = "APROVADO";
+    ferias.aprovadoPor = this.state.currentUser.name || "Gestão de Gente & RH";
+    ferias.aprovadoEm = new Date().toLocaleString('pt-BR');
+
+    if (!this.data.rhAuditLogs) this.data.rhAuditLogs = [];
+    this.data.rhAuditLogs.unshift({
+      id: `log-rh-${Date.now()}`,
+      at: new Date().toLocaleString('pt-BR'),
+      by: ferias.aprovadoPor,
+      colaboradorAfetado: ferias.colaboradorNome,
+      acao: 'APROVACAO_FERIAS',
+      entidade: 'Ferias',
+      detalhes: `Férias ${ferias.id} homologadas. Início em ${ferias.dataInicio}. Proventos calculados com 1/3 legal.`,
+      ip: '127.0.0.1'
+    });
+
+    this.showToast("✓ Férias Aprovadas", `Férias de ${ferias.colaboradorNome} homologadas com sucesso.`, "success");
+    this.persist();
+    this.notify();
+    return ferias;
+  }
+
+  cadastrarAtestadoRH(dados) {
+    if (!dados || !dados.colaboradorId) throw new Error("Colaborador é obrigatório.");
+    const colab = (this.data.rhColaboradores || []).find(c => c.id === dados.colaboradorId);
+    if (!colab) throw new Error("Colaborador não encontrado.");
+
+    const dias = Number(dados.diasAfastamento) || 1;
+    const horasAbonadas = dias * 8;
+    const previdenciario = dias > 15;
+
+    const novoAtestado = {
+      id: `atest-${Date.now()}`,
+      colaboradorId: colab.id,
+      colaboradorNome: colab.nome,
+      medicoNome: dados.medicoNome || "Dr. Médico Assistente",
+      crm: dados.crm || "00000-PR",
+      cid10: dados.cid10 || "Z00.0 - Exame médico geral",
+      dataInicio: dados.dataInicio || new Date().toLocaleDateString('pt-BR'),
+      dataFim: dados.dataFim || new Date().toLocaleDateString('pt-BR'),
+      diasAfastamento: dias,
+      horasAbonadas,
+      afastamentoPrevidenciario: previdenciario,
+      encaminhadoINSS: previdenciario,
+      status: "HOMOLOGADO",
+      documentoUrl: "comprovantes/atestado_digitalizado.pdf",
+      homologadoPor: this.state.currentUser.name || "Medicina Ocupacional Disk",
+      homologadoEm: new Date().toLocaleString('pt-BR')
+    };
+
+    if (!this.data.rhAtestados) this.data.rhAtestados = [];
+    this.data.rhAtestados.unshift(novoAtestado);
+
+    if (!this.data.rhAuditLogs) this.data.rhAuditLogs = [];
+    this.data.rhAuditLogs.unshift({
+      id: `log-rh-${Date.now()}`,
+      at: new Date().toLocaleString('pt-BR'),
+      by: novoAtestado.homologadoPor,
+      colaboradorAfetado: `${colab.nome} (${colab.matricula})`,
+      acao: 'HOMOLOGACAO_ATESTADO',
+      entidade: 'AtestadoMedico',
+      detalhes: `Atestado médico CID-10 ${novoAtestado.cid10} homologado. ${horasAbonadas}h abonadas no espelho.${previdenciario ? ' Encaminhado ao INSS (>15 dias).' : ''}`,
+      ip: '127.0.0.1'
+    });
+
+    this.showToast("✓ Atestado Homologado", `${horasAbonadas}h abonadas para ${colab.nome}.`, "success");
+    this.persist();
+    this.notify();
+    return novoAtestado;
+  }
+
+  avancarAdmissaoRH(admissaoId, novoStatus) {
+    const adm = (this.data.rhAdmissoes || []).find(a => a.id === admissaoId);
+    if (!adm) throw new Error("Processo de admissão não encontrado.");
+
+    adm.status = novoStatus;
+    if (novoStatus === 'DOCUMENTOS_ENVIADOS') adm.progressoEtapas = '80%';
+    else if (novoStatus === 'APROVADO') adm.progressoEtapas = '95%';
+    else if (novoStatus === 'CONCLUIDO') adm.progressoEtapas = '100%';
+
+    this.showToast("Status de Admissão Atualizado", `${adm.candidatoNome} agora está em: ${novoStatus}.`, "info");
+    this.persist();
+    this.notify();
+    return adm;
+  }
+
+  concluirAdmissaoRH(admissaoId) {
+    const adm = (this.data.rhAdmissoes || []).find(a => a.id === admissaoId);
+    if (!adm) throw new Error("Processo de admissão não encontrado.");
+
+    adm.status = "CONCLUIDO";
+    adm.progressoEtapas = "100%";
+
+    // Converte automaticamente em Colaborador ativo
+    const novoColab = this.cadastrarColaboradorRH({
+      nome: adm.candidatoNome,
+      cpf: adm.cpf,
+      email: adm.email,
+      telefone: adm.telefone,
+      cargoNome: adm.cargoPretendido,
+      departamentoNome: adm.departamento,
+      tipoContrato: adm.tipoContrato || 'CLT',
+      salario: adm.salarioProposto,
+      chavePix: adm.cpf.replace(/\D/g, ''),
+      tipoChavePix: 'CPF'
+    });
+
+    this.showToast("🎉 Admissão Concluída!", `${adm.candidatoNome} integrado como colaborador ativo no RH Disk.`, "success");
+    this.persist();
+    this.notify();
+    return { adm, novoColab };
+  }
+
+  assinarDocumentoGedRH(docId) {
+    const doc = (this.data.rhGedDocumentos || []).find(d => d.id === docId);
+    if (!doc) throw new Error("Documento GED não encontrado.");
+
+    const now = new Date();
+    doc.assinado = true;
+    doc.assinadoEm = now.toLocaleString('pt-BR');
+    doc.ipAssinatura = "189.112.45.10";
+    doc.status = "VALIDO";
+
+    if (!this.data.rhAuditLogs) this.data.rhAuditLogs = [];
+    this.data.rhAuditLogs.unshift({
+      id: `log-rh-${Date.now()}`,
+      at: now.toLocaleString('pt-BR'),
+      by: this.state.currentUser.name || 'Signatário Digital',
+      colaboradorAfetado: doc.colaboradorNome,
+      acao: 'ASSINATURA_ELETRONICA_DOCUMENTO',
+      entidade: 'GedDocumento',
+      detalhes: `Documento "${doc.titulo}" assinado eletronicamente com hash SHA-256 e certificado digital.`,
+      ip: '189.112.45.10'
+    });
+
+    this.showToast("✓ Documento Assinado", `Autenticidade garantida por chave criptográfica SHA-256.`, "success");
+    this.persist();
+    this.notify();
+    return doc;
+  }
+
+  aprovarPedidoBeneficiosRH(pedidoId) {
+    const ped = (this.data.rhPedidosBeneficios || []).find(p => p.id === pedidoId);
+    if (!ped) throw new Error("Pedido de benefícios não encontrado.");
+
+    ped.status = "APROVADO";
+    ped.aprovadoEm = new Date().toLocaleString('pt-BR');
+    ped.aprovadoPor = this.state.currentUser.name || "Gestão Financeira Disk";
+
+    this.showToast("✓ Recarga Aprovada", `Pedido ${ped.competencia} homologado e enviado às operadoras (URBS/Flash/Unimed).`, "success");
+    this.persist();
+    this.notify();
+    return ped;
+  }
+
+  fecharCompetenciaPontoRH(competencia = "2026-10") {
+    let fechamento = (this.data.rhFechamentosPonto || []).find(f => f.competencia === competencia);
+    const pendentes = (this.data.rhAjustesPonto || []).filter(a => a.status === 'PENDENTE');
+
+    if (pendentes.length > 0) {
+      this.showToast(
+        "⚠️ Bloqueio de Fechamento",
+        `Existem ${pendentes.length} ajuste(s) de ponto pendente(s). Regularize antes de fechar a competência.`,
+        "warning"
+      );
+      return false;
+    }
+
+    if (!fechamento) {
+      fechamento = {
+        id: `fech-${competencia}`,
+        competencia,
+        periodoInicio: `01/${competencia.substring(5)}/2026`,
+        periodoFim: `31/${competencia.substring(5)}/2026`,
+        status: "FECHADO",
+        totalColaboradores: this.data.rhColaboradores?.length || 52,
+        totalBatidas: this.data.rhRegistrosPonto?.length || 412,
+        totalHorasTrabalhadas: "8.800h",
+        totalHorasExtras: "62h",
+        ajustesPendentes: 0,
+        fechadoEm: new Date().toLocaleString('pt-BR'),
+        fechadoPor: this.state.currentUser.name || "Patricia Albuquerque (RH)",
+        espelhoHash: "c5b2a091827364501928374655bbccaa11223344556677889900aabbccddeeff",
+        bloqueado: true
+      };
+      if (!this.data.rhFechamentosPonto) this.data.rhFechamentosPonto = [];
+      this.data.rhFechamentosPonto.unshift(fechamento);
+    } else {
+      fechamento.status = "FECHADO";
+      fechamento.bloqueado = true;
+      fechamento.fechadoEm = new Date().toLocaleString('pt-BR');
+      fechamento.fechadoPor = this.state.currentUser.name || "Patricia Albuquerque (RH)";
+      fechamento.espelhoHash = "c5b2a091827364501928374655bbccaa11223344556677889900aabbccddeeff";
+    }
+
+    if (!this.data.rhAuditLogs) this.data.rhAuditLogs = [];
+    this.data.rhAuditLogs.unshift({
+      id: `log-rh-${Date.now()}`,
+      at: new Date().toLocaleString('pt-BR'),
+      by: fechamento.fechadoPor,
+      colaboradorAfetado: `Competência ${competencia}`,
+      acao: 'FECHAMENTO_COMPETENCIA_PONTO',
+      entidade: 'FechamentoPonto',
+      detalhes: `Competência ${competencia} homologada e travada. Espelho oficial gerado com assinatura digital.`,
+      ip: '127.0.0.1'
+    });
+
+    this.showToast("🔒 Competência Fechada", `Competência ${competencia} travada com sucesso para apuração da Folha.`, "success");
+    this.persist();
+    this.notify();
+    return true;
+  }
+
+  reabrirCompetenciaPontoRH(competencia) {
+    const fechamento = (this.data.rhFechamentosPonto || []).find(f => f.competencia === competencia);
+    if (!fechamento) return;
+
+    fechamento.status = "ABERTO";
+    fechamento.bloqueado = false;
+    fechamento.fechadoEm = null;
+
+    this.showToast("🔓 Competência Reaberta", `Competência ${competencia} desbloqueada para ajustes excepcionais.`, "info");
+    this.persist();
+    this.notify();
+  }
+
+  bloquearDesbloquearDispositivoRH(dispId) {
+    const disp = (this.data.rhDispositivos || []).find(d => d.id === dispId);
+    if (!disp) return;
+
+    disp.status = disp.status === 'AUTORIZADO' ? 'BLOQUEADO' : 'AUTORIZADO';
+
+    if (!this.data.rhAuditLogs) this.data.rhAuditLogs = [];
+    this.data.rhAuditLogs.unshift({
+      id: `log-rh-${Date.now()}`,
+      at: new Date().toLocaleString('pt-BR'),
+      by: this.state.currentUser.name || 'Segurança RH',
+      colaboradorAfetado: disp.colaboradorNome,
+      acao: 'ALTERACAO_STATUS_DISPOSITIVO',
+      entidade: 'DispositivoMovel',
+      detalhes: `Dispositivo ${disp.modelo} (${disp.uuidDispositivo}) teve o status alterado para ${disp.status}.`,
+      ip: '127.0.0.1'
+    });
+
+    this.showToast("Dispositivo Atualizado", `Aparelho de ${disp.colaboradorNome} agora está ${disp.status}.`, "info");
+    this.persist();
+    this.notify();
+    return disp;
+  }
+
+  processarFolhaPagamentoRH(competencia = "2026-10") {
+    let folha = (this.data.rhFolhasPagamento || []).find(f => f.competencia === competencia);
+    const loteId = `LOTE-PIX-FOLHA-${competencia.replace('-', '')}`;
+
+    if (!folha) {
+      folha = {
+        id: `folha-${competencia.replace('-', '')}`,
+        competencia,
+        periodo: `01/10/2026 a 31/10/2026`,
+        status: "PAGA",
+        dataPagamento: "05/11/2026",
+        totalColaboradores: 52,
+        totalProventos: 231400.00,
+        totalDescontosINSS: 25110.00,
+        totalDescontosIRRF: 17890.00,
+        totalDescontosBeneficios: 15300.00,
+        totalLiquido: 173100.00,
+        totalEncargosFGTS: 18512.00,
+        lotePixId: loteId,
+        arquivoCnab240Gerado: true,
+        fechadaEm: new Date().toLocaleString('pt-BR')
+      };
+      if (!this.data.rhFolhasPagamento) this.data.rhFolhasPagamento = [];
+      this.data.rhFolhasPagamento.unshift(folha);
+    } else {
+      folha.status = "PAGA";
+      folha.lotePixId = loteId;
+      folha.arquivoCnab240Gerado = true;
+      folha.fechadaEm = new Date().toLocaleString('pt-BR');
+    }
+
+    if (!this.data.rhAuditLogs) this.data.rhAuditLogs = [];
+    this.data.rhAuditLogs.unshift({
+      id: `log-rh-${Date.now()}`,
+      at: new Date().toLocaleString('pt-BR'),
+      by: this.state.currentUser.name || 'Diretoria Financeira',
+      colaboradorAfetado: `Folha Geral ${competencia}`,
+      acao: 'PROCESSAMENTO_FOLHA_PAGAMENTO',
+      entidade: 'FolhaPagamento',
+      detalhes: `Folha ${competencia} liquidada. Lote PIX ${loteId} (R$ ${folha.totalLiquido.toFixed(2)}) e CNAB 240 gerados.`,
+      ip: '127.0.0.1'
+    });
+
+    this.showToast("💰 Folha Liquidada!", `Folha ${competencia} processada: R$ ${folha.totalLiquido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} pagos via PIX.`, "success");
+    this.persist();
+    this.notify();
+    return folha;
+  }
+
+  transmitirEventoESocialRH(eventoId) {
+    const ev = (this.data.rhEventosESocial || []).find(e => e.id === eventoId);
+    if (!ev) return;
+
+    ev.status = "TRANSMITIDO";
+    ev.reciboEntrega = `1.2.${ev.competencia.replace('-', '')}.000000000${Math.floor(100000 + Math.random() * 900000)}`;
+    ev.transmitidoEm = new Date().toLocaleString('pt-BR');
+
+    if (!this.data.rhAuditLogs) this.data.rhAuditLogs = [];
+    this.data.rhAuditLogs.unshift({
+      id: `log-rh-${Date.now()}`,
+      at: new Date().toLocaleString('pt-BR'),
+      by: this.state.currentUser.name || 'Responsável eSocial',
+      colaboradorAfetado: `Governo Federal - eSocial`,
+      acao: 'TRANSMISSAO_ESOCIAL',
+      entidade: 'EventoESocial',
+      detalhes: `Evento ${ev.tipo} (${ev.nome}) transmitido com sucesso. Recibo: ${ev.reciboEntrega}`,
+      ip: '127.0.0.1'
+    });
+
+    this.showToast("✓ eSocial Transmitido", `Evento ${ev.tipo} validado pelo ambiente do Governo Federal.`, "success");
+    this.persist();
+    this.notify();
+    return ev;
+  }
+
+  aprovarDiariaStaffRH(diariaId) {
+    const dia = (this.data.rhDiariasStaff || []).find(d => d.id === diariaId);
+    if (!dia) return;
+
+    dia.status = "APROVADO_PAGAMENTO";
+
+    this.showToast("✓ Diária Aprovada", `Pagamento de ${dia.profissionalNome} (R$ ${dia.totalPagar.toFixed(2)}) enviado para a fila PIX.`, "success");
+    this.persist();
+    this.notify();
+    return dia;
   }
 
   resetDemoData() {

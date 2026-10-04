@@ -310,15 +310,23 @@ export const menuFinanceiroCompleto = [
     label: 'RECURSOS HUMANOS (RH DISK)',
     icon: 'ph-users-three',
     subItems: [
-      { id: 'diskRH_visao', label: 'Visão Geral RH', filterArg: 'visao' },
-      { id: 'diskRH_colaboradores', label: 'Colaboradores', filterArg: 'colaboradores' },
-      { id: 'diskRH_organograma', label: 'Estrutura Organizacional', filterArg: 'organograma' },
-      { id: 'diskRH_ponto', label: 'Ponto e Jornada', filterArg: 'ponto' },
+      { id: 'diskRH_visao', label: 'Visão Geral & People Analytics', filterArg: 'visao' },
+      { id: 'diskRH_colaboradores', label: 'Colaboradores (CLT/PJ/Freelancers)', filterArg: 'colaboradores' },
+      { id: 'diskRH_organograma', label: 'Estrutura Organizacional & Cargos', filterArg: 'organograma' },
+      { id: 'diskRH_ponto', label: 'Ponto & Jornada (REP-P 671 MTE)', filterArg: 'ponto' },
+      { id: 'diskRH_bancoHoras', label: 'Banco de Horas & Compensações', filterArg: 'banco' },
+      { id: 'diskRH_fechamento', label: 'Fechamento Mensal & Espelho Oficial', filterArg: 'fechamento' },
+      { id: 'diskRH_ferias', label: 'Férias & Ausências Legais', filterArg: 'ferias' },
+      { id: 'diskRH_atestados', label: 'Atestados Médicos & Afastamentos', filterArg: 'atestados' },
+      { id: 'diskRH_admissao', label: 'Admissão Digital & Onboarding', filterArg: 'admissao' },
+      { id: 'diskRH_ged', label: 'Gestão de Documentos (GED & Assinatura)', filterArg: 'ged' },
+      { id: 'diskRH_beneficios', label: 'Gestão Corporativa de Benefícios', filterArg: 'beneficios' },
+      { id: 'diskRH_folha', label: 'Folha de Pagamento & Holerites', filterArg: 'folha' },
+      { id: 'diskRH_staff', label: 'Staff de Eventos & Diárias', filterArg: 'staff' },
       { id: 'diskRH_geofences', label: 'Cercas Virtuais (Geofences)', filterArg: 'geofences' },
-      { id: 'diskRH_equipesEvento', label: 'Equipes por Evento', filterArg: 'equipes_evento' },
-      { id: 'diskRH_custosEvento', label: 'Custos de Pessoal por Evento', filterArg: 'custos_evento' },
-      { id: 'diskRH_folha', label: 'Folha e Pagamentos RH', filterArg: 'folha' },
-      { id: 'diskRH_auditoria', label: 'Auditoria e LGPD', filterArg: 'auditoria' }
+      { id: 'diskRH_dispositivos', label: 'Dispositivos Móveis (Disk Ponto)', filterArg: 'dispositivos' },
+      { id: 'diskRH_esocial', label: 'eSocial & Conformidade Trabalhista', filterArg: 'esocial' },
+      { id: 'diskRH_auditoria', label: 'Auditoria & Trilha LGPD', filterArg: 'auditoria' }
     ]
   }
 ];

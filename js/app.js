@@ -81,10 +81,20 @@ import {
   renderDiskRHColaboradores,
   renderDiskRHOrganograma,
   renderDiskRHPonto,
+  renderDiskRHBancoHoras,
+  renderDiskRHFechamento,
+  renderDiskRHFerias,
+  renderDiskRHAtestados,
+  renderDiskRHAdmissao,
+  renderDiskRHGed,
+  renderDiskRHBeneficios,
+  renderDiskRHFolha,
+  renderDiskRHStaff,
   renderDiskRHGeofences,
+  renderDiskRHDispositivos,
+  renderDiskRHEsocial,
   renderDiskRHEquipesEvento,
   renderDiskRHCustosEvento,
-  renderDiskRHFolha,
   renderDiskRHAuditoria
 } from './views/rh/rhViews.js';
 import { initScrollSpy } from './components/scrollSpy.js';
@@ -3176,17 +3186,49 @@ class LimitlessFinancialApp {
         case 'diskRH_ponto':
           viewHtml = renderDiskRHPonto(state, this.currentFilterArg);
           break;
+        case 'diskRH_bancoHoras':
+        case 'diskRH_banco':
+          viewHtml = renderDiskRHBancoHoras(state, this.currentFilterArg);
+          break;
+        case 'diskRH_fechamento':
+          viewHtml = renderDiskRHFechamento(state, this.currentFilterArg);
+          break;
+        case 'diskRH_ferias':
+          viewHtml = renderDiskRHFerias(state, this.currentFilterArg);
+          break;
+        case 'diskRH_atestados':
+          viewHtml = renderDiskRHAtestados(state, this.currentFilterArg);
+          break;
+        case 'diskRH_admissao':
+          viewHtml = renderDiskRHAdmissao(state, this.currentFilterArg);
+          break;
+        case 'diskRH_ged':
+          viewHtml = renderDiskRHGed(state, this.currentFilterArg);
+          break;
+        case 'diskRH_beneficios':
+          viewHtml = renderDiskRHBeneficios(state, this.currentFilterArg);
+          break;
+        case 'diskRH_folha':
+          viewHtml = renderDiskRHFolha(state, this.currentFilterArg);
+          break;
+        case 'diskRH_staff':
+          viewHtml = renderDiskRHStaff(state, this.currentFilterArg);
+          break;
         case 'diskRH_geofences':
           viewHtml = renderDiskRHGeofences(state, this.currentFilterArg);
+          break;
+        case 'diskRH_dispositivos':
+          viewHtml = renderDiskRHDispositivos(state, this.currentFilterArg);
+          break;
+        case 'diskRH_esocial':
+        case 'diskRH_analytics':
+          viewHtml = renderDiskRHEsocial(state, this.currentFilterArg);
           break;
         case 'diskRH_equipesEvento':
           viewHtml = renderDiskRHEquipesEvento(state, this.currentFilterArg);
           break;
         case 'diskRH_custosEvento':
           viewHtml = renderDiskRHCustosEvento(state, this.currentFilterArg);
-          break;
-        case 'diskRH_folha':
-          viewHtml = renderDiskRHFolha(state, this.currentFilterArg);
           break;
         case 'diskRH_auditoria':
           viewHtml = renderDiskRHAuditoria(state, this.currentFilterArg);
@@ -9030,6 +9072,437 @@ window.LimitlessApp = {
 
   gerarArquivoCnabRH() {
     financialStore.showToast("✓ Arquivo CNAB 240 Gerado", "Remessa bancária de folha de pagamento pronta para transmissão ao banco.", "success");
+  },
+
+  exportarBancoHorasCSV() {
+    financialStore.showToast("✓ Extrato Exportado", "Relatório do Banco de Horas em formato CSV baixado com sucesso.", "info");
+  },
+
+  abrirModalCompensacaoHoras() {
+    const db = financialStore.getState().db || {};
+    const colaboradores = db.rhColaboradores || [];
+    const html = `
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title fw-bold"><i class="ph-timer me-2"></i>Lançar Folga ou Compensação de Horas</h5>
+        <button type="button" class="btn-close btn-close-white" onclick="window.app.closeModal()"></button>
+      </div>
+      <div class="modal-body p-4">
+        <form onsubmit="event.preventDefault(); financialStore.showToast('✓ Compensação Registrada', 'Horas abatidas do banco com sucesso.', 'success'); window.app.closeModal();">
+          <div class="mb-3">
+            <label class="form-label fw-bold small">Colaborador</label>
+            <select class="form-select" required>
+              ${colaboradores.map(c => `<option value="${c.id}">${c.nome} (${c.matricula})</option>`).join('')}
+            </select>
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <label class="form-label fw-bold small">Data da Folga/Compensação</label>
+              <input type="date" class="form-control" required value="2026-10-16">
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-bold small">Quantidade de Horas</label>
+              <input type="number" step="0.5" class="form-control" required value="8.0">
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-bold small">Motivo / Parecer da Chefia</label>
+            <textarea class="form-control" rows="2" placeholder="Ex: Compensação de horas extras do Show Nacional de Rock"></textarea>
+          </div>
+          <div class="d-flex justify-content-end gap-2">
+            <button type="button" class="btn btn-light" onclick="window.app.closeModal()">Cancelar</button>
+            <button type="submit" class="btn btn-primary fw-bold">Confirmar Lançamento</button>
+          </div>
+        </form>
+      </div>
+    `;
+    window.app.openModal(html);
+  },
+
+  executarFechamentoPontoCompetencia(competencia) {
+    if (confirm(`Confirma o fechamento e trava oficial da competência ${competencia}? O espelho oficial será gerado com hash criptográfico SHA-256 e enviado para apuração da Folha.`)) {
+      financialStore.fecharCompetenciaPontoRH(competencia);
+    }
+  },
+
+  reabrirCompetenciaPonto(competencia) {
+    if (confirm(`Deseja reabrir excepcionalmente a competência ${competencia}? Essa ação exigirá justificativa e ficará gravada na trilha de auditoria.`)) {
+      financialStore.reabrirCompetenciaPontoRH(competencia);
+    }
+  },
+
+  exportarRelatorioMTE() {
+    financialStore.showToast("✓ Arquivo AFD Gerado", "Arquivo Fonte de Dados (AFD) nos padrões da Portaria 671 MTE pronto para download.", "success");
+  },
+
+  exportarEspelhoPDF(competencia) {
+    financialStore.showToast("✓ Espelhos Consolidados", `Lote de espelhos de ponto da competência ${competencia} exportado em PDF com assinatura digital.`, "success");
+  },
+
+  abrirModalSolicitarFerias() {
+    const db = financialStore.getState().db || {};
+    const colaboradores = db.rhColaboradores || [];
+    const html = `
+      <div class="modal-header bg-warning text-dark">
+        <h5 class="modal-title fw-bold"><i class="ph-sun me-2"></i>Agendamento de Férias (CLT)</h5>
+        <button type="button" class="btn-close" onclick="window.app.closeModal()"></button>
+      </div>
+      <div class="modal-body p-4">
+        <form onsubmit="window.LimitlessApp.salvarSolicitacaoFerias(event)">
+          <div class="mb-3">
+            <label class="form-label fw-bold small">Colaborador</label>
+            <select class="form-select" name="colaboradorId" required>
+              ${colaboradores.map(c => `<option value="${c.id}">${c.nome} - ${c.cargoNome}</option>`).join('')}
+            </select>
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <label class="form-label fw-bold small">Data de Início</label>
+              <input type="date" class="form-control" name="dataInicio" required value="2026-11-03">
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-bold small">Data de Término</label>
+              <input type="date" class="form-control" name="dataFim" required value="2026-11-22">
+            </div>
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <label class="form-label fw-bold small">Dias de Gozo</label>
+              <input type="number" class="form-control" name="diasGozo" value="20" required>
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-bold small">Abono Pecuniário (Venda 1/3)</label>
+              <select class="form-select" name="diasAbonoPecuniario">
+                <option value="0">Não vender (0 dias)</option>
+                <option value="10" selected>Vender 10 dias (1/3)</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-check mb-4">
+            <input class="form-check-input" type="checkbox" name="adiantamentoDecimoTerceiro" id="check-13" checked>
+            <label class="form-check-label small fw-semibold" for="check-13">
+              Solicitar adiantamento da 1ª parcela do 13º Salário
+            </label>
+          </div>
+          <div class="d-flex justify-content-end gap-2">
+            <button type="button" class="btn btn-light" onclick="window.app.closeModal()">Cancelar</button>
+            <button type="submit" class="btn btn-warning fw-bold text-dark">Confirmar Solicitação</button>
+          </div>
+        </form>
+      </div>
+    `;
+    window.app.openModal(html);
+  },
+
+  salvarSolicitacaoFerias(event) {
+    if (event) event.preventDefault();
+    const formData = new FormData(event.target);
+    const dados = Object.fromEntries(formData.entries());
+    dados.adiantamentoDecimoTerceiro = !!formData.get('adiantamentoDecimoTerceiro');
+    financialStore.solicitarFeriasRH(dados);
+    window.app.closeModal();
+  },
+
+  aprovarFerias(feriasId) {
+    if (confirm("Confirma a homologação deste agendamento de férias pelo RH?")) {
+      financialStore.aprovarFeriasRH(feriasId);
+    }
+  },
+
+  emitirAvisoFerias(feriasId) {
+    financialStore.showToast("✓ Aviso de Férias Emitido", "Documento formal gerado com 30 dias de antecedência conforme Art. 135 CLT.", "info");
+  },
+
+  abrirModalNovoAtestado() {
+    const db = financialStore.getState().db || {};
+    const colaboradores = db.rhColaboradores || [];
+    const html = `
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title fw-bold"><i class="ph-stethoscope me-2"></i>Cadastrar Atestado Médico</h5>
+        <button type="button" class="btn-close btn-close-white" onclick="window.app.closeModal()"></button>
+      </div>
+      <div class="modal-body p-4">
+        <form onsubmit="window.LimitlessApp.salvarNovoAtestado(event)">
+          <div class="mb-3">
+            <label class="form-label fw-bold small">Colaborador</label>
+            <select class="form-select" name="colaboradorId" required>
+              ${colaboradores.map(c => `<option value="${c.id}">${c.nome} (${c.matricula})</option>`).join('')}
+            </select>
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <label class="form-label fw-bold small">Médico Emitente</label>
+              <input type="text" class="form-control" name="medicoNome" required placeholder="Ex: Dr. Roberto Guimarães">
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-bold small">CRM / UF</label>
+              <input type="text" class="form-control" name="crm" required placeholder="Ex: 34120-PR">
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-bold small">CID-10 (Código e Descrição)</label>
+            <input type="text" class="form-control" name="cid10" required placeholder="Ex: J06.9 - Infecção aguda das vias aéreas">
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col-4">
+              <label class="form-label fw-bold small">Dias Afastamento</label>
+              <input type="number" class="form-control" name="diasAfastamento" value="2" required>
+            </div>
+            <div class="col-4">
+              <label class="form-label fw-bold small">Data Início</label>
+              <input type="date" class="form-control" name="dataInicio" required value="2026-10-04">
+            </div>
+            <div class="col-4">
+              <label class="form-label fw-bold small">Data Retorno</label>
+              <input type="date" class="form-control" name="dataFim" required value="2026-10-05">
+            </div>
+          </div>
+          <div class="d-flex justify-content-end gap-2">
+            <button type="button" class="btn btn-light" onclick="window.app.closeModal()">Cancelar</button>
+            <button type="submit" class="btn btn-danger fw-bold">Homologar Atestado</button>
+          </div>
+        </form>
+      </div>
+    `;
+    window.app.openModal(html);
+  },
+
+  salvarNovoAtestado(event) {
+    if (event) event.preventDefault();
+    const formData = new FormData(event.target);
+    const dados = Object.fromEntries(formData.entries());
+    financialStore.cadastrarAtestadoRH(dados);
+    window.app.closeModal();
+  },
+
+  homologarAtestado(atestadoId) {
+    financialStore.showToast("✓ Atestado Homologado", "Faltas e horas abonadas no espelho com sucesso.", "success");
+  },
+
+  visualizarComprovanteAtestado(atestadoId) {
+    financialStore.showToast("Anexo Aberto", "Visualizando arquivo do atestado médico digitalizado em PDF.", "info");
+  },
+
+  abrirModalNovaAdmissao() {
+    const html = `
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title fw-bold"><i class="ph-user-plus me-2"></i>Iniciar Processo de Admissão Digital</h5>
+        <button type="button" class="btn-close btn-close-white" onclick="window.app.closeModal()"></button>
+      </div>
+      <div class="modal-body p-4">
+        <form onsubmit="window.LimitlessApp.salvarNovaAdmissao(event)">
+          <div class="row g-2 mb-3">
+            <div class="col-7">
+              <label class="form-label fw-bold small">Nome do Candidato *</label>
+              <input type="text" class="form-control" name="candidatoNome" required placeholder="Nome completo">
+            </div>
+            <div class="col-5">
+              <label class="form-label fw-bold small">CPF *</label>
+              <input type="text" class="form-control" name="cpf" required placeholder="000.000.000-00">
+            </div>
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <label class="form-label fw-bold small">E-mail</label>
+              <input type="email" class="form-control" name="email" required placeholder="candidato@email.com">
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-bold small">Telefone / WhatsApp</label>
+              <input type="text" class="form-control" name="telefone" required placeholder="(41) 99999-8888">
+            </div>
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <label class="form-label fw-bold small">Cargo Proposto</label>
+              <input type="text" class="form-control" name="cargoPretendido" required placeholder="Ex: Analista de Bilheteria">
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-bold small">Departamento</label>
+              <select class="form-select" name="departamento">
+                <option value="Operações e Bilheteria de Eventos">Operações e Bilheteria de Eventos</option>
+                <option value="Tecnologia da Informação & Core">Tecnologia da Informação & Core</option>
+                <option value="Financeiro, Controladoria e Tesouraria">Financeiro, Controladoria e Tesouraria</option>
+              </select>
+            </div>
+          </div>
+          <div class="row g-2 mb-4">
+            <div class="col-6">
+              <label class="form-label fw-bold small">Salário Proposto R$</label>
+              <input type="number" step="0.01" class="form-control" name="salarioProposto" value="3800.00" required>
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-bold small">Previsão de Início</label>
+              <input type="date" class="form-control" name="dataPrevisaoInicio" value="2026-11-01" required>
+            </div>
+          </div>
+          <div class="d-flex justify-content-end gap-2">
+            <button type="button" class="btn btn-light" onclick="window.app.closeModal()">Cancelar</button>
+            <button type="submit" class="btn btn-primary fw-bold">Disparar Link de Coleta</button>
+          </div>
+        </form>
+      </div>
+    `;
+    window.app.openModal(html);
+  },
+
+  salvarNovaAdmissao(event) {
+    if (event) event.preventDefault();
+    const formData = new FormData(event.target);
+    const db = financialStore.getState().db || {};
+    const nova = {
+      id: `adm-${Date.now()}`,
+      candidatoNome: formData.get('candidatoNome'),
+      cpf: formData.get('cpf'),
+      email: formData.get('email'),
+      telefone: formData.get('telefone'),
+      cargoPretendido: formData.get('cargoPretendido'),
+      departamento: formData.get('departamento'),
+      tipoContrato: 'CLT',
+      salarioProposto: Number(formData.get('salarioProposto')),
+      dataPrevisaoInicio: formData.get('dataPrevisaoInicio'),
+      status: 'EM_PREENCHIMENTO',
+      progressoEtapas: '20%',
+      checklist: [
+        { item: "RG e CPF autenticados", status: "PENDENTE" },
+        { item: "Carteira de Trabalho Digital (CTPS)", status: "PENDENTE" },
+        { item: "Comprovante de Residência", status: "PENDENTE" },
+        { item: "Exame Admissional (ASO)", status: "AGENDADO" },
+        { item: "Dados Bancários PIX", status: "PENDENTE" }
+      ]
+    };
+    if (!db.rhAdmissoes) db.rhAdmissoes = [];
+    db.rhAdmissoes.unshift(nova);
+    financialStore.showToast("✓ Link Disparado", `Convite de onboarding enviado para ${nova.candidatoNome}.`, "success");
+    financialStore.persist();
+    financialStore.notify();
+    window.app.closeModal();
+  },
+
+  verChecklistAdmissao(admissaoId) {
+    const db = financialStore.getState().db || {};
+    const adm = (db.rhAdmissoes || []).find(a => a.id === admissaoId);
+    if (!adm) return;
+
+    const html = `
+      <div class="modal-header bg-dark text-white">
+        <h5 class="modal-title fw-bold"><i class="ph-list-checks me-2"></i>Dossiê de Admissão • ${adm.candidatoNome}</h5>
+        <button type="button" class="btn-close btn-close-white" onclick="window.app.closeModal()"></button>
+      </div>
+      <div class="modal-body p-4">
+        <div class="p-3 bg-light rounded-3 mb-3">
+          <div class="fw-bold">${adm.cargoPretendido} • ${adm.departamento}</div>
+          <div class="small text-muted">Início Previsto: ${adm.dataPrevisaoInicio} • Salário: R$ ${adm.salarioProposto.toFixed(2)}</div>
+        </div>
+        <h6 class="fw-bold mb-3">Checklist Documental Obrigatório:</h6>
+        <ul class="list-group mb-4">
+          ${(adm.checklist || []).map(c => `
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+              <span><i class="${c.status === 'APROVADO' ? 'ph-check-circle text-success' : 'ph-clock text-warning'} me-2"></i>${c.item}</span>
+              <span class="badge ${c.status === 'APROVADO' ? 'bg-success' : 'bg-warning text-dark'}">${c.status}</span>
+            </li>
+          `).join('')}
+        </ul>
+        <div class="d-flex justify-content-end gap-2">
+          <button class="btn btn-secondary btn-sm" onclick="window.app.closeModal()">Fechar</button>
+          <button class="btn btn-success btn-sm fw-bold" onclick="window.LimitlessApp.concluirAdmissao('${adm.id}')">
+            <i class="ph-check me-1"></i> Efetivar Colaborador Agora
+          </button>
+        </div>
+      </div>
+    `;
+    window.app.openModal(html);
+  },
+
+  concluirAdmissao(admissaoId) {
+    if (confirm("Confirma a conclusão da admissão? O colaborador será integrado automaticamente ao quadro ativo do RH com acesso gerado.")) {
+      financialStore.concluirAdmissaoRH(admissaoId);
+      window.app.closeModal();
+    }
+  },
+
+  abrirModalNovoDocumentoGed() {
+    financialStore.showToast("Upload GED", "Selecione o arquivo assinado ou modelo de contrato para guarda criptográfica.", "info");
+  },
+
+  visualizarDocumentoGed(docId) {
+    financialStore.showToast("Visualização GED", `Abrindo documento seguro com hash SHA-256 verificado.`, "info");
+  },
+
+  aprovarRecargaBeneficios(pedidoId) {
+    if (confirm("Confirma o envio do pedido de recarga mensal de benefícios para as operadoras de cartão?")) {
+      financialStore.aprovarPedidoBeneficiosRH(pedidoId);
+    }
+  },
+
+  editarBeneficioColaborador(beneficioId) {
+    financialStore.showToast("Editar Benefício", "Ajustando parâmetros de coparticipação e rotas de transporte.", "info");
+  },
+
+  aprovarDiariaStaff(diariaId) {
+    if (confirm("Confirma a aprovação da diária deste profissional para pagamento imediato via PIX?")) {
+      financialStore.aprovarDiariaStaffRH(diariaId);
+    }
+  },
+
+  bloquearDesbloquearDispositivo(dispId) {
+    financialStore.bloquearDesbloquearDispositivoRH(dispId);
+  },
+
+  preValidarXMLEsocial() {
+    financialStore.showToast("✓ Pré-validação Concluída", "Estrutura XML dos eventos S-1000, S-2200 e S-1200 sem inconsistências de schema XSD.", "success");
+  },
+
+  transmitirLoteEsocial() {
+    if (confirm("Confirma a transmissão do lote de eventos trabalhistas ao ambiente governamental do eSocial?")) {
+      financialStore.transmitirEventoESocialRH('esoc-003');
+    }
+  },
+
+  visualizarXMLEsocial(eventoId) {
+    const db = financialStore.getState().db || {};
+    const ev = (db.rhEventosESocial || []).find(e => e.id === eventoId);
+    const xmlMock = `<?xml version="1.0" encoding="UTF-8"?>
+<eSocial xmlns="http://www.esocial.gov.br/schema/evt/evtRemun/v_S_01_02_00">
+  <evtRemun id="${ev ? ev.identificador : 'ID107890123'}">
+    <ideEvento>
+      <indApuracao>1</indApuracao>
+      <perApur>${ev ? ev.competencia : '2026-10'}</perApur>
+      <ambiente>1</ambiente>
+    </ideEvento>
+    <ideEmpregador>
+      <tpInsc>1</tpInsc>
+      <nrInsc>07890123000199</nrInsc>
+    </ideEmpregador>
+    <statusProtocolo>${ev ? ev.reciboEntrega : 'RECEBIDO_COM_SUCESSO'}</statusProtocolo>
+  </evtRemun>
+</eSocial>`;
+
+    const html = `
+      <div class="modal-header bg-dark text-white">
+        <h5 class="modal-title fw-bold"><i class="ph-code me-2"></i>XML do Evento eSocial • ${ev ? ev.tipo : ''}</h5>
+        <button type="button" class="btn-close btn-close-white" onclick="window.app.closeModal()"></button>
+      </div>
+      <div class="modal-body p-4 bg-light">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <span class="badge bg-success">${ev ? ev.status : 'TRANSMITIDO'}</span>
+          <span class="small text-muted">Recibo: <strong>${ev ? ev.reciboEntrega : ''}</strong></span>
+        </div>
+        <pre class="p-3 bg-dark text-light rounded font-monospace small mb-0" style="max-height: 380px; overflow-y: auto;"><code>${xmlMock.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</code></pre>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary btn-sm" onclick="window.app.closeModal()">Fechar</button>
+      </div>
+    `;
+    window.app.openModal(html);
+  },
+
+  abrirModalHolerite(colaboradorId) {
+    window.LimitlessApp.verEspelhoColaborador(colaboradorId);
+  },
+
+  processarFolhaGeral(competencia) {
+    if (confirm(`Confirma o processamento e liquidação da folha de pagamento da competência ${competencia}?`)) {
+      financialStore.processarFolhaPagamentoRH(competencia);
+    }
   }
 };
 

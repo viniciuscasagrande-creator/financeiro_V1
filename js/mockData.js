@@ -1398,7 +1398,715 @@ export const initialMockDatabase = {
       detalhes: "Alocação de 4 profissionais para a Ligga Arena (Show Nacional de Rock Curitiba). Custo previsto de mão de obra direta: R$ 1.520,00.",
       ip: "10.0.1.15"
     }
-  ]
+  ],
+
+  rhJornadas: [
+    {
+      id: "jor-padrao-44h",
+      nome: "Comercial Padrão 44h (Seg-Sex)",
+      tipo: "SEMANAL_44H",
+      entrada: "08:00",
+      inicioIntervalo: "12:00",
+      fimIntervalo: "13:00",
+      saida: "17:48",
+      toleranciaMinutos: 10,
+      cargaMinutos: 480,
+      colaboradoresCount: 28
+    },
+    {
+      id: "jor-show-noturno",
+      nome: "Operação Arena / Show Noturno",
+      tipo: "ESCALA_EVENTO",
+      entrada: "14:00",
+      inicioIntervalo: "18:00",
+      fimIntervalo: "19:00",
+      saida: "23:00",
+      toleranciaMinutos: 15,
+      cargaMinutos: 480,
+      colaboradoresCount: 45
+    },
+    {
+      id: "jor-plantao-12x36",
+      nome: "Plantão Bilheteria Central 12x36",
+      tipo: "ESCALA_12X36",
+      entrada: "07:00",
+      inicioIntervalo: "12:00",
+      fimIntervalo: "13:00",
+      saida: "19:00",
+      toleranciaMinutos: 10,
+      cargaMinutos: 660,
+      colaboradoresCount: 6
+    }
+  ],
+
+  rhEscalas: [
+    {
+      id: "esc-101",
+      colaboradorId: "colab-001",
+      colaboradorNome: "Carlos Eduardo Mendes",
+      jornadaId: "jor-padrao-44h",
+      jornadaNome: "Comercial Padrão 44h",
+      localId: "geo-sede-disk",
+      localNome: "Sede DiskIngressos Curitiba",
+      data: "2026-10-04",
+      dataFormatada: "04/10/2026",
+      horarioPrevisto: "08:00 às 17:48",
+      status: "CONFIRMADA",
+      eventoNome: "Operação Central Sede"
+    },
+    {
+      id: "esc-102",
+      colaboradorId: "colab-002",
+      colaboradorNome: "Camila Fernandes Silveira",
+      jornadaId: "jor-padrao-44h",
+      jornadaNome: "Comercial Padrão 44h",
+      localId: "geo-sede-disk",
+      localNome: "Sede DiskIngressos Curitiba",
+      data: "2026-10-04",
+      dataFormatada: "04/10/2026",
+      horarioPrevisto: "08:00 às 17:48",
+      status: "CONFIRMADA",
+      eventoNome: "Operação Central Sede"
+    },
+    {
+      id: "esc-103",
+      colaboradorId: "colab-003",
+      colaboradorNome: "Lucas Gabriel Pinheiro",
+      jornadaId: "jor-show-noturno",
+      jornadaNome: "Operação Arena / Show Noturno",
+      localId: "geo-arena-baixada",
+      localNome: "Arena da Baixada (Ligga Arena)",
+      data: "2026-10-04",
+      dataFormatada: "04/10/2026",
+      horarioPrevisto: "14:00 às 23:00",
+      status: "CONFIRMADA",
+      eventoNome: "Show Nacional de Rock Curitiba"
+    },
+    {
+      id: "esc-104",
+      colaboradorId: "colab-005",
+      colaboradorNome: "Rodrigo Almeida Siqueira",
+      jornadaId: "jor-show-noturno",
+      jornadaNome: "Operação Arena / Show Noturno",
+      localId: "geo-arena-baixada",
+      localNome: "Arena da Baixada (Ligga Arena)",
+      data: "2026-10-04",
+      dataFormatada: "04/10/2026",
+      horarioPrevisto: "14:00 às 23:00",
+      status: "CONFIRMADA",
+      eventoNome: "Show Nacional de Rock Curitiba"
+    }
+  ],
+
+  rhBancoHoras: [
+    {
+      id: "bh-001",
+      colaboradorId: "colab-001",
+      colaboradorNome: "Carlos Eduardo Mendes",
+      matricula: "DISK-00101",
+      departamento: "Operações e Bilheteria de Eventos",
+      competencia: "2026-10",
+      saldoMinutos: 860,
+      saldoFormatado: "+14h 20m",
+      horasExtras50: 10.5,
+      horasExtras100: 3.83,
+      compensacoes: 0,
+      status: "POSITIVO",
+      ultimaAtualizacao: "04/10/2026 12:00"
+    },
+    {
+      id: "bh-002",
+      colaboradorId: "colab-002",
+      colaboradorNome: "Camila Fernandes Silveira",
+      matricula: "DISK-00205",
+      departamento: "Operações e Bilheteria de Eventos",
+      competencia: "2026-10",
+      saldoMinutos: 345,
+      saldoFormatado: "+05h 45m",
+      horasExtras50: 5.75,
+      horasExtras100: 0,
+      compensacoes: 0,
+      status: "POSITIVO",
+      ultimaAtualizacao: "04/10/2026 12:00"
+    },
+    {
+      id: "bh-003",
+      colaboradorId: "colab-004",
+      colaboradorNome: "Beatriz Nogueira Ramos",
+      matricula: "DISK-00412",
+      departamento: "Financeiro, Controladoria e Tesouraria",
+      competencia: "2026-10",
+      saldoMinutos: -120,
+      saldoFormatado: "-02h 00m",
+      horasExtras50: 0,
+      horasExtras100: 0,
+      compensacoes: 2.0,
+      status: "DEVEDOR",
+      ultimaAtualizacao: "04/10/2026 12:00"
+    }
+  ],
+
+  rhFechamentosPonto: [
+    {
+      id: "fech-2026-09",
+      competencia: "2026-09",
+      periodoInicio: "01/09/2026",
+      periodoFim: "30/09/2026",
+      status: "FECHADO",
+      totalColaboradores: 49,
+      totalBatidas: 1960,
+      totalHorasTrabalhadas: "8.624h",
+      totalHorasExtras: "312h",
+      ajustesPendentes: 0,
+      fechadoEm: "01/10/2026 10:00",
+      fechadoPor: "Patricia Albuquerque (RH)",
+      espelhoHash: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      bloqueado: true
+    },
+    {
+      id: "fech-2026-10",
+      competencia: "2026-10",
+      periodoInicio: "01/10/2026",
+      periodoFim: "31/10/2026",
+      status: "ABERTO",
+      totalColaboradores: 52,
+      totalBatidas: 412,
+      totalHorasTrabalhadas: "1.820h",
+      totalHorasExtras: "62h",
+      ajustesPendentes: 1,
+      fechadoEm: null,
+      fechadoPor: null,
+      espelhoHash: null,
+      bloqueado: false
+    }
+  ],
+
+  rhDispositivos: [
+    {
+      id: "disp-001",
+      colaboradorId: "colab-001",
+      colaboradorNome: "Carlos Eduardo Mendes",
+      modelo: "Samsung Galaxy A54",
+      sistemaOperacional: "Android 14 (OneUI 6.0)",
+      versaoApp: "Disk Ponto APK v1.0.4",
+      uuidDispositivo: "d83f-492a-8891-b3847921",
+      biometriaAtiva: true,
+      gpsAtivo: true,
+      mockLocationDetectado: false,
+      status: "AUTORIZADO",
+      ultimaSincronizacao: "Hoje às 12:02",
+      cadastradoEm: "15/05/2026"
+    },
+    {
+      id: "disp-002",
+      colaboradorId: "colab-002",
+      colaboradorNome: "Camila Fernandes Silveira",
+      modelo: "Apple iPhone 13 Pro",
+      sistemaOperacional: "iOS 17.5",
+      versaoApp: "Disk Ponto PWA / Web",
+      uuidDispositivo: "a190-281b-cc91-99827461",
+      biometriaAtiva: true,
+      gpsAtivo: true,
+      mockLocationDetectado: false,
+      status: "AUTORIZADO",
+      ultimaSincronizacao: "Hoje às 08:05",
+      cadastradoEm: "10/06/2026"
+    },
+    {
+      id: "disp-003",
+      colaboradorId: "colab-003",
+      colaboradorNome: "Lucas Gabriel Pinheiro",
+      modelo: "Motorola Edge 40",
+      sistemaOperacional: "Android 13",
+      versaoApp: "Disk Ponto APK v1.0.4",
+      uuidDispositivo: "f441-993a-128a-77461902",
+      biometriaAtiva: false,
+      gpsAtivo: true,
+      mockLocationDetectado: false,
+      status: "AUTORIZADO",
+      ultimaSincronizacao: "Hoje às 14:30",
+      cadastradoEm: "20/07/2026"
+    },
+    {
+      id: "disp-004",
+      colaboradorId: "colab-999",
+      colaboradorNome: "Aparelho Antigo Substituído",
+      modelo: "Xiaomi Redmi Note 10",
+      sistemaOperacional: "Android 11",
+      versaoApp: "Disk Ponto APK v0.9",
+      uuidDispositivo: "bb12-990a-112c-00918273",
+      biometriaAtiva: false,
+      gpsAtivo: false,
+      mockLocationDetectado: true,
+      status: "BLOQUEADO",
+      ultimaSincronizacao: "28/09/2026",
+      cadastradoEm: "10/01/2026"
+    }
+  ],
+
+  rhFerias: [
+    {
+      id: "fer-001",
+      colaboradorId: "colab-002",
+      colaboradorNome: "Camila Fernandes Silveira",
+      cargo: "Supervisor de Atendimento e Acesso",
+      periodoAquisitivo: "15/06/2024 a 14/06/2025",
+      periodoConcessivoLimite: "14/05/2026",
+      diasDireito: 30,
+      diasGozo: 20,
+      diasAbonoPecuniario: 10,
+      adiantamentoDecimoTerceiro: true,
+      dataInicio: "01/11/2026",
+      dataFim: "20/11/2026",
+      valorBruto: 5600.00,
+      valorTercoConstitucional: 1866.67,
+      totalAReceber: 7466.67,
+      status: "APROVADO",
+      solicitadoEm: "10/09/2026",
+      aprovadoPor: "Patricia Albuquerque (RH)"
+    },
+    {
+      id: "fer-002",
+      colaboradorId: "colab-004",
+      colaboradorNome: "Beatriz Nogueira Ramos",
+      cargo: "Analista Financeiro Pleno",
+      periodoAquisitivo: "01/02/2025 a 31/01/2026",
+      periodoConcessivoLimite: "31/12/2026",
+      diasDireito: 30,
+      diasGozo: 30,
+      diasAbonoPecuniario: 0,
+      adiantamentoDecimoTerceiro: false,
+      dataInicio: "15/12/2026",
+      dataFim: "13/01/2027",
+      valorBruto: 4600.00,
+      valorTercoConstitucional: 1533.33,
+      totalAReceber: 6133.33,
+      status: "SOLICITADO",
+      solicitadoEm: "28/09/2026",
+      aprovadoPor: null
+    }
+  ],
+
+  rhAtestados: [
+    {
+      id: "atest-001",
+      colaboradorId: "colab-001",
+      colaboradorNome: "Carlos Eduardo Mendes",
+      medicoNome: "Dr. Roberto Guimarães",
+      crm: "29845-PR",
+      cid10: "J06.9 - Infecção aguda das vias aéreas superiores",
+      dataInicio: "18/09/2026",
+      dataFim: "19/09/2026",
+      diasAfastamento: 2,
+      horasAbonadas: 16,
+      afastamentoPrevidenciario: false,
+      encaminhadoINSS: false,
+      status: "HOMOLOGADO",
+      documentoUrl: "comprovantes/atestado_carlos_set2026.pdf",
+      homologadoPor: "Dra. Silvana (Medicina Ocupacional)",
+      homologadoEm: "18/09/2026 14:00"
+    },
+    {
+      id: "atest-002",
+      colaboradorId: "colab-004",
+      colaboradorNome: "Beatriz Nogueira Ramos",
+      medicoNome: "Dra. Carolina Mattos",
+      crm: "34112-PR",
+      cid10: "M54.5 - Dor lombar baixa (Lumbago)",
+      dataInicio: "05/10/2026",
+      dataFim: "05/10/2026",
+      diasAfastamento: 1,
+      horasAbonadas: 8,
+      afastamentoPrevidenciario: false,
+      encaminhadoINSS: false,
+      status: "EM_ANALISE",
+      documentoUrl: "comprovantes/atestado_beatriz_out2026.pdf",
+      homologadoPor: null,
+      homologadoEm: null
+    }
+  ],
+
+  rhAdmissoes: [
+    {
+      id: "adm-2026-001",
+      candidatoNome: "Mariana Albuquerque Prado",
+      cpf: "567.890.123-45",
+      email: "mariana.prado@gmail.com",
+      telefone: "(41) 98877-6655",
+      cargoPretendido: "Analista de Suporte de Bilheteria Jr",
+      departamento: "Operações e Bilheteria de Eventos",
+      tipoContrato: "CLT",
+      salarioProposto: 3200.00,
+      dataPrevisaoInicio: "15/10/2026",
+      status: "DOCUMENTOS_ENVIADOS",
+      progressoEtapas: "80%",
+      checklist: [
+        { item: "RG e CPF autenticados", status: "APROVADO" },
+        { item: "Carteira de Trabalho Digital (CTPS)", status: "APROVADO" },
+        { item: "Comprovante de Residência recente", status: "APROVADO" },
+        { item: "Exame Médico Admissional (ASO)", status: "APROVADO" },
+        { item: "Dados Bancários & Chave PIX", status: "PENDENTE" }
+      ],
+      responsavelRH: "Patricia Albuquerque (RH)"
+    },
+    {
+      id: "adm-2026-002",
+      candidatoNome: "Felipe Zanin de Castro",
+      cpf: "678.901.234-56",
+      email: "felipe.zanin@yahoo.com.br",
+      telefone: "(41) 97766-5544",
+      cargoPretendido: "Especialista em Infraestrutura Cloud",
+      departamento: "Tecnologia da Informação & Core",
+      tipoContrato: "CLT",
+      salarioProposto: 11000.00,
+      dataPrevisaoInicio: "01/11/2026",
+      status: "EM_ANALISE",
+      progressoEtapas: "50%",
+      checklist: [
+        { item: "RG e CPF autenticados", status: "APROVADO" },
+        { item: "Carteira de Trabalho Digital (CTPS)", status: "PENDENTE" },
+        { item: "Comprovante de Residência recente", status: "APROVADO" },
+        { item: "Exame Médico Admissional (ASO)", status: "AGENDADO" },
+        { item: "Dados Bancários & Chave PIX", status: "PENDENTE" }
+      ],
+      responsavelRH: "Vinicius Master (TI / RH)"
+    }
+  ],
+
+  rhGedDocumentos: [
+    {
+      id: "doc-ged-001",
+      colaboradorId: "colab-001",
+      colaboradorNome: "Carlos Eduardo Mendes",
+      tipoDocumento: "CONTRATO_TRABALHO",
+      titulo: "Contrato Individual de Trabalho CLT - Disk Ingressos",
+      dataEmissao: "15/03/2021",
+      assinado: true,
+      assinadoEm: "15/03/2021 10:14:32",
+      ipAssinatura: "189.112.45.10",
+      hashSha256: "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+      tamanhoKb: 245,
+      status: "VALIDO"
+    },
+    {
+      id: "doc-ged-002",
+      colaboradorId: "colab-001",
+      colaboradorNome: "Carlos Eduardo Mendes",
+      tipoDocumento: "ACORDO_BANCO_HORAS",
+      titulo: "Acordo Individual de Compensação e Banco de Horas",
+      dataEmissao: "02/01/2026",
+      assinado: true,
+      assinadoEm: "02/01/2026 09:30:15",
+      ipAssinatura: "189.112.45.10",
+      hashSha256: "5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8",
+      tamanhoKb: 118,
+      status: "VALIDO"
+    },
+    {
+      id: "doc-ged-003",
+      colaboradorId: "colab-002",
+      colaboradorNome: "Camila Fernandes Silveira",
+      tipoDocumento: "TERMO_LGPD_CONFIDENCIALIDADE",
+      titulo: "Termo de Confidencialidade, Proteção de Dados e LGPD",
+      dataEmissao: "10/01/2026",
+      assinado: true,
+      assinadoEm: "10/01/2026 14:22:01",
+      ipAssinatura: "177.105.12.44",
+      hashSha256: "4b227777d4dd1fc61c6f884f48641d02b4d121d3fd328cb08b5531fcacdabf8a",
+      tamanhoKb: 164,
+      status: "VALIDO"
+    },
+    {
+      id: "doc-ged-004",
+      colaboradorId: "colab-004",
+      colaboradorNome: "Beatriz Nogueira Ramos",
+      tipoDocumento: "OPCAO_VALE_TRANSPORTE",
+      titulo: "Termo de Opção de Vale Transporte (Lei 7.418/1985)",
+      dataEmissao: "01/02/2024",
+      assinado: true,
+      assinadoEm: "01/02/2024 11:05:00",
+      ipAssinatura: "177.92.10.88",
+      hashSha256: "ef2d127de37b942baad06145e54b0c619a1f22327b2ebbcfbec78f5564afe39d",
+      tamanhoKb: 92,
+      status: "VALIDO"
+    }
+  ],
+
+  rhBeneficios: [
+    {
+      id: "ben-001",
+      colaboradorId: "colab-001",
+      colaboradorNome: "Carlos Eduardo Mendes",
+      tipo: "VALE_TRANSPORTE",
+      nomeBeneficio: "Vale Transporte URBS Curitiba",
+      operadora: "URBS / Metrocard",
+      valorMensalIntegral: 352.00,
+      descontoEmFolha6Pct: 288.00,
+      custoEmpresa: 64.00,
+      status: "ATIVO"
+    },
+    {
+      id: "ben-002",
+      colaboradorId: "colab-001",
+      colaboradorNome: "Carlos Eduardo Mendes",
+      tipo: "VALE_REFEICAO",
+      nomeBeneficio: "Vale Refeição / Alimentação Flash",
+      operadora: "Flash Benefícios Flexíveis",
+      valorMensalIntegral: 880.00,
+      descontoEmFolha6Pct: 88.00,
+      custoEmpresa: 792.00,
+      status: "ATIVO"
+    },
+    {
+      id: "ben-003",
+      colaboradorId: "colab-002",
+      colaboradorNome: "Camila Fernandes Silveira",
+      tipo: "PLANO_SAUDE",
+      nomeBeneficio: "Plano de Saúde Unimed Curitiba Top Nacional",
+      operadora: "Unimed Curitiba",
+      valorMensalIntegral: 640.00,
+      descontoEmFolha6Pct: 95.00,
+      custoEmpresa: 545.00,
+      status: "ATIVO"
+    }
+  ],
+
+  rhPedidosBeneficios: [
+    {
+      id: "ped-ben-2026-10",
+      competencia: "2026-10",
+      descricao: "Recarga Mensal de Benefícios (VT + VR + VA)",
+      totalBeneficiarios: 42,
+      valorTotalRecarga: 38740.00,
+      descontoTotalFolha: 14210.00,
+      custoLiquidoEmpresa: 24530.00,
+      status: "APROVADO",
+      solicitadoPor: "Patricia Albuquerque (RH)",
+      solicitadoEm: "28/09/2026"
+    }
+  ],
+
+  rhFolhasPagamento: [
+    {
+      id: "folha-2026-09",
+      competencia: "2026-09",
+      periodo: "01/09/2026 a 30/09/2026",
+      status: "PAGA",
+      dataPagamento: "05/10/2026",
+      totalColaboradores: 49,
+      totalProventos: 218500.00,
+      totalDescontosINSS: 23480.00,
+      totalDescontosIRRF: 16120.00,
+      totalDescontosBeneficios: 14210.00,
+      totalLiquido: 164690.00,
+      totalEncargosFGTS: 17480.00,
+      lotePixId: "LOTE-PIX-FOLHA-202609",
+      arquivoCnab240Gerado: true,
+      fechadaEm: "01/10/2026 15:30"
+    },
+    {
+      id: "folha-2026-10",
+      competencia: "2026-10",
+      periodo: "01/10/2026 a 31/10/2026",
+      status: "PREVIA_CALCULADA",
+      dataPagamento: "05/11/2026",
+      totalColaboradores: 52,
+      totalProventos: 231400.00,
+      totalDescontosINSS: 25110.00,
+      totalDescontosIRRF: 17890.00,
+      totalDescontosBeneficios: 15300.00,
+      totalLiquido: 173100.00,
+      totalEncargosFGTS: 18512.00,
+      lotePixId: null,
+      arquivoCnab240Gerado: false,
+      fechadaEm: null
+    }
+  ],
+
+  rhHolerites: [
+    {
+      id: "hol-001-202609",
+      colaboradorId: "colab-001",
+      colaboradorNome: "Carlos Eduardo Mendes",
+      matricula: "DISK-00101",
+      cpf: "234.567.890-12",
+      cargo: "Coordenador de Bilheteria de Campo",
+      departamento: "Operações e Bilheteria de Eventos",
+      competencia: "2026-09",
+      salarioBase: 4800.00,
+      totalProventos: 5240.00,
+      totalDescontos: 1124.80,
+      salarioLiquido: 4115.20,
+      baseCalculoINSS: 5240.00,
+      baseCalculoIRRF: 4668.52,
+      baseCalculoFGTS: 5240.00,
+      fgtsMes: 419.20,
+      rubricas: [
+        { codigo: "001", descricao: "Salário Base Mensal", referencia: "30 dias", tipo: "PROVENTO", valor: 4800.00 },
+        { codigo: "015", descricao: "Horas Extras 50%", referencia: "10:30h", tipo: "PROVENTO", valor: 366.67 },
+        { codigo: "020", descricao: "Reflexo DSR s/ Horas Extras", referencia: "4 DSRs", tipo: "PROVENTO", valor: 73.33 },
+        { codigo: "101", descricao: "INSS - Tabela Progressiva", referencia: "11.1%", tipo: "DESCONTO", valor: 571.48 },
+        { codigo: "102", descricao: "IRRF s/ Salário", referencia: "22.5%", tipo: "DESCONTO", valor: 265.32 },
+        { codigo: "201", descricao: "Desconto Vale Transporte (Teto 6%)", referencia: "6.0%", tipo: "DESCONTO", valor: 288.00 }
+      ]
+    },
+    {
+      id: "hol-002-202609",
+      colaboradorId: "colab-002",
+      colaboradorNome: "Camila Fernandes Silveira",
+      matricula: "DISK-00205",
+      cpf: "456.789.012-34",
+      cargo: "Supervisor de Atendimento e Acesso",
+      departamento: "Operações e Bilheteria de Eventos",
+      competencia: "2026-09",
+      salarioBase: 3800.00,
+      totalProventos: 4015.00,
+      totalDescontos: 752.40,
+      salarioLiquido: 3262.60,
+      baseCalculoINSS: 4015.00,
+      baseCalculoIRRF: 3632.18,
+      baseCalculoFGTS: 4015.00,
+      fgtsMes: 321.20,
+      rubricas: [
+        { codigo: "001", descricao: "Salário Base Mensal", referencia: "30 dias", tipo: "PROVENTO", valor: 3800.00 },
+        { codigo: "015", descricao: "Horas Extras 50%", referencia: "06:00h", tipo: "PROVENTO", valor: 179.17 },
+        { codigo: "020", descricao: "Reflexo DSR s/ Horas Extras", referencia: "4 DSRs", tipo: "PROVENTO", valor: 35.83 },
+        { codigo: "101", descricao: "INSS - Tabela Progressiva", referencia: "9.8%", tipo: "DESCONTO", valor: 382.82 },
+        { codigo: "102", descricao: "IRRF s/ Salário", referencia: "15.0%", tipo: "DESCONTO", valor: 141.58 },
+        { codigo: "202", descricao: "Coparticipação Plano de Saúde", referencia: "Fixo", tipo: "DESCONTO", valor: 228.00 }
+      ]
+    }
+  ],
+
+  rhDiariasStaff: [
+    {
+      id: "staff-dia-001",
+      eventoId: "evt-xyz-1",
+      eventoNome: "Show Nacional de Rock Curitiba",
+      localNome: "Arena da Baixada (Ligga Arena)",
+      data: "04/10/2026",
+      colaboradorId: "colab-003",
+      profissionalNome: "Lucas Gabriel Pinheiro",
+      funcao: "Operador de Bilheteria / Caixa",
+      tipoContrato: "FREELANCER_EVENTO",
+      checkInGeofence: true,
+      horarioCheckIn: "14:28",
+      distanciaArenaMetros: 12.4,
+      valorDiaria: 180.00,
+      auxilioAlimentacao: 40.00,
+      auxilioTransporte: 30.00,
+      totalPagar: 250.00,
+      status: "APROVADO_PAGAMENTO",
+      chavePix: "67890123456",
+      tipoChavePix: "CPF"
+    },
+    {
+      id: "staff-dia-002",
+      eventoId: "evt-xyz-1",
+      eventoNome: "Show Nacional de Rock Curitiba",
+      localNome: "Arena da Baixada (Ligga Arena)",
+      data: "04/10/2026",
+      colaboradorId: "colab-005",
+      profissionalNome: "Rodrigo Almeida Siqueira",
+      funcao: "Operador de Caixa e Bilheteria Portão Pista Premium",
+      tipoContrato: "FREELANCER_EVENTO",
+      checkInGeofence: true,
+      horarioCheckIn: "14:31",
+      distanciaArenaMetros: 18.2,
+      valorDiaria: 180.00,
+      auxilioAlimentacao: 40.00,
+      auxilioTransporte: 30.00,
+      totalPagar: 250.00,
+      status: "APROVADO_PAGAMENTO",
+      chavePix: "89012345678",
+      tipoChavePix: "CPF"
+    },
+    {
+      id: "staff-dia-003",
+      eventoId: "evt-002",
+      eventoNome: "Show Artista A - Turnê Especial",
+      localNome: "Teatro Positivo Grande Auditório",
+      data: "10/10/2026",
+      colaboradorId: "colab-006",
+      profissionalNome: "Jéssica Vasconcelos",
+      funcao: "Coordenador de Acesso & Credenciamento",
+      tipoContrato: "FREELANCER_EVENTO",
+      checkInGeofence: false,
+      horarioCheckIn: "Escala Futura",
+      distanciaArenaMetros: 0,
+      valorDiaria: 280.00,
+      auxilioAlimentacao: 50.00,
+      auxilioTransporte: 40.00,
+      totalPagar: 370.00,
+      status: "AGENDADO",
+      chavePix: "jessica.vasc@gmail.com",
+      tipoChavePix: "EMAIL"
+    }
+  ],
+
+  rhEventosESocial: [
+    {
+      id: "esoc-001",
+      tipo: "S-1000",
+      nome: "Informações do Empregador / Contribuinte",
+      identificador: "ID1078901230001992026100108000000001",
+      competencia: "2026-10",
+      ambiente: "PRODUCAO_RESTRITA",
+      status: "TRANSMITIDO",
+      reciboEntrega: "1.2.202610.000000000001234567",
+      transmitidoEm: "01/10/2026 08:30:12",
+      detalhes: "Cadastro da matriz Disk Ingressos Tecnologia e Entretenimento Ltda."
+    },
+    {
+      id: "esoc-002",
+      tipo: "S-2200",
+      nome: "Cadastramento Inicial e Admissão de Trabalhador",
+      identificador: "ID1078901230001992026100109000000002",
+      competencia: "2026-10",
+      ambiente: "PRODUCAO_RESTRITA",
+      status: "TRANSMITIDO",
+      reciboEntrega: "1.2.202610.000000000002345678",
+      transmitidoEm: "01/10/2026 09:12:00",
+      detalhes: "Admissão de Carlos Eduardo Mendes (Matrícula DISK-00101)."
+    },
+    {
+      id: "esoc-003",
+      tipo: "S-1200",
+      nome: "Remuneração de Trabalhador vinculado ao RGPS",
+      identificador: "ID1078901230001992026100115000000003",
+      competencia: "2026-09",
+      ambiente: "PRODUCAO_RESTRITA",
+      status: "VALIDADO",
+      reciboEntrega: "1.2.202610.000000000003456789",
+      transmitidoEm: "01/10/2026 15:45:00",
+      detalhes: "Folha de Pagamento da competência Setembro/2026 apurada e transmitida."
+    },
+    {
+      id: "esoc-004",
+      tipo: "S-1210",
+      nome: "Pagamentos de Rendimentos do Trabalho",
+      identificador: "ID1078901230001992026100510000000004",
+      competencia: "2026-09",
+      ambiente: "PRODUCAO_RESTRITA",
+      status: "AGENDADO",
+      reciboEntrega: "Aguardando Liquidação PIX",
+      transmitidoEm: null,
+      detalhes: "Pagamento de proventos e diárias com crédito previsto para o 5º dia útil."
+    }
+  ],
+
+  rhPeopleAnalytics: {
+    taxaTurnoverMensal: 1.8,
+    taxaAbsenteismo: 1.2,
+    headcountAtivo: 52,
+    cltCount: 32,
+    pjCount: 6,
+    freelancersCount: 14,
+    custoMedioPerCapita: 4450.00,
+    distribuicaoGenero: { masculino: 54, feminino: 46 },
+    tempoMedioCasaMeses: 26.4,
+    horasTreinamentoColaborador: 14.5
+  }
 };
 
 // Cópia profunda para permitir reset instantâneo na demo
