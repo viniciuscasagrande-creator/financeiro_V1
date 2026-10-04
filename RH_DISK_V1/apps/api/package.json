@@ -1,0 +1,1 @@
+{"name":"@rh-disk/api","private":true,"scripts":{"dev":"tsx watch src/index.ts","start":"tsx src/index.ts"},"dependencies":{"@prisma/client":"latest","cors":"latest","express":"latest"},"devDependencies":{"tsx":"latest","typescript":"latest","@types/express":"latest","@types/node":"latest"}}
