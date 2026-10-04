@@ -71,10 +71,30 @@ export class CoreFinanceiroStore {
       searchTerm: ''
     };
 
-    if (typeof window !== 'undefined' && window.location && window.location.search) {
-      const params = new URLSearchParams(window.location.search);
-      const r = params.get('role');
-      if (r === 'financeiro' || r === 'disk') {
+    if (typeof window !== 'undefined') {
+      let roleParam = null;
+      let viewParam = null;
+
+      if (window.location && window.location.search) {
+        const params = new URLSearchParams(window.location.search);
+        roleParam = params.get('role');
+        viewParam = params.get('view');
+      }
+
+      if (window.location && window.location.hash && window.location.hash.length > 1) {
+        const hashView = window.location.hash.substring(1);
+        if (hashView.startsWith('diskRH') || hashView.startsWith('disk')) {
+          roleParam = roleParam || 'disk';
+          viewParam = viewParam || hashView;
+        }
+      }
+
+      const savedRole = !roleParam && typeof localStorage !== 'undefined'
+        ? localStorage.getItem('disk-financeiro-active-role')
+        : null;
+      const targetRole = roleParam || savedRole;
+
+      if (targetRole === 'financeiro' || targetRole === 'disk' || targetRole === 'rh') {
         this.state.currentUser = {
           id: "usr-disk-01",
           name: "Karine",
@@ -84,10 +104,10 @@ export class CoreFinanceiroStore {
           producerId: null
         };
         this.state.viewMode = 'disk';
-        this.state.currentView = 'diskDashboard';
+        this.state.currentView = viewParam || (targetRole === 'rh' ? 'diskRH_visao' : 'diskDashboard');
         this.state.selectedProducerId = 'all';
         this.state.selectedEventId = 'all';
-      } else if (r === 'admin') {
+      } else if (targetRole === 'admin') {
         this.state.currentUser = {
           id: "usr-admin-01",
           name: "Karine",
@@ -97,9 +117,11 @@ export class CoreFinanceiroStore {
           producerId: null
         };
         this.state.viewMode = 'disk';
-        this.state.currentView = 'diskDashboard';
+        this.state.currentView = viewParam || 'diskDashboard';
         this.state.selectedProducerId = 'all';
         this.state.selectedEventId = 'all';
+      } else if (viewParam) {
+        this.state.currentView = viewParam;
       }
     }
 
@@ -1225,6 +1247,11 @@ export class CoreFinanceiroStore {
       this.state.selectedEventId = 'all';
     }
     this.state.isLoggedIn = true;
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('disk-financeiro-active-role', role === 'producer' ? 'producer' : 'disk');
+      }
+    } catch (_) {}
     this.showToast(
       "Sessão Autenticada",
       `Conectado como ${this.state.currentUser.name} (${this.state.currentUser.title})`,

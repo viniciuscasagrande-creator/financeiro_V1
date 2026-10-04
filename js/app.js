@@ -666,7 +666,16 @@ class LimitlessFinancialApp {
       }
     }
 
+    if (targetView.startsWith('disk') && state.viewMode !== 'disk') {
+      financialStore.login('disk');
+    }
+
     financialStore.setView(targetView);
+    try {
+      if (typeof window !== 'undefined' && window.history && window.history.replaceState) {
+        window.history.replaceState(null, '', '#' + targetView);
+      }
+    } catch (_) {}
     window.scrollTo({ top: 0, behavior: 'smooth' });
 
     // REGRA DE USABILIDADE: O menu lateral expandido PERMANECE EXPANDIDO (não fecha sozinho ao navegar)
@@ -3500,11 +3509,24 @@ class LimitlessFinancialApp {
         roleIndicator.innerText = 'ADMINISTRADOR MASTER';
         roleIndicator.className = 'badge bg-warning text-dark fw-bold fs-xxs px-2 py-1';
       } else if (isDisk) {
-        roleIndicator.innerText = 'FINANCEIRO DISK';
+        roleIndicator.innerText = 'RH DISK & FINANCEIRO';
         roleIndicator.className = 'badge bg-success text-white fw-bold fs-xxs px-2 py-1';
       } else {
         roleIndicator.innerText = 'PORTAL DO PRODUTOR';
         roleIndicator.className = 'badge bg-primary text-white fw-bold fs-xxs px-2 py-1';
+      }
+    }
+
+    // Top Navbar Profile Switcher Buttons
+    const btnSwitchDisk = document.getElementById('btn-switch-disk');
+    const btnSwitchProd = document.getElementById('btn-switch-produtor');
+    if (btnSwitchDisk && btnSwitchProd) {
+      if (isDisk || isMaster) {
+        btnSwitchDisk.className = 'btn btn-sm btn-primary text-white py-1 px-2 fs-xxs fw-bold shadow-sm';
+        btnSwitchProd.className = 'btn btn-sm btn-outline-light text-white-50 py-1 px-2 fs-xxs fw-normal';
+      } else {
+        btnSwitchDisk.className = 'btn btn-sm btn-outline-light text-white-50 py-1 px-2 fs-xxs fw-normal';
+        btnSwitchProd.className = 'btn btn-sm btn-warning text-dark py-1 px-2 fs-xxs fw-bold shadow-sm';
       }
     }
 
@@ -6247,7 +6269,11 @@ class LimitlessFinancialApp {
 
   toggleDemoBarCollapse() {
     this.demoBarCollapsed = !this.demoBarCollapsed;
-    this.renderDemoFloatingBar(financialStore.getState());
+    this.renderFloatingDemoBar(financialStore.getState());
+  }
+
+  renderDemoFloatingBar(state) {
+    return this.renderFloatingDemoBar(state);
   }
 
   p19FilterFees() {
@@ -8556,16 +8582,22 @@ class LimitlessFinancialApp {
 // ============================================================================
 // FUNÇÃO GLOBAL DE ALTERNÂNCIA DE PERFIL (CONFORME LINK DE REFERÊNCIA)
 // ============================================================================
-window.switchGlobalRole = function(role) {
-  if (role === 'FINANCEIRO') {
+window.switchGlobalRole = function(role, targetView) {
+  if (role === 'FINANCEIRO' || role === 'RH') {
     financialStore.login('disk');
-    window.app.navigate('diskDashboard');
+    const view = targetView || (role === 'RH' ? 'diskRH_visao' : 'diskDashboard');
+    window.app.navigate(view);
+    try { window.location.hash = view; } catch (_) {}
   } else if (role === 'PRODUTOR') {
     financialStore.login('producer', 'prod-abc');
-    window.app.navigate('overview');
+    const view = targetView || 'overview';
+    window.app.navigate(view);
+    try { window.location.hash = view; } catch (_) {}
   } else if (role === 'ADMINISTRADOR') {
     financialStore.login('admin');
-    window.app.navigate('diskDashboard');
+    const view = targetView || 'diskDashboard';
+    window.app.navigate(view);
+    try { window.location.hash = view; } catch (_) {}
   }
 };
 
