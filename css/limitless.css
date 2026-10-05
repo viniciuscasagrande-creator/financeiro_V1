@@ -1034,97 +1034,23 @@ a:hover {
 
 /* Modal System */
 .modal-overlay {
-  position: fixed !important;
-  top: 0 !important;
-  left: 0 !important;
-  width: 100vw !important;
-  height: 100vh !important;
-  background: rgba(15, 23, 42, 0.65) !important;
-  backdrop-filter: blur(6px) !important;
-  z-index: 2100 !important;
-  display: none !important;
-  align-items: center !important;
-  justify-content: center !important;
-  padding: 16px !important;
-  overflow-y: auto !important;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(4px);
+  z-index: 999;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
 }
 
 .modal-overlay.active {
-  display: flex !important;
+  display: flex;
   animation: fadeIn 0.2s ease-out;
-}
-
-#modal-dynamic-content {
-  background: #ffffff !important;
-  border-radius: 12px !important;
-  max-width: 720px !important;
-  width: 100% !important;
-  max-height: 92vh !important;
-  display: flex !important;
-  flex-direction: column !important;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(0, 0, 0, 0.08) !important;
-  overflow: hidden !important;
-  position: relative !important;
-  margin: auto !important;
-  animation: slideUp 0.22s cubic-bezier(0.16, 1, 0.3, 1) !important;
-}
-
-#modal-dynamic-content .modal-card,
-#modal-dynamic-content .modal-dialog,
-#modal-dynamic-content .modal-content {
-  background: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
-  max-width: 100% !important;
-  width: 100% !important;
-  margin: 0 !important;
-  border-radius: 0 !important;
-  overflow: visible !important;
-}
-
-#modal-dynamic-content .modal-header {
-  padding: 14px 20px !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: space-between !important;
-  flex-shrink: 0 !important;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.08) !important;
-}
-
-#modal-dynamic-content .modal-header h3,
-#modal-dynamic-content .modal-header h5,
-#modal-dynamic-content .modal-header .modal-title {
-  font-size: 1.1rem !important;
-  font-weight: 700 !important;
-  margin-bottom: 0 !important;
-}
-
-#modal-dynamic-content .modal-body {
-  padding: 18px 22px !important;
-  overflow-y: auto !important;
-  max-height: calc(92vh - 120px) !important;
-  background: #ffffff !important;
-}
-
-#modal-dynamic-content .modal-footer {
-  padding: 12px 20px !important;
-  background: #f8fafc !important;
-  border-top: 1px solid rgba(0, 0, 0, 0.08) !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: flex-end !important;
-  gap: 10px !important;
-  flex-shrink: 0 !important;
-}
-
-#modal-dynamic-content .btn-close {
-  cursor: pointer !important;
-  opacity: 0.8 !important;
-  transition: opacity 0.15s ease !important;
-}
-
-#modal-dynamic-content .btn-close:hover {
-  opacity: 1 !important;
 }
 
 .modal-card {
@@ -1135,6 +1061,41 @@ a:hover {
   box-shadow: var(--shadow-xl);
   overflow: hidden;
   animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.modal-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.modal-header h3 {
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.modal-close-btn {
+  background: transparent;
+  border: none;
+  font-size: 1.3rem;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.modal-body {
+  padding: 24px;
+}
+
+.modal-footer {
+  padding: 16px 24px;
+  background: var(--surface-alt);
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
 }
 
 /* Form Groups */
@@ -1626,58 +1587,7 @@ a:hover {
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
-}
-
-/* Grupos expansíveis de segundo nível no Sidebar (RH Corporativo) */
-.nav-sidebar .nav-group-sub .nav-item-group {
-  margin-bottom: 2px !important;
-}
-
-.nav-sidebar .nav-group-sub .nav-item-group > .nav-link-group {
-  font-weight: 600 !important;
-  color: #cbd5e1 !important;
-  font-size: 11.5px !important;
-  letter-spacing: 0.2px !important;
-  padding: 5px 8px !important;
-  background: rgba(255, 255, 255, 0.04) !important;
-  border-radius: 4px !important;
-  margin-top: 1px !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: space-between !important;
-}
-
-.nav-sidebar .nav-group-sub .nav-item-group > .nav-link-group:hover {
-  color: #ffffff !important;
-  background: rgba(255, 255, 255, 0.09) !important;
-}
-
-.nav-sidebar .nav-group-sub .nav-item-group.is-open > .nav-link-group {
-  color: #60a5fa !important;
-  background: rgba(37, 99, 235, 0.14) !important;
-}
-
-.nav-sidebar .nav-group-sub .nav-item-group.is-open > .nav-link-group .nav-arrow {
-  transform: rotate(90deg) !important;
-}
-
-.nav-sidebar .nav-group-sub .nav-group-sub-nested {
-  margin: 1.5px 0 3px 12px !important;
-  padding-left: 6px !important;
-  border-left: 1.5px solid rgba(59, 130, 246, 0.35) !important;
-  gap: 1px !important;
-  display: none !important;
-  flex-direction: column !important;
-}
-
-.nav-sidebar .nav-group-sub .nav-item-group.is-open > .nav-group-sub-nested {
-  display: flex !important;
-}
-
-.nav-sidebar .nav-group-sub .nav-group-sub-nested .nav-link {
-  font-size: 11px !important;
-  padding: 3.5px 6px !important;
-  min-height: 24px !important;
+  text-align: center !important;
 }
 
 /* Divisores de seção */
@@ -1943,6 +1853,7 @@ body.theme-dark .scrollspy-pill.active,
   color: #ffffff;
 }
 
+
 /* RH Disk V2.1 — navegação hierárquica em grupos expansíveis */
 .nav-group-sub .rh-nav-group > .rh-nav-group-toggle {
   font-size: .69rem;
@@ -1962,5 +1873,3 @@ body.theme-dark .scrollspy-pill.active,
 .nav-group-sub .rh-nav-group > .rh-nav-group-items .nav-link { padding-left: 1.25rem; font-size: .77rem; }
 .nav-group-sub .rh-nav-group > .rh-nav-group-toggle.active-parent { font-weight: 900; }
 .nav-group-sub .rh-nav-group.is-open > .rh-nav-group-toggle .nav-arrow { transform: rotate(90deg); }
-
-
