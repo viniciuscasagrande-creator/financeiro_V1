@@ -23,6 +23,34 @@ export class CoreFinanceiroStore {
     if (!this.data.rhAjustesPonto) this.data.rhAjustesPonto = fresh.rhAjustesPonto;
     if (!this.data.rhEquipesCustosEvento) this.data.rhEquipesCustosEvento = fresh.rhEquipesCustosEvento;
     if (!this.data.rhAuditLogs) this.data.rhAuditLogs = fresh.rhAuditLogs;
+    if (!this.data.rhJornadas) this.data.rhJornadas = fresh.rhJornadas;
+    if (!this.data.rhEscalas) this.data.rhEscalas = fresh.rhEscalas;
+    if (!this.data.rhBancoHoras) this.data.rhBancoHoras = fresh.rhBancoHoras;
+    if (!this.data.rhFechamentosPonto) this.data.rhFechamentosPonto = fresh.rhFechamentosPonto;
+    if (!this.data.rhDispositivos) this.data.rhDispositivos = fresh.rhDispositivos;
+    if (!this.data.rhFerias) this.data.rhFerias = fresh.rhFerias;
+    if (!this.data.rhAtestados) this.data.rhAtestados = fresh.rhAtestados;
+    if (!this.data.rhAdmissoes) this.data.rhAdmissoes = fresh.rhAdmissoes;
+    if (!this.data.rhGedDocumentos) this.data.rhGedDocumentos = fresh.rhGedDocumentos;
+    if (!this.data.rhBeneficios) this.data.rhBeneficios = fresh.rhBeneficios;
+    if (!this.data.rhPedidosBeneficios) this.data.rhPedidosBeneficios = fresh.rhPedidosBeneficios;
+    if (!this.data.rhFolhasPagamento) this.data.rhFolhasPagamento = fresh.rhFolhasPagamento;
+    if (!this.data.rhHolerites) this.data.rhHolerites = fresh.rhHolerites;
+    if (!this.data.rhDiariasStaff) this.data.rhDiariasStaff = fresh.rhDiariasStaff;
+    if (!this.data.rhEventosESocial) this.data.rhEventosESocial = fresh.rhEventosESocial;
+    if (!this.data.rhPeopleAnalytics) this.data.rhPeopleAnalytics = fresh.rhPeopleAnalytics;
+    if (!this.data.rhCentralAprovacoes) this.data.rhCentralAprovacoes = fresh.rhCentralAprovacoes;
+    if (!this.data.rhCargosSalarios) this.data.rhCargosSalarios = fresh.rhCargosSalarios;
+    if (!this.data.rhVagas) this.data.rhVagas = fresh.rhVagas;
+    if (!this.data.rhCandidatos) this.data.rhCandidatos = fresh.rhCandidatos;
+    if (!this.data.rhDesligamentos) this.data.rhDesligamentos = fresh.rhDesligamentos;
+    if (!this.data.rhExamesSst) this.data.rhExamesSst = fresh.rhExamesSst;
+    if (!this.data.rhPatrimonio) this.data.rhPatrimonio = fresh.rhPatrimonio;
+    if (!this.data.rhAvaliacoesPdi) this.data.rhAvaliacoesPdi = fresh.rhAvaliacoesPdi;
+    if (!this.data.rhTreinamentos) this.data.rhTreinamentos = fresh.rhTreinamentos;
+    if (!this.data.rhReembolsos) this.data.rhReembolsos = fresh.rhReembolsos;
+    if (!this.data.rhIntegracoesStatus) this.data.rhIntegracoesStatus = fresh.rhIntegracoesStatus;
+    if (!this.data.rhComunicadosMural) this.data.rhComunicadosMural = fresh.rhComunicadosMural;
 
     this.state = {
       isLoggedIn: true,
@@ -43,10 +71,30 @@ export class CoreFinanceiroStore {
       searchTerm: ''
     };
 
-    if (typeof window !== 'undefined' && window.location && window.location.search) {
-      const params = new URLSearchParams(window.location.search);
-      const r = params.get('role');
-      if (r === 'financeiro' || r === 'disk') {
+    if (typeof window !== 'undefined') {
+      let roleParam = null;
+      let viewParam = null;
+
+      if (window.location && window.location.search) {
+        const params = new URLSearchParams(window.location.search);
+        roleParam = params.get('role');
+        viewParam = params.get('view');
+      }
+
+      if (window.location && window.location.hash && window.location.hash.length > 1) {
+        const hashView = window.location.hash.substring(1);
+        if (hashView.startsWith('diskRH') || hashView.startsWith('disk')) {
+          roleParam = roleParam || 'disk';
+          viewParam = viewParam || hashView;
+        }
+      }
+
+      const savedRole = !roleParam && typeof localStorage !== 'undefined'
+        ? localStorage.getItem('disk-financeiro-active-role')
+        : null;
+      const targetRole = roleParam || savedRole;
+
+      if (targetRole === 'financeiro' || targetRole === 'disk' || targetRole === 'rh') {
         this.state.currentUser = {
           id: "usr-disk-01",
           name: "Karine",
@@ -56,10 +104,10 @@ export class CoreFinanceiroStore {
           producerId: null
         };
         this.state.viewMode = 'disk';
-        this.state.currentView = 'diskDashboard';
+        this.state.currentView = viewParam || (targetRole === 'rh' ? 'diskRH_visao' : 'diskDashboard');
         this.state.selectedProducerId = 'all';
         this.state.selectedEventId = 'all';
-      } else if (r === 'admin') {
+      } else if (targetRole === 'admin') {
         this.state.currentUser = {
           id: "usr-admin-01",
           name: "Karine",
@@ -69,9 +117,11 @@ export class CoreFinanceiroStore {
           producerId: null
         };
         this.state.viewMode = 'disk';
-        this.state.currentView = 'diskDashboard';
+        this.state.currentView = viewParam || 'diskDashboard';
         this.state.selectedProducerId = 'all';
         this.state.selectedEventId = 'all';
+      } else if (viewParam) {
+        this.state.currentView = viewParam;
       }
     }
 
@@ -1127,6 +1177,7 @@ export class CoreFinanceiroStore {
 
     return {
       ...this.state,
+      db: this.data,
       data: {
         ...this.data,
         producer: activeProd,
@@ -1197,6 +1248,11 @@ export class CoreFinanceiroStore {
       this.state.selectedEventId = 'all';
     }
     this.state.isLoggedIn = true;
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('disk-financeiro-active-role', role === 'producer' ? 'producer' : 'disk');
+      }
+    } catch (_) {}
     this.showToast(
       "Sessão Autenticada",
       `Conectado como ${this.state.currentUser.name} (${this.state.currentUser.title})`,
@@ -4410,6 +4466,100 @@ export class CoreFinanceiroStore {
     return novoColab;
   }
 
+  atualizarColaboradorRH(id, dados) {
+    const colab = (this.data.rhColaboradores || []).find(c => c.id === id);
+    if (!colab) throw new Error("Colaborador não encontrado.");
+
+    if (dados.nome) colab.nome = dados.nome;
+    if (dados.email) colab.email = dados.email;
+    if (dados.telefone) colab.telefone = dados.telefone;
+    if (dados.cargoNome || dados.cargo) colab.cargoNome = dados.cargoNome || dados.cargo;
+    if (dados.departamento || dados.departamentoNome) colab.departamento = dados.departamento || dados.departamentoNome;
+    if (dados.tipoContrato) colab.tipoContrato = dados.tipoContrato;
+    if (dados.salario !== undefined) colab.salario = parseFloat(dados.salario) || colab.salario;
+    if (dados.valorDiariaEvento !== undefined) colab.valorDiariaEvento = parseFloat(dados.valorDiariaEvento) || colab.valorDiariaEvento;
+    if (dados.chavePix) colab.chavePix = dados.chavePix;
+    if (dados.banco) colab.banco = dados.banco;
+
+    if (!this.data.rhAuditLogs) this.data.rhAuditLogs = [];
+    this.data.rhAuditLogs.unshift({
+      id: `log-rh-${Date.now()}`,
+      at: new Date().toLocaleString('pt-BR'),
+      by: this.state.currentUser.name || 'Gestor RH Disk',
+      colaboradorAfetado: `${colab.nome} (${colab.matricula})`,
+      acao: 'ALTERACAO_CADASTRAL_COLABORADOR',
+      entidade: 'Colaborador',
+      detalhes: `Ficha do colaborador atualizada no RH Disk.`,
+      ip: '127.0.0.1'
+    });
+
+    this.showToast("✓ Ficha Atualizada", `Dados de ${colab.nome} foram salvos com sucesso.`, "success");
+    this.persist();
+    this.notify();
+    return colab;
+  }
+
+  cadastrarGeofenceRH(dados) {
+    if (!dados || !dados.nome) throw new Error("Nome da cerca virtual é obrigatório.");
+    const id = dados.id || `geo-${Date.now()}`;
+    const novaCerca = {
+      id,
+      nome: dados.nome,
+      latitude: parseFloat(dados.latitude) || -25.4284,
+      longitude: parseFloat(dados.longitude) || -49.2733,
+      raioMetros: parseInt(dados.raioMetros, 10) || 150,
+      tipoLocal: dados.tipoLocal || 'ARENA_SHOW',
+      cidade: dados.cidade || 'Curitiba - PR',
+      status: dados.status || 'ATIVA',
+      criadaEm: new Date().toISOString()
+    };
+
+    if (!this.data.rhGeofences) this.data.rhGeofences = [];
+    this.data.rhGeofences.push(novaCerca);
+
+    if (!this.data.rhAuditLogs) this.data.rhAuditLogs = [];
+    this.data.rhAuditLogs.unshift({
+      id: `log-rh-${Date.now()}`,
+      at: new Date().toLocaleString('pt-BR'),
+      by: this.state.currentUser.name || 'Gestor RH Disk',
+      colaboradorAfetado: 'Geral',
+      acao: 'CRIACAO_GEOFENCE',
+      entidade: 'Geofence',
+      detalhes: `Cerca virtual [${novaCerca.nome}] configurada com raio de ${novaCerca.raioMetros}m.`,
+      ip: '127.0.0.1'
+    });
+
+    this.showToast("✓ Cerca Virtual Criada", `Geofence "${novaCerca.nome}" ativada para o Disk Ponto.`, "success");
+    this.persist();
+    this.notify();
+    return novaCerca;
+  }
+
+  alocarEquipeEventoRH(dados) {
+    if (!dados || !dados.eventoId) throw new Error("Evento é obrigatório.");
+    const novoCusto = {
+      id: `equipe-evt-${Date.now()}`,
+      eventoId: dados.eventoId,
+      eventoNome: dados.eventoNome || 'Festival Curitiba 2026',
+      dataEvento: dados.dataEvento || new Date().toISOString().split('T')[0],
+      quantidadeColaboradores: parseInt(dados.quantidade, 10) || 1,
+      funcao: dados.funcao || 'Operações e Bilheteria',
+      horasTotaisPrevistas: parseInt(dados.horas, 10) || 8,
+      valorTotal: parseFloat(dados.valorTotal) || 450.00,
+      status: 'ESCALADO',
+      integradoDRE: true,
+      dataApropriacao: new Date().toLocaleString('pt-BR')
+    };
+
+    if (!this.data.rhEquipesCustosEvento) this.data.rhEquipesCustosEvento = [];
+    this.data.rhEquipesCustosEvento.unshift(novoCusto);
+
+    this.showToast("✓ Equipe Escalada", `Alocação para ${novoCusto.eventoNome} apropriada no DRE.`, "success");
+    this.persist();
+    this.notify();
+    return novoCusto;
+  }
+
   registrarBatidaPontoRH(dados) {
     if (!dados || !dados.colaboradorId) {
       throw new Error("Colaborador é obrigatório.");
@@ -4576,6 +4726,896 @@ export class CoreFinanceiroStore {
     this.persist();
     this.notify();
     return { loteId, total, pendentes };
+  }
+
+  solicitarFeriasRH(dados) {
+    if (!dados || !dados.colaboradorId) throw new Error("Colaborador é obrigatório para agendamento de férias.");
+    const colab = (this.data.rhColaboradores || []).find(c => c.id === dados.colaboradorId);
+    if (!colab) throw new Error("Colaborador não encontrado.");
+
+    const diasGozo = Number(dados.diasGozo) || 20;
+    const diasAbono = Number(dados.diasAbonoPecuniario) || 0;
+    const salarioBase = Number(colab.salario) || 3500;
+    const valorDia = salarioBase / 30;
+    const valorBruto = (diasGozo + diasAbono) * valorDia;
+    const valorTerco = valorBruto / 3;
+    const totalAReceber = valorBruto + valorTerco;
+
+    const novaSolicitacao = {
+      id: `fer-${Date.now()}`,
+      colaboradorId: colab.id,
+      colaboradorNome: colab.nome,
+      cargo: colab.cargoNome,
+      periodoAquisitivo: dados.periodoAquisitivo || "01/01/2025 a 31/12/2025",
+      periodoConcessivoLimite: dados.periodoConcessivoLimite || "30/11/2026",
+      diasDireito: 30,
+      diasGozo,
+      diasAbonoPecuniario: diasAbono,
+      adiantamentoDecimoTerceiro: !!dados.adiantamentoDecimoTerceiro,
+      dataInicio: dados.dataInicio || "01/12/2026",
+      dataFim: dados.dataFim || "20/12/2026",
+      valorBruto,
+      valorTercoConstitucional: valorTerco,
+      totalAReceber,
+      status: "SOLICITADO",
+      solicitadoEm: new Date().toLocaleDateString('pt-BR'),
+      aprovadoPor: null
+    };
+
+    if (!this.data.rhFerias) this.data.rhFerias = [];
+    this.data.rhFerias.unshift(novaSolicitacao);
+
+    if (!this.data.rhAuditLogs) this.data.rhAuditLogs = [];
+    this.data.rhAuditLogs.unshift({
+      id: `log-rh-${Date.now()}`,
+      at: new Date().toLocaleString('pt-BR'),
+      by: colab.nome,
+      colaboradorAfetado: `${colab.nome} (${colab.matricula})`,
+      acao: 'SOLICITACAO_FERIAS',
+      entidade: 'Ferias',
+      detalhes: `Solicitação de férias de ${diasGozo} dias (+ ${diasAbono} dias abono pecuniário). Total estimado: R$ ${totalAReceber.toFixed(2)}`,
+      ip: '127.0.0.1'
+    });
+
+    this.showToast("✓ Férias Solicitadas", `Período agendado para ${colab.nome}. Enviado para homologação do RH.`, "success");
+    this.persist();
+    this.notify();
+    return novaSolicitacao;
+  }
+
+  aprovarFeriasRH(feriasId) {
+    const ferias = (this.data.rhFerias || []).find(f => f.id === feriasId);
+    if (!ferias) throw new Error("Registro de férias não encontrado.");
+
+    ferias.status = "APROVADO";
+    ferias.aprovadoPor = this.state.currentUser.name || "Gestão de Gente & RH";
+    ferias.aprovadoEm = new Date().toLocaleString('pt-BR');
+
+    if (!this.data.rhAuditLogs) this.data.rhAuditLogs = [];
+    this.data.rhAuditLogs.unshift({
+      id: `log-rh-${Date.now()}`,
+      at: new Date().toLocaleString('pt-BR'),
+      by: ferias.aprovadoPor,
+      colaboradorAfetado: ferias.colaboradorNome,
+      acao: 'APROVACAO_FERIAS',
+      entidade: 'Ferias',
+      detalhes: `Férias ${ferias.id} homologadas. Início em ${ferias.dataInicio}. Proventos calculados com 1/3 legal.`,
+      ip: '127.0.0.1'
+    });
+
+    this.showToast("✓ Férias Aprovadas", `Férias de ${ferias.colaboradorNome} homologadas com sucesso.`, "success");
+    this.persist();
+    this.notify();
+    return ferias;
+  }
+
+  cadastrarAtestadoRH(dados) {
+    if (!dados || !dados.colaboradorId) throw new Error("Colaborador é obrigatório.");
+    const colab = (this.data.rhColaboradores || []).find(c => c.id === dados.colaboradorId);
+    if (!colab) throw new Error("Colaborador não encontrado.");
+
+    const dias = Number(dados.diasAfastamento) || 1;
+    const horasAbonadas = dias * 8;
+    const previdenciario = dias > 15;
+
+    const novoAtestado = {
+      id: `atest-${Date.now()}`,
+      colaboradorId: colab.id,
+      colaboradorNome: colab.nome,
+      medicoNome: dados.medicoNome || "Dr. Médico Assistente",
+      crm: dados.crm || "00000-PR",
+      cid10: dados.cid10 || "Z00.0 - Exame médico geral",
+      dataInicio: dados.dataInicio || new Date().toLocaleDateString('pt-BR'),
+      dataFim: dados.dataFim || new Date().toLocaleDateString('pt-BR'),
+      diasAfastamento: dias,
+      horasAbonadas,
+      afastamentoPrevidenciario: previdenciario,
+      encaminhadoINSS: previdenciario,
+      status: "HOMOLOGADO",
+      documentoUrl: "comprovantes/atestado_digitalizado.pdf",
+      homologadoPor: this.state.currentUser.name || "Medicina Ocupacional Disk",
+      homologadoEm: new Date().toLocaleString('pt-BR')
+    };
+
+    if (!this.data.rhAtestados) this.data.rhAtestados = [];
+    this.data.rhAtestados.unshift(novoAtestado);
+
+    if (!this.data.rhAuditLogs) this.data.rhAuditLogs = [];
+    this.data.rhAuditLogs.unshift({
+      id: `log-rh-${Date.now()}`,
+      at: new Date().toLocaleString('pt-BR'),
+      by: novoAtestado.homologadoPor,
+      colaboradorAfetado: `${colab.nome} (${colab.matricula})`,
+      acao: 'HOMOLOGACAO_ATESTADO',
+      entidade: 'AtestadoMedico',
+      detalhes: `Atestado médico CID-10 ${novoAtestado.cid10} homologado. ${horasAbonadas}h abonadas no espelho.${previdenciario ? ' Encaminhado ao INSS (>15 dias).' : ''}`,
+      ip: '127.0.0.1'
+    });
+
+    this.showToast("✓ Atestado Homologado", `${horasAbonadas}h abonadas para ${colab.nome}.`, "success");
+    this.persist();
+    this.notify();
+    return novoAtestado;
+  }
+
+  avancarAdmissaoRH(admissaoId, novoStatus) {
+    const adm = (this.data.rhAdmissoes || []).find(a => a.id === admissaoId);
+    if (!adm) throw new Error("Processo de admissão não encontrado.");
+
+    adm.status = novoStatus;
+    if (novoStatus === 'DOCUMENTOS_ENVIADOS') adm.progressoEtapas = '80%';
+    else if (novoStatus === 'APROVADO') adm.progressoEtapas = '95%';
+    else if (novoStatus === 'CONCLUIDO') adm.progressoEtapas = '100%';
+
+    this.showToast("Status de Admissão Atualizado", `${adm.candidatoNome} agora está em: ${novoStatus}.`, "info");
+    this.persist();
+    this.notify();
+    return adm;
+  }
+
+  concluirAdmissaoRH(admissaoId) {
+    const adm = (this.data.rhAdmissoes || []).find(a => a.id === admissaoId);
+    if (!adm) throw new Error("Processo de admissão não encontrado.");
+
+    adm.status = "CONCLUIDO";
+    adm.progressoEtapas = "100%";
+
+    // Converte automaticamente em Colaborador ativo
+    const novoColab = this.cadastrarColaboradorRH({
+      nome: adm.candidatoNome,
+      cpf: adm.cpf,
+      email: adm.email,
+      telefone: adm.telefone,
+      cargoNome: adm.cargoPretendido,
+      departamentoNome: adm.departamento,
+      tipoContrato: adm.tipoContrato || 'CLT',
+      salario: adm.salarioProposto,
+      chavePix: adm.cpf.replace(/\D/g, ''),
+      tipoChavePix: 'CPF'
+    });
+
+    this.showToast("🎉 Admissão Concluída!", `${adm.candidatoNome} integrado como colaborador ativo no RH Disk.`, "success");
+    this.persist();
+    this.notify();
+    return { adm, novoColab };
+  }
+
+  assinarDocumentoGedRH(docId) {
+    const doc = (this.data.rhGedDocumentos || []).find(d => d.id === docId);
+    if (!doc) throw new Error("Documento GED não encontrado.");
+
+    const now = new Date();
+    doc.assinado = true;
+    doc.assinadoEm = now.toLocaleString('pt-BR');
+    doc.ipAssinatura = "189.112.45.10";
+    doc.status = "VALIDO";
+
+    if (!this.data.rhAuditLogs) this.data.rhAuditLogs = [];
+    this.data.rhAuditLogs.unshift({
+      id: `log-rh-${Date.now()}`,
+      at: now.toLocaleString('pt-BR'),
+      by: this.state.currentUser.name || 'Signatário Digital',
+      colaboradorAfetado: doc.colaboradorNome,
+      acao: 'ASSINATURA_ELETRONICA_DOCUMENTO',
+      entidade: 'GedDocumento',
+      detalhes: `Documento "${doc.titulo}" assinado eletronicamente com hash SHA-256 e certificado digital.`,
+      ip: '189.112.45.10'
+    });
+
+    this.showToast("✓ Documento Assinado", `Autenticidade garantida por chave criptográfica SHA-256.`, "success");
+    this.persist();
+    this.notify();
+    return doc;
+  }
+
+  aprovarPedidoBeneficiosRH(pedidoId) {
+    const ped = (this.data.rhPedidosBeneficios || []).find(p => p.id === pedidoId);
+    if (!ped) throw new Error("Pedido de benefícios não encontrado.");
+
+    ped.status = "APROVADO";
+    ped.aprovadoEm = new Date().toLocaleString('pt-BR');
+    ped.aprovadoPor = this.state.currentUser.name || "Gestão Financeira Disk";
+
+    this.showToast("✓ Recarga Aprovada", `Pedido ${ped.competencia} homologado e enviado às operadoras (URBS/Flash/Unimed).`, "success");
+    this.persist();
+    this.notify();
+    return ped;
+  }
+
+  cadastrarBeneficioRH(dados) {
+    if (!dados || !dados.colaboradorId) throw new Error("Colaborador é obrigatório.");
+    if (!dados.nomeBeneficio) throw new Error("Nome/Especificação do benefício é obrigatório.");
+
+    const dbColabs = this.data.rhColaboradores || [];
+    const colab = dbColabs.find(c => c.id === dados.colaboradorId) || { nome: dados.colaboradorNome || 'Colaborador' };
+
+    const valorIntegral = parseFloat(dados.valorMensalIntegral) || 0;
+    let descontoFolha = parseFloat(dados.descontoEmFolha6Pct !== undefined ? dados.descontoEmFolha6Pct : dados.descontoFolha) || 0;
+
+    // Se regra de VT 6% legal for selecionada
+    if (dados.regraDesconto === 'VT_LEGAL_6') {
+      const salarioBase = parseFloat(colab.salario) || 0;
+      const teto6Pct = salarioBase * 0.06;
+      descontoFolha = Math.min(valorIntegral, teto6Pct);
+    }
+
+    const custoEmpresa = Math.max(0, valorIntegral - descontoFolha);
+
+    const novoBeneficio = {
+      id: dados.id || `ben-${Date.now()}`,
+      colaboradorId: dados.colaboradorId,
+      colaboradorNome: colab.nome,
+      tipo: dados.tipo || 'VALE_ALIMENTACAO',
+      nomeBeneficio: dados.nomeBeneficio,
+      operadora: dados.operadora || 'Flash Benefícios Flexíveis',
+      valorMensalIntegral: valorIntegral,
+      descontoEmFolha6Pct: descontoFolha,
+      custoEmpresa: custoEmpresa,
+      regraDesconto: dados.regraDesconto || 'ISENTO',
+      competenciaInicio: dados.competenciaInicio || '2026-10',
+      observacoes: dados.observacoes || '',
+      status: dados.status || 'ATIVO',
+      criadoEm: new Date().toISOString()
+    };
+
+    if (!this.data.rhBeneficios) this.data.rhBeneficios = [];
+    this.data.rhBeneficios.unshift(novoBeneficio);
+
+    // Trilha imutável de auditoria
+    if (!this.data.rhAuditLogs) this.data.rhAuditLogs = [];
+    this.data.rhAuditLogs.unshift({
+      id: `log-rh-${Date.now()}`,
+      at: new Date().toLocaleString('pt-BR'),
+      by: this.state.currentUser.name || 'Gestor RH Disk',
+      colaboradorAfetado: `${colab.nome}`,
+      acao: 'CONCESSAO_BENEFICIO',
+      entidade: 'Benefício',
+      detalhes: `Concessão de benefício [${novoBeneficio.nomeBeneficio}] (${novoBeneficio.tipo}) no valor de R$ ${valorIntegral.toFixed(2)}.`,
+      ip: '127.0.0.1'
+    });
+
+    this.showToast("✓ Benefício Concedido", `${novoBeneficio.nomeBeneficio} adicionado para ${colab.nome}.`, "success");
+    this.persist();
+    this.notify();
+    return novoBeneficio;
+  }
+
+  atualizarBeneficioRH(id, dados) {
+    const ben = (this.data.rhBeneficios || []).find(b => b.id === id);
+    if (!ben) throw new Error("Benefício não encontrado.");
+
+    if (dados.nomeBeneficio) ben.nomeBeneficio = dados.nomeBeneficio;
+    if (dados.tipo) ben.tipo = dados.tipo;
+    if (dados.operadora) ben.operadora = dados.operadora;
+    if (dados.valorMensalIntegral !== undefined) ben.valorMensalIntegral = parseFloat(dados.valorMensalIntegral) || 0;
+    if (dados.descontoEmFolha6Pct !== undefined) ben.descontoEmFolha6Pct = parseFloat(dados.descontoEmFolha6Pct) || 0;
+    ben.custoEmpresa = Math.max(0, ben.valorMensalIntegral - ben.descontoEmFolha6Pct);
+    if (dados.status) ben.status = dados.status;
+    if (dados.observacoes !== undefined) ben.observacoes = dados.observacoes;
+    if (dados.regraDesconto) ben.regraDesconto = dados.regraDesconto;
+    if (dados.competenciaInicio) ben.competenciaInicio = dados.competenciaInicio;
+
+    if (!this.data.rhAuditLogs) this.data.rhAuditLogs = [];
+    this.data.rhAuditLogs.unshift({
+      id: `log-rh-${Date.now()}`,
+      at: new Date().toLocaleString('pt-BR'),
+      by: this.state.currentUser.name || 'Gestor RH Disk',
+      colaboradorAfetado: ben.colaboradorNome,
+      acao: 'ALTERACAO_BENEFICIO',
+      entidade: 'Benefício',
+      detalhes: `Parâmetros do benefício [${ben.nomeBeneficio}] atualizados.`,
+      ip: '127.0.0.1'
+    });
+
+    this.showToast("✓ Benefício Atualizado", `Parâmetros de ${ben.nomeBeneficio} salvos com sucesso.`, "success");
+    this.persist();
+    this.notify();
+    return ben;
+  }
+
+  alternarStatusBeneficioRH(id) {
+    const ben = (this.data.rhBeneficios || []).find(b => b.id === id);
+    if (!ben) throw new Error("Benefício não encontrado.");
+
+    ben.status = ben.status === 'ATIVO' ? 'INATIVO' : 'ATIVO';
+
+    if (!this.data.rhAuditLogs) this.data.rhAuditLogs = [];
+    this.data.rhAuditLogs.unshift({
+      id: `log-rh-${Date.now()}`,
+      at: new Date().toLocaleString('pt-BR'),
+      by: this.state.currentUser.name || 'Gestor RH Disk',
+      colaboradorAfetado: ben.colaboradorNome,
+      acao: 'STATUS_BENEFICIO',
+      entidade: 'Benefício',
+      detalhes: `Status do benefício [${ben.nomeBeneficio}] alterado para ${ben.status}.`,
+      ip: '127.0.0.1'
+    });
+
+    this.showToast("Status Atualizado", `${ben.nomeBeneficio} agora está ${ben.status}.`, "info");
+    this.persist();
+    this.notify();
+    return ben;
+  }
+
+  excluirBeneficioRH(id) {
+    const idx = (this.data.rhBeneficios || []).findIndex(b => b.id === id);
+    if (idx === -1) throw new Error("Benefício não encontrado.");
+    const removido = this.data.rhBeneficios.splice(idx, 1)[0];
+
+    if (!this.data.rhAuditLogs) this.data.rhAuditLogs = [];
+    this.data.rhAuditLogs.unshift({
+      id: `log-rh-${Date.now()}`,
+      at: new Date().toLocaleString('pt-BR'),
+      by: this.state.currentUser.name || 'Gestor RH Disk',
+      colaboradorAfetado: removido.colaboradorNome,
+      acao: 'EXCLUSAO_BENEFICIO',
+      entidade: 'Benefício',
+      detalhes: `Benefício [${removido.nomeBeneficio}] excluído do cadastro.`,
+      ip: '127.0.0.1'
+    });
+
+    this.showToast("Benefício Excluído", `${removido.nomeBeneficio} foi removido com sucesso.`, "warning");
+    this.persist();
+    this.notify();
+    return removido;
+  }
+
+  fecharCompetenciaPontoRH(competencia = "2026-10") {
+    let fechamento = (this.data.rhFechamentosPonto || []).find(f => f.competencia === competencia);
+    const pendentes = (this.data.rhAjustesPonto || []).filter(a => a.status === 'PENDENTE');
+
+    if (pendentes.length > 0) {
+      this.showToast(
+        "⚠️ Bloqueio de Fechamento",
+        `Existem ${pendentes.length} ajuste(s) de ponto pendente(s). Regularize antes de fechar a competência.`,
+        "warning"
+      );
+      return false;
+    }
+
+    if (!fechamento) {
+      fechamento = {
+        id: `fech-${competencia}`,
+        competencia,
+        periodoInicio: `01/${competencia.substring(5)}/2026`,
+        periodoFim: `31/${competencia.substring(5)}/2026`,
+        status: "FECHADO",
+        totalColaboradores: this.data.rhColaboradores?.length || 52,
+        totalBatidas: this.data.rhRegistrosPonto?.length || 412,
+        totalHorasTrabalhadas: "8.800h",
+        totalHorasExtras: "62h",
+        ajustesPendentes: 0,
+        fechadoEm: new Date().toLocaleString('pt-BR'),
+        fechadoPor: this.state.currentUser.name || "Patricia Albuquerque (RH)",
+        espelhoHash: "c5b2a091827364501928374655bbccaa11223344556677889900aabbccddeeff",
+        bloqueado: true
+      };
+      if (!this.data.rhFechamentosPonto) this.data.rhFechamentosPonto = [];
+      this.data.rhFechamentosPonto.unshift(fechamento);
+    } else {
+      fechamento.status = "FECHADO";
+      fechamento.bloqueado = true;
+      fechamento.fechadoEm = new Date().toLocaleString('pt-BR');
+      fechamento.fechadoPor = this.state.currentUser.name || "Patricia Albuquerque (RH)";
+      fechamento.espelhoHash = "c5b2a091827364501928374655bbccaa11223344556677889900aabbccddeeff";
+    }
+
+    if (!this.data.rhAuditLogs) this.data.rhAuditLogs = [];
+    this.data.rhAuditLogs.unshift({
+      id: `log-rh-${Date.now()}`,
+      at: new Date().toLocaleString('pt-BR'),
+      by: fechamento.fechadoPor,
+      colaboradorAfetado: `Competência ${competencia}`,
+      acao: 'FECHAMENTO_COMPETENCIA_PONTO',
+      entidade: 'FechamentoPonto',
+      detalhes: `Competência ${competencia} homologada e travada. Espelho oficial gerado com assinatura digital.`,
+      ip: '127.0.0.1'
+    });
+
+    this.showToast("🔒 Competência Fechada", `Competência ${competencia} travada com sucesso para apuração da Folha.`, "success");
+    this.persist();
+    this.notify();
+    return true;
+  }
+
+  reabrirCompetenciaPontoRH(competencia) {
+    const fechamento = (this.data.rhFechamentosPonto || []).find(f => f.competencia === competencia);
+    if (!fechamento) return;
+
+    fechamento.status = "ABERTO";
+    fechamento.bloqueado = false;
+    fechamento.fechadoEm = null;
+
+    this.showToast("🔓 Competência Reaberta", `Competência ${competencia} desbloqueada para ajustes excepcionais.`, "info");
+    this.persist();
+    this.notify();
+  }
+
+  bloquearDesbloquearDispositivoRH(dispId) {
+    const disp = (this.data.rhDispositivos || []).find(d => d.id === dispId);
+    if (!disp) return;
+
+    disp.status = disp.status === 'AUTORIZADO' ? 'BLOQUEADO' : 'AUTORIZADO';
+
+    if (!this.data.rhAuditLogs) this.data.rhAuditLogs = [];
+    this.data.rhAuditLogs.unshift({
+      id: `log-rh-${Date.now()}`,
+      at: new Date().toLocaleString('pt-BR'),
+      by: this.state.currentUser.name || 'Segurança RH',
+      colaboradorAfetado: disp.colaboradorNome,
+      acao: 'ALTERACAO_STATUS_DISPOSITIVO',
+      entidade: 'DispositivoMovel',
+      detalhes: `Dispositivo ${disp.modelo} (${disp.uuidDispositivo}) teve o status alterado para ${disp.status}.`,
+      ip: '127.0.0.1'
+    });
+
+    this.showToast("Dispositivo Atualizado", `Aparelho de ${disp.colaboradorNome} agora está ${disp.status}.`, "info");
+    this.persist();
+    this.notify();
+    return disp;
+  }
+
+  processarFolhaPagamentoRH(competencia = "2026-10") {
+    let folha = (this.data.rhFolhasPagamento || []).find(f => f.competencia === competencia);
+    const loteId = `LOTE-PIX-FOLHA-${competencia.replace('-', '')}`;
+
+    if (!folha) {
+      folha = {
+        id: `folha-${competencia.replace('-', '')}`,
+        competencia,
+        periodo: `01/10/2026 a 31/10/2026`,
+        status: "PAGA",
+        dataPagamento: "05/11/2026",
+        totalColaboradores: 52,
+        totalProventos: 231400.00,
+        totalDescontosINSS: 25110.00,
+        totalDescontosIRRF: 17890.00,
+        totalDescontosBeneficios: 15300.00,
+        totalLiquido: 173100.00,
+        totalEncargosFGTS: 18512.00,
+        lotePixId: loteId,
+        arquivoCnab240Gerado: true,
+        fechadaEm: new Date().toLocaleString('pt-BR')
+      };
+      if (!this.data.rhFolhasPagamento) this.data.rhFolhasPagamento = [];
+      this.data.rhFolhasPagamento.unshift(folha);
+    } else {
+      folha.status = "PAGA";
+      folha.lotePixId = loteId;
+      folha.arquivoCnab240Gerado = true;
+      folha.fechadaEm = new Date().toLocaleString('pt-BR');
+    }
+
+    if (!this.data.rhAuditLogs) this.data.rhAuditLogs = [];
+    this.data.rhAuditLogs.unshift({
+      id: `log-rh-${Date.now()}`,
+      at: new Date().toLocaleString('pt-BR'),
+      by: this.state.currentUser.name || 'Diretoria Financeira',
+      colaboradorAfetado: `Folha Geral ${competencia}`,
+      acao: 'PROCESSAMENTO_FOLHA_PAGAMENTO',
+      entidade: 'FolhaPagamento',
+      detalhes: `Folha ${competencia} liquidada. Lote PIX ${loteId} (R$ ${folha.totalLiquido.toFixed(2)}) e CNAB 240 gerados.`,
+      ip: '127.0.0.1'
+    });
+
+    this.showToast("💰 Folha Liquidada!", `Folha ${competencia} processada: R$ ${folha.totalLiquido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} pagos via PIX.`, "success");
+    this.persist();
+    this.notify();
+    return folha;
+  }
+
+  transmitirEventoESocialRH(eventoId) {
+    const ev = (this.data.rhEventosESocial || []).find(e => e.id === eventoId);
+    if (!ev) return;
+
+    ev.status = "TRANSMITIDO";
+    ev.reciboEntrega = `1.2.${ev.competencia.replace('-', '')}.000000000${Math.floor(100000 + Math.random() * 900000)}`;
+    ev.transmitidoEm = new Date().toLocaleString('pt-BR');
+
+    if (!this.data.rhAuditLogs) this.data.rhAuditLogs = [];
+    this.data.rhAuditLogs.unshift({
+      id: `log-rh-${Date.now()}`,
+      at: new Date().toLocaleString('pt-BR'),
+      by: this.state.currentUser.name || 'Responsável eSocial',
+      colaboradorAfetado: `Governo Federal - eSocial`,
+      acao: 'TRANSMISSAO_ESOCIAL',
+      entidade: 'EventoESocial',
+      detalhes: `Evento ${ev.tipo} (${ev.nome}) transmitido com sucesso. Recibo: ${ev.reciboEntrega}`,
+      ip: '127.0.0.1'
+    });
+
+    this.showToast("✓ eSocial Transmitido", `Evento ${ev.tipo} validado pelo ambiente do Governo Federal.`, "success");
+    this.persist();
+    this.notify();
+    return ev;
+  }
+
+  aprovarDiariaStaffRH(diariaId) {
+    const dia = (this.data.rhDiariasStaff || []).find(d => d.id === diariaId);
+    if (!dia) return;
+
+    dia.status = "APROVADO_PAGAMENTO";
+
+    this.showToast("✓ Diária Aprovada", `Pagamento de ${dia.profissionalNome} (R$ ${dia.totalPagar.toFixed(2)}) enviado para a fila PIX.`, "success");
+    this.persist();
+    this.notify();
+    return dia;
+  }
+
+  // --- RH DISK V2 - MÉTODOS CORPORATIVOS AVANÇADOS ---
+
+  aprovarSolicitacaoCentralRH(solicitacaoId, parecer = "Aprovado via Central de Governança") {
+    const item = (this.data.rhCentralAprovacoes || []).find(s => s.id === solicitacaoId);
+    if (!item) return;
+
+    item.status = "APROVADO";
+    item.aprovadoPor = this.state.currentUser.name || "Diretoria RH Disk";
+    item.dataAprovacao = new Date().toLocaleDateString('pt-BR');
+    item.parecer = parecer;
+
+    // Sincroniza entidade de origem
+    if (item.tipo === 'FERIAS') {
+      const ferias = (this.data.rhFerias || []).find(f => f.colaboradorNome === item.solicitante);
+      if (ferias) ferias.status = "APROVADA";
+    } else if (item.tipo === 'AJUSTE_PONTO') {
+      const ajuste = (this.data.rhAjustesPonto || []).find(a => a.colaboradorNome === item.solicitante);
+      if (ajuste) {
+        ajuste.status = "APROVADO";
+        ajuste.parecerRH = parecer;
+      }
+    } else if (item.tipo === 'REEMBOLSO') {
+      const reemb = (this.data.rhReembolsos || []).find(r => r.colaboradorNome === item.solicitante);
+      if (reemb) reemb.status = "APROVADO";
+    } else if (item.tipo === 'ADMISSAO') {
+      const adm = (this.data.rhAdmissoes || []).find(a => a.candidatoNome === item.solicitante);
+      if (adm) adm.status = "CONCLUIDA";
+    }
+
+    if (!this.data.rhAuditLogs) this.data.rhAuditLogs = [];
+    this.data.rhAuditLogs.unshift({
+      id: `log-rh-${Date.now()}`,
+      timestamp: new Date().toISOString(),
+      action: "CENTRAL_APROVACOES_HOMOLOGACAO",
+      entity: "rhCentralAprovacoes",
+      entityId: solicitacaoId,
+      by: this.state.currentUser.name || "Diretoria RH Disk",
+      details: `Solicitação ${solicitacaoId} (${item.tipo}) de ${item.solicitante} deferida com sucesso.`
+    });
+
+    this.showToast("✓ Solicitação Homologada", `${item.tipo} de ${item.solicitante} foi aprovada na Central.`, "success");
+    this.persist();
+    this.notify();
+    return item;
+  }
+
+  reprovarSolicitacaoCentralRH(solicitacaoId, motivo = "Não atende aos critérios normativos internos") {
+    const item = (this.data.rhCentralAprovacoes || []).find(s => s.id === solicitacaoId);
+    if (!item) return;
+
+    item.status = "REPROVADO";
+    item.aprovadoPor = this.state.currentUser.name || "Diretoria RH Disk";
+    item.dataAprovacao = new Date().toLocaleDateString('pt-BR');
+    item.motivoReprovacao = motivo;
+
+    if (!this.data.rhAuditLogs) this.data.rhAuditLogs = [];
+    this.data.rhAuditLogs.unshift({
+      id: `log-rh-${Date.now()}`,
+      timestamp: new Date().toISOString(),
+      action: "CENTRAL_APROVACOES_INDEFERIMENTO",
+      entity: "rhCentralAprovacoes",
+      entityId: solicitacaoId,
+      by: this.state.currentUser.name || "Diretoria RH Disk",
+      details: `Solicitação ${solicitacaoId} (${item.tipo}) reprovada. Motivo: ${motivo}`
+    });
+
+    this.showToast("✕ Solicitação Indeferida", `${item.tipo} de ${item.solicitante} foi reprovada.`, "warning");
+    this.persist();
+    this.notify();
+    return item;
+  }
+
+  converterCandidatoEmColaboradorRH(candidatoId) {
+    const cand = (this.data.rhCandidatos || []).find(c => c.id === candidatoId);
+    if (!cand) return;
+
+    cand.status = "CONVERTIDO_COLABORADOR";
+    const novaAdmissao = {
+      id: `adm-conv-${Date.now()}`,
+      candidatoNome: cand.nome,
+      email: cand.email,
+      cargoSugerido: "Operador de Bilheteria / Caixa",
+      departamento: "Operações e Eventos",
+      dataEnvioLink: new Date().toLocaleDateString('pt-BR'),
+      status: "DOCUMENTOS_ENVIADOS",
+      documentosRecebidos: 6,
+      documentosValidados: 5,
+      previsaoInicio: "15/10/2026",
+      remuneracaoProposta: 2450.00
+    };
+
+    if (!this.data.rhAdmissoes) this.data.rhAdmissoes = [];
+    this.data.rhAdmissoes.unshift(novaAdmissao);
+
+    if (!this.data.rhAuditLogs) this.data.rhAuditLogs = [];
+    this.data.rhAuditLogs.unshift({
+      id: `log-rh-${Date.now()}`,
+      timestamp: new Date().toISOString(),
+      action: "RECRUTAMENTO_CONVERSAO_COLABORADOR",
+      entity: "rhCandidatos",
+      entityId: candidatoId,
+      by: this.state.currentUser.name || "RH Disk Recrutamento",
+      details: `Candidato ${cand.nome} convertido em processo de admissão digital ${novaAdmissao.id}.`
+    });
+
+    this.showToast("✓ Candidato Convertido!", `${cand.nome} encaminhado diretamente para Admissão Digital sem redigitação.`, "success");
+    this.persist();
+    this.notify();
+    return novaAdmissao;
+  }
+
+  cadastrarCargoSalarioRH(dados) {
+    const novoCargo = {
+      id: `cs-${Date.now()}`,
+      cargo: dados.cargo || "Novo Cargo Especialista",
+      departamento: dados.departamento || "Operações",
+      cbo: dados.cbo || "3513-05",
+      nivel: dados.nivel || "Pleno",
+      piso: Number(dados.piso) || 3000,
+      medio: Number(dados.medio) || 4500,
+      teto: Number(dados.teto) || 6000,
+      colaboradoresNaFaixa: 0,
+      statusFaixa: "EM_CONFORMIDADE"
+    };
+
+    if (!this.data.rhCargosSalarios) this.data.rhCargosSalarios = [];
+    this.data.rhCargosSalarios.unshift(novoCargo);
+
+    this.showToast("✓ Cargo Cadastrado", `${novoCargo.cargo} adicionado à estrutura salarial Disk.`, "success");
+    this.persist();
+    this.notify();
+    return novoCargo;
+  }
+
+  cadastrarVagaRH(dados) {
+    const novaVaga = {
+      id: `vaga-${Date.now()}`,
+      titulo: dados.titulo || "Operador de Acesso",
+      departamento: dados.departamento || "Operações e Eventos",
+      tipoContrato: dados.tipoContrato || "FREELANCER_EVENTO",
+      quantidade: Number(dados.quantidade) || 5,
+      candidatosInscritos: 0,
+      status: "ABERTA",
+      prazoEncerramento: dados.prazoEncerramento || "30/10/2026",
+      remuneracao: dados.remuneracao || "R$ 180,00/diária + Benefícios"
+    };
+
+    if (!this.data.rhVagas) this.data.rhVagas = [];
+    this.data.rhVagas.unshift(novaVaga);
+
+    this.showToast("✓ Vaga Aberta", `${novaVaga.titulo} publicada com sucesso.`, "success");
+    this.persist();
+    this.notify();
+    return novaVaga;
+  }
+
+  iniciarDesligamentoRH(dados) {
+    const novoDesligamento = {
+      id: `desl-${Date.now()}`,
+      colaboradorId: dados.colaboradorId || "colab-001",
+      colaboradorNome: dados.colaboradorNome || "Colaborador",
+      cargo: dados.cargo || "Operador",
+      departamento: dados.departamento || "Operações",
+      dataPrevista: dados.dataPrevista || new Date().toLocaleDateString('pt-BR'),
+      motivo: dados.motivo || "Pedido de Demissão",
+      tipo: dados.tipo || "PEDIDO_DEMISSAO",
+      statusChecklist: "EM_ANDAMENTO",
+      devolucaoPatrimonio: "PENDENTE",
+      exameDemissionalAgendado: true
+    };
+
+    if (!this.data.rhDesligamentos) this.data.rhDesligamentos = [];
+    this.data.rhDesligamentos.unshift(novoDesligamento);
+
+    this.showToast("✓ Desligamento Iniciado", `Processo de offboarding aberto para ${novoDesligamento.colaboradorNome}.`, "info");
+    this.persist();
+    this.notify();
+    return novoDesligamento;
+  }
+
+  concluirChecklistDesligamentoRH(desligamentoId) {
+    const desl = (this.data.rhDesligamentos || []).find(d => d.id === desligamentoId);
+    if (!desl) return;
+
+    desl.statusChecklist = "100%_CONCLUIDO";
+    desl.devolucaoPatrimonio = "CONCLUIDA_EM_ESTOQUE";
+
+    // Atualiza status do colaborador
+    const colab = (this.data.rhColaboradores || []).find(c => c.id === desl.colaboradorId || c.nome === desl.colaboradorNome);
+    if (colab) colab.status = "DESLIGADO";
+
+    this.showToast("✓ Offboarding Concluído", `Checklist finalizado e acessos revogados para ${desl.colaboradorNome}.`, "success");
+    this.persist();
+    this.notify();
+    return desl;
+  }
+
+  agendarExameSstRH(dados) {
+    const novoExame = {
+      id: `sst-${Date.now()}`,
+      colaboradorNome: dados.colaboradorNome || "Colaborador Disk",
+      tipoExame: dados.tipoExame || "ASO_PERIODICO",
+      dataRealizacao: new Date().toLocaleDateString('pt-BR'),
+      validade: "04/10/2027",
+      medicoCoordenador: dados.medico || "Dr. Roberto Guimarães (CRM 29845-PR)",
+      resultado: "APTO",
+      riscosMapeados: dados.riscos || "Ergonômico e Ruído Ocupacional",
+      status: "VIGENTE"
+    };
+
+    if (!this.data.rhExamesSst) this.data.rhExamesSst = [];
+    this.data.rhExamesSst.unshift(novoExame);
+
+    this.showToast("✓ ASO Registrado", `Exame ocupacional para ${novoExame.colaboradorNome} registrado com conformidade.`, "success");
+    this.persist();
+    this.notify();
+    return novoExame;
+  }
+
+  cautelarPatrimonioRH(dados) {
+    const item = {
+      id: `pat-${Date.now()}`,
+      patrimonio: `PAT-2026-${Math.floor(1000 + Math.random() * 9000)}`,
+      itemNome: dados.itemNome || "Smartphone REP-P Samsung Galaxy A54",
+      categoria: dados.categoria || "DISPOSITIVO_MOVEL",
+      serial: dados.serial || `SER-${Math.random().toString(36).substr(2, 8).toUpperCase()}`,
+      cauteladoPara: dados.cauteladoPara || "Colaborador",
+      dataEntrega: new Date().toLocaleDateString('pt-BR'),
+      termoAssinado: true,
+      status: "EM_USO"
+    };
+
+    if (!this.data.rhPatrimonio) this.data.rhPatrimonio = [];
+    this.data.rhPatrimonio.unshift(item);
+
+    this.showToast("✓ Equipamento Cautelado", `${item.itemNome} entregue e termo assinado digitalmente.`, "success");
+    this.persist();
+    this.notify();
+    return item;
+  }
+
+  registrarDevolucaoPatrimonioRH(patrimonioId) {
+    const pat = (this.data.rhPatrimonio || []).find(p => p.id === patrimonioId);
+    if (!pat) return;
+
+    pat.status = "DEVOLVIDO_ESTOQUE";
+
+    this.showToast("✓ Devolução Registrada", `${pat.itemNome} retornado ao estoque central de TI/Operações.`, "info");
+    this.persist();
+    this.notify();
+    return pat;
+  }
+
+  salvarAvaliacaoPdiRH(dados) {
+    const novaAvaliacao = {
+      id: `pdi-${Date.now()}`,
+      colaboradorNome: dados.colaboradorNome || "Colaborador Disk",
+      cargo: dados.cargo || "Especialista",
+      ciclo: dados.ciclo || "2026.2 (2º Semestre)",
+      notaCompetencias: Number(dados.notaCompetencias) || 9.0,
+      notaMetas: Number(dados.notaMetas) || 9.2,
+      status: "CONCLUIDO",
+      feedbackGestor: dados.feedbackGestor || "Excelente desempenho com alta entrega e espírito de equipe.",
+      acoesPdi: dados.acoesPdi || "Treinamento em liderança e novas tecnologias."
+    };
+
+    if (!this.data.rhAvaliacoesPdi) this.data.rhAvaliacoesPdi = [];
+    this.data.rhAvaliacoesPdi.unshift(novaAvaliacao);
+
+    this.showToast("✓ Avaliação de PDI Salva", `Ciclo registrado para ${novaAvaliacao.colaboradorNome}.`, "success");
+    this.persist();
+    this.notify();
+    return novaAvaliacao;
+  }
+
+  inscreverTreinamentoRH(treinamentoId, colaboradorId) {
+    const tr = (this.data.rhTreinamentos || []).find(t => t.id === treinamentoId);
+    if (!tr) return;
+
+    tr.concluidosCount = (tr.concluidosCount || 0) + 1;
+
+    this.showToast("✓ Certificação Concluída", `Colaborador qualificado com sucesso em ${tr.titulo}.`, "success");
+    this.persist();
+    this.notify();
+    return tr;
+  }
+
+  solicitarReembolsoRH(dados) {
+    const novoReembolso = {
+      id: `reemb-${Date.now()}`,
+      colaboradorNome: dados.colaboradorNome || this.state.currentUser.name || "Carlos Eduardo Mendes",
+      categoria: dados.categoria || "DESLOCAMENTO_EVENTO",
+      eventoNome: dados.eventoNome || "Festival Curitiba 2026",
+      centroCusto: dados.centroCusto || "CC-2040 (Operações)",
+      descricao: dados.descricao || "Despesas com deslocamento e combustível",
+      valor: Number(dados.valor) || 120.00,
+      status: "PENDENTE_GESTOR",
+      comprovanteUrl: "comprovantes/recibo_anexo.pdf",
+      dataSolicitacao: new Date().toLocaleDateString('pt-BR')
+    };
+
+    if (!this.data.rhReembolsos) this.data.rhReembolsos = [];
+    this.data.rhReembolsos.unshift(novoReembolso);
+
+    if (!this.data.rhCentralAprovacoes) this.data.rhCentralAprovacoes = [];
+    this.data.rhCentralAprovacoes.unshift({
+      id: `apr-reemb-${Date.now()}`,
+      tipo: "REEMBOLSO",
+      solicitante: novoReembolso.colaboradorNome,
+      departamento: "Operações",
+      detalhes: `${novoReembolso.descricao} - Evento: ${novoReembolso.eventoNome}`,
+      dataSolicitacao: novoReembolso.dataSolicitacao,
+      valor: novoReembolso.valor,
+      status: "PENDENTE",
+      alcadaExigida: "GESTOR_DIRETO",
+      prioridade: "NORMAL"
+    });
+
+    this.showToast("✓ Reembolso Solicitado", `Protocolo gerado e enviado para a Central de Aprovações.`, "success");
+    this.persist();
+    this.notify();
+    return novoReembolso;
+  }
+
+  aprovarReembolsoRH(reembolsoId) {
+    const reemb = (this.data.rhReembolsos || []).find(r => r.id === reembolsoId);
+    if (!reemb) return;
+
+    reemb.status = "APROVADO";
+
+    this.showToast("✓ Reembolso Autorizado", `Valor de R$ ${reemb.valor.toFixed(2)} liberado para crédito via Tesouraria Disk.`, "success");
+    this.persist();
+    this.notify();
+    return reemb;
+  }
+
+  publicarComunicadoMuralRH(dados) {
+    const com = {
+      id: `com-${Date.now()}`,
+      titulo: dados.titulo || "Comunicado Oficial RH",
+      conteudo: dados.conteudo || "Aviso geral para todos os colaboradores DiskIngressos.",
+      autor: dados.autor || "Diretoria & RH",
+      data: new Date().toLocaleDateString('pt-BR'),
+      prioridade: dados.prioridade || "NORMAL",
+      lidoPor: 1
+    };
+
+    if (!this.data.rhComunicadosMural) this.data.rhComunicadosMural = [];
+    this.data.rhComunicadosMural.unshift(com);
+
+    this.showToast("✓ Comunicado Publicado", "Mensagem enviada ao Mural do Portal do Colaborador.", "success");
+    this.persist();
+    this.notify();
+    return com;
   }
 
   resetDemoData() {

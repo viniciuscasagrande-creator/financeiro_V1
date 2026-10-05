@@ -2,7 +2,7 @@
   "name": "disk-ponto",
   "version": "1.0.0",
   "description": "Aplicativo Android Oficial de Registro de Ponto Eletrônico DiskIngressos (Portaria 671 MTE)",
-  "main": "node_modules/expo/AppEntry.js",
+  "main": "index.js",
   "scripts": {
     "start": "expo start",
     "android": "expo run:android",
@@ -19,6 +19,7 @@
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",
+    "babel-preset-expo": "^10.0.0",
     "@types/react": "~18.2.45",
     "typescript": "^5.1.3"
   },
