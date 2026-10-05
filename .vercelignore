@@ -5,9 +5,13 @@ archives/
 tests/
 docs/
 scratch/
+scripts/
 backend/
 database/
 prisma/
+mobile/
+modules/
+RH_DISK_V1/
 server.js
 .git/
 .vscode/

@@ -243,3 +243,36 @@ Correção definitiva do motor de elegibilidade para evitar vazamento de deduç�
 
 ## Evolução V0.7 — Base Mestre de Produtores
 Inclui busca por nome/CNPJ no Dossiê e fluxo de Comprovantes e Transações com publicação controlada para o portal do Produtor. Consulte `docs/BASE_MESTRE_PRODUTORES_COMPROVANTES_V0.7.md`.
+
+## Evoluções RH Disk Integrado
+- **V2.1 — Menu Hierárquico Inteligente**: Organização modular em 10 grupos expansíveis com memorização de estado. Consulte [`docs/RH_DISK_V2_1_MENU_HIERARQUICO.md`](docs/RH_DISK_V2_1_MENU_HIERARQUICO.md).
+- **V2.2 — Dashboards Operacionais**: 8 dashboards por domínio como área de trabalho, KPIs clicáveis e área "Precisa da sua atenção". Consulte [`docs/RH_DISK_V2_2_DASHBOARDS_OPERACIONAIS.md`](docs/RH_DISK_V2_2_DASHBOARDS_OPERACIONAIS.md).
+- **V2.3 — Operação Real do RH**: Persistência reativa de homologação, workflows de status (`Pendente` → `Em análise` → `Aprovado` / `Reprovado`), modais conectados e recálculo dinâmico de KPIs. Consulte [`docs/RH_DISK_V2_3_OPERACAO_REAL.md`](docs/RH_DISK_V2_3_OPERACAO_REAL.md).
+
+## Estrutura do Repositório Organizado
+
+```text
+Modulo_Financeiro_v1/
+├── archives/       # Backups históricos e pacotes .zip
+├── backend/        # Serviços de API Node.js / Express
+├── css/            # Estilos corporativos e design tokens Limitless
+├── database/       # Schemas do Prisma e seeds de banco
+├── dist/           # Build estático compilado para distribuição Vercel
+├── docs/           # Documentação técnica, especificações de pacotes e telas
+├── frontend/       # Aplicação React 18 + TypeScript
+├── img/            # Identidade visual, logotipos Disk Ingressos
+├── js/             # Runtime do Portal Financeiro e RH Disk
+│   ├── components/ # Componentes visuais modulares
+│   ├── views/      # Views do Produtor, Backoffice Disk e RH
+│   ├── app.js      # Controlador principal e roteador da aplicação
+│   ├── menuConfig.js# Estrutura canônica e hierárquica do menu
+│   ├── mockData.js # Base mestre e registros de homologação
+│   └── state.js    # Store central reativo do sistema financeiro
+├── mobile/         # Aplicativo React Native (Disk Ponto - Portaria 671 MTE)
+├── modules/        # Módulos de domínio desacoplados (Repasses, Conta Financeira)
+├── prisma/         # Definições Prisma ORM
+├── RH_DISK_V1/     # Monorepo da infraestrutura do RH Disk
+├── scripts/        # Scripts operacionais de automação e backup
+└── tests/          # Suíte automatizada com 153 testes (100% aprovados)
+```
+
