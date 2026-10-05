@@ -3943,8 +3943,8 @@ class LimitlessFinancialApp {
                   const isNestedOpen = this.openedSubmenus.has(sub.id);
 
                   return `
-                    <li class="nav-item nav-item-submenu nav-item-group ${isNestedOpen ? 'is-open nav-item-open' : ''}" data-submenu-id="${sub.id}">
-                      <a class="nav-link nav-link-group" href="javascript:void(0)" onclick="window.app && window.app.toggleSubmenu(event, this, '${sub.id}')">
+                    <li class="nav-item nav-item-submenu rh-nav-group nav-item-group ${isNestedOpen ? 'is-open nav-item-open' : ''}" data-submenu-id="${sub.id}">
+                      <a class="nav-link rh-nav-group-toggle nav-link-group ${isNestedChildActive ? 'active-parent' : ''}" href="javascript:void(0)" onclick="window.app && window.app.toggleSubmenu(event, this, '${sub.id}')">
                         <div class="nav-item-left">
                           <i class="${sub.icon || 'ph-folder'} nav-item-icon"></i>
                           <span class="nav-item-title">${sub.label}</span>
@@ -3954,7 +3954,7 @@ class LimitlessFinancialApp {
                           <i class="ph-caret-right nav-arrow"></i>
                         </div>
                       </a>
-                      <ul class="nav-group-sub nav-group-sub-nested" style="display: ${isNestedOpen ? 'flex' : 'none'};">
+                      <ul class="nav-group-sub rh-nav-group-items nav-group-sub-nested" style="display: ${isNestedOpen ? 'flex' : 'none'};">
                         ${sub.subItems.map(nested => {
                           const isNestedActive = currentView === nested.id && (!this.currentFilterArg || this.currentFilterArg === nested.filterArg);
                           return `

@@ -1943,3 +1943,24 @@ body.theme-dark .scrollspy-pill.active,
   color: #ffffff;
 }
 
+/* RH Disk V2.1 — navegação hierárquica em grupos expansíveis */
+.nav-group-sub .rh-nav-group > .rh-nav-group-toggle {
+  font-size: .69rem;
+  font-weight: 800;
+  letter-spacing: .035em;
+  text-transform: uppercase;
+  opacity: .94;
+  padding-top: .62rem;
+  padding-bottom: .62rem;
+}
+.nav-group-sub .rh-nav-group > .rh-nav-group-toggle > i:first-child { font-size: 1rem; }
+.nav-group-sub .rh-nav-group > .rh-nav-group-items {
+  margin-left: .45rem;
+  border-left: 1px solid rgba(100,116,139,.22);
+  padding-left: .25rem;
+}
+.nav-group-sub .rh-nav-group > .rh-nav-group-items .nav-link { padding-left: 1.25rem; font-size: .77rem; }
+.nav-group-sub .rh-nav-group > .rh-nav-group-toggle.active-parent { font-weight: 900; }
+.nav-group-sub .rh-nav-group.is-open > .rh-nav-group-toggle .nav-arrow { transform: rotate(90deg); }
+
+

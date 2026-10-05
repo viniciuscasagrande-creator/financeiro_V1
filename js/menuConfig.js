@@ -310,39 +310,46 @@ export const menuFinanceiroCompleto = [
     label: 'RECURSOS HUMANOS (RH DISK)',
     icon: 'ph-users-three',
     subItems: [
+      { id: 'diskRH_visao', label: 'Visão Geral RH', filterArg: 'visao', icon: 'ph-squares-four' },
+      { id: 'diskRH_aprovacoes', label: 'Central de Aprovações', filterArg: 'aprovacoes', icon: 'ph-check-square-offset' },
       {
-        id: 'diskRH_grp_pessoas',
-        label: 'Pessoas',
-        icon: 'ph-users',
+        id: 'diskRH_grupo_pessoas',
+        label: 'PESSOAS E ESTRUTURA',
+        icon: 'ph-identification-card',
+        group: true,
         subItems: [
-          { id: 'diskRH_visao', label: 'Visão Geral RH', filterArg: 'visao' },
           { id: 'diskRH_colaboradores', label: 'Colaboradores', filterArg: 'colaboradores' },
           { id: 'diskRH_organograma', label: 'Estrutura Organizacional', filterArg: 'organograma' },
-          { id: 'diskRH_admissao', label: 'Admissão Digital', filterArg: 'admissao' },
-          { id: 'diskRH_onboarding', label: 'Onboarding', filterArg: 'onboarding' },
-          { id: 'diskRH_desligamentos', label: 'Desligamentos e Offboarding', filterArg: 'desligamentos' },
-          { id: 'diskRH_aprovacoes', label: 'Central de Aprovações', filterArg: 'aprovacoes' }
+          { id: 'diskRH_cargosSalarios', label: 'Cargos e Salários', filterArg: 'cargos_salarios' },
+          { id: 'diskRH_documentos', label: 'Documentos e Assinaturas (GED)', filterArg: 'documentos' },
+          { id: 'diskRH_patrimonio', label: 'Patrimônio do Colaborador', filterArg: 'patrimonio' }
         ]
       },
       {
-        id: 'diskRH_grp_dp',
-        label: 'Departamento Pessoal',
-        icon: 'ph-calculator',
+        id: 'diskRH_grupo_dp',
+        label: 'DEPARTAMENTO PESSOAL',
+        icon: 'ph-briefcase',
+        group: true,
         subItems: [
-          { id: 'diskRH_folha', label: 'Folha e Pagamentos RH', filterArg: 'folha' },
-          { id: 'diskRH_folhaCompleta', label: 'Folha de Pagamento Completa', filterArg: 'folha_completa' },
-          { id: 'diskRH_decimo', label: '13º Salário', filterArg: 'decimo' },
+          { id: 'diskRH_admissao', label: 'Admissão Digital', filterArg: 'admissao' },
+          { id: 'diskRH_onboarding', label: 'Onboarding', filterArg: 'onboarding' },
           { id: 'diskRH_ferias', label: 'Férias', filterArg: 'ferias' },
           { id: 'diskRH_ausencias', label: 'Ausências e Afastamentos', filterArg: 'ausencias' },
           { id: 'diskRH_atestados', label: 'Atestados', filterArg: 'atestados' },
+          { id: 'diskRH_folha', label: 'Folha e Pagamentos RH', filterArg: 'folha' },
+          { id: 'diskRH_folhaCompleta', label: 'Folha de Pagamento Completa', filterArg: 'folha_completa' },
+          { id: 'diskRH_decimo', label: '13º Salário', filterArg: 'decimo' },
+          { id: 'diskRH_beneficios', label: 'Benefícios', filterArg: 'beneficios' },
           { id: 'diskRH_rescisoes', label: 'Rescisões', filterArg: 'rescisoes' },
-          { id: 'diskRH_beneficios', label: 'Benefícios', filterArg: 'beneficios' }
+          { id: 'diskRH_desligamentos', label: 'Desligamentos e Offboarding', filterArg: 'desligamentos' },
+          { id: 'diskRH_esocial', label: 'eSocial', filterArg: 'esocial' }
         ]
       },
       {
-        id: 'diskRH_grp_ponto',
-        label: 'Ponto e Jornada',
+        id: 'diskRH_grupo_ponto',
+        label: 'PONTO E JORNADA',
         icon: 'ph-clock',
+        group: true,
         subItems: [
           { id: 'diskRH_ponto', label: 'Ponto e Jornada (REP-P 671)', filterArg: 'ponto' },
           { id: 'diskRH_geofences', label: 'Cercas Virtuais (Geofences)', filterArg: 'geofences' },
@@ -352,30 +359,31 @@ export const menuFinanceiroCompleto = [
         ]
       },
       {
-        id: 'diskRH_grp_talentos',
-        label: 'Talentos',
-        icon: 'ph-sparkle',
+        id: 'diskRH_grupo_talentos',
+        label: 'TALENTOS E DESENVOLVIMENTO',
+        icon: 'ph-chart-line-up',
+        group: true,
         subItems: [
           { id: 'diskRH_recrutamento', label: 'Recrutamento e Seleção', filterArg: 'recrutamento' },
           { id: 'diskRH_desempenho', label: 'Desempenho e PDI', filterArg: 'desempenho' },
-          { id: 'diskRH_treinamentos', label: 'Treinamentos', filterArg: 'treinamentos' },
-          { id: 'diskRH_cargosSalarios', label: 'Cargos e Salários', filterArg: 'cargos_salarios' }
+          { id: 'diskRH_treinamentos', label: 'Treinamentos', filterArg: 'treinamentos' }
         ]
       },
       {
-        id: 'diskRH_grp_sst',
-        label: 'SST e Segurança',
-        icon: 'ph-shield-plus',
+        id: 'diskRH_grupo_sst',
+        label: 'SAÚDE E SEGURANÇA',
+        icon: 'ph-first-aid-kit',
+        group: true,
         subItems: [
           { id: 'diskRH_sst', label: 'SST e Medicina do Trabalho', filterArg: 'sst' },
-          { id: 'diskRH_epis', label: 'EPIs e Segurança', filterArg: 'epis' },
-          { id: 'diskRH_patrimonio', label: 'Patrimônio do Colaborador', filterArg: 'patrimonio' }
+          { id: 'diskRH_epis', label: 'EPIs e Segurança', filterArg: 'epis' }
         ]
       },
       {
-        id: 'diskRH_grp_eventos',
-        label: 'Eventos e Custos',
-        icon: 'ph-ticket',
+        id: 'diskRH_grupo_eventos',
+        label: 'EVENTOS E CUSTOS',
+        icon: 'ph-calendar-check',
+        group: true,
         subItems: [
           { id: 'diskRH_equipesEvento', label: 'Equipes por Evento', filterArg: 'equipes_evento' },
           { id: 'diskRH_freelancers', label: 'Temporários e Freelancers', filterArg: 'freelancers' },
@@ -385,22 +393,22 @@ export const menuFinanceiroCompleto = [
         ]
       },
       {
-        id: 'diskRH_grp_portais',
-        label: 'Portais',
-        icon: 'ph-browsers',
+        id: 'diskRH_grupo_portais',
+        label: 'PORTAIS E GESTÃO',
+        icon: 'ph-user-switch',
+        group: true,
         subItems: [
           { id: 'diskRH_portalColaborador', label: 'Portal do Colaborador', filterArg: 'portal_colaborador' },
-          { id: 'diskRH_portalGestor', label: 'Portal do Gestor', filterArg: 'portal_gestor' }
+          { id: 'diskRH_portalGestor', label: 'Portal do Gestor', filterArg: 'portal_gestor' },
+          { id: 'diskRH_relatorios', label: 'Relatórios e People Analytics', filterArg: 'relatorios' }
         ]
       },
       {
-        id: 'diskRH_grp_admin',
-        label: 'Administração',
+        id: 'diskRH_grupo_admin',
+        label: 'ADMINISTRAÇÃO DO RH',
         icon: 'ph-gear-six',
+        group: true,
         subItems: [
-          { id: 'diskRH_esocial', label: 'eSocial', filterArg: 'esocial' },
-          { id: 'diskRH_documentos', label: 'Documentos e Assinaturas (GED)', filterArg: 'documentos' },
-          { id: 'diskRH_relatorios', label: 'Relatórios e People Analytics', filterArg: 'relatorios' },
           { id: 'diskRH_integracoes', label: 'Integrações de RH', filterArg: 'integracoes' },
           { id: 'diskRH_configuracoes', label: 'Configurações de RH', filterArg: 'configuracoes' },
           { id: 'diskRH_auditoria', label: 'Auditoria e LGPD', filterArg: 'auditoria' }
