@@ -3943,7 +3943,7 @@ class LimitlessFinancialApp {
       const isParentActive = currentView === item.id;
       const badgeHtml = item.badge === 'pendingCount' 
         ? `<span class="badge rounded-pill bg-danger fs-xxs">${pendingCount}</span>` 
-        : '';
+        : (item.badge ? `<span class="badge rounded-pill bg-success text-white fs-xxs ms-1" style="font-size: 9px; font-weight: 700; padding: 2px 6px; letter-spacing: 0.5px;">${item.badge}</span>` : '');
 
       if (hasSubs) {
         const isChildActive = item.subItems.some(sub => {
@@ -3952,14 +3952,14 @@ class LimitlessFinancialApp {
           }
           return sub.id === currentView;
         });
-        if (isParentActive || isChildActive) {
+        if (isParentActive || isChildActive || (currentView && currentView.startsWith('diskRH') && item.id === 'diskRH')) {
           this.openedSubmenus.add(item.id);
         }
         const isOpen = this.openedSubmenus.has(item.id);
 
         return `
           <li class="nav-item nav-item-submenu ${isOpen ? 'is-open nav-item-open' : ''}" data-submenu-id="${item.id}">
-            <a class="nav-link" href="javascript:void(0)" onclick="window.app && window.app.toggleSubmenu(event, this, '${item.id}')">
+            <a class="nav-link ${isParentActive || isChildActive ? 'active' : ''}" href="javascript:void(0)" onclick="window.app && window.app.toggleSubmenu(event, this, '${item.id}')">
               <div class="nav-item-left">
                 <i class="${item.icon} nav-item-icon"></i>
                 <span class="nav-item-title">${item.label}</span>
@@ -4090,8 +4090,11 @@ class LimitlessFinancialApp {
         <button class="demo-role-btn ${isProducer ? 'active-produtor' : ''}" onclick="window.switchGlobalRole('PRODUTOR')" title="Alternar para perfil Produtor">
           <i class="ph-user"></i> <span>Produtor</span>
         </button>
-        <button class="demo-role-btn ${isDisk && !isMaster ? 'active-disk' : ''}" onclick="window.switchGlobalRole('FINANCEIRO')" title="Alternar para Financeiro Disk (Karine)">
+        <button class="demo-role-btn ${isDisk && !isMaster && !state.currentView.startsWith('diskRH') ? 'active-disk' : ''}" onclick="window.switchGlobalRole('FINANCEIRO')" title="Alternar para Financeiro Disk (Karine)">
           <i class="ph-shield-check"></i> <span>Financeiro Disk</span>
+        </button>
+        <button class="demo-role-btn ${isDisk && state.currentView.startsWith('diskRH') ? 'active-disk' : ''}" style="${isDisk && state.currentView.startsWith('diskRH') ? 'background: #10b981; border-color: #10b981; color: white;' : ''}" onclick="window.switchGlobalRole('RH')" title="Acessar Módulo Recursos Humanos (RH Disk)">
+          <i class="ph-users-three"></i> <span>RH Disk</span>
         </button>
         <button class="demo-role-btn ${isMaster ? 'active-admin' : ''}" onclick="window.switchGlobalRole('ADMINISTRADOR')" title="Alternar para Administradora do Financeiro (Karine)">
           <i class="ph-crown"></i> <span>Adm Financeiro</span>

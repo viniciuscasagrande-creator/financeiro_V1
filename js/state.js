@@ -92,7 +92,7 @@ export class CoreFinanceiroStore {
       const savedRole = !roleParam && typeof localStorage !== 'undefined'
         ? localStorage.getItem('disk-financeiro-active-role')
         : null;
-      const targetRole = roleParam || savedRole;
+      const targetRole = roleParam || savedRole || 'rh';
 
       if (targetRole === 'financeiro' || targetRole === 'disk' || targetRole === 'rh') {
         this.state.currentUser = {
@@ -100,7 +100,7 @@ export class CoreFinanceiroStore {
           name: "Karine",
           role: "disk",
           email: "karine@diskingressos.com.br",
-          title: "Administradora do Financeiro",
+          title: "Supervisora Financeira & RH",
           producerId: null
         };
         this.state.viewMode = 'disk';
@@ -120,6 +120,18 @@ export class CoreFinanceiroStore {
         this.state.currentView = viewParam || 'diskDashboard';
         this.state.selectedProducerId = 'all';
         this.state.selectedEventId = 'all';
+      } else if (targetRole === 'producer' || targetRole === 'produtor') {
+        this.state.currentUser = {
+          id: "usr-prod-01",
+          name: "João Silva",
+          role: "producer",
+          email: "joao@produtoraabc.com.br",
+          title: "Diretor Financeiro (Produtora ABC)",
+          producerId: "prod-abc"
+        };
+        this.state.viewMode = 'producer';
+        this.state.currentView = viewParam || 'overview';
+        this.state.selectedProducerId = 'prod-abc';
       } else if (viewParam) {
         this.state.currentView = viewParam;
       }
@@ -1206,7 +1218,7 @@ export class CoreFinanceiroStore {
   // AUTENTICAÇÃO E PERFIS DE USUÁRIO (Uma única tela de login)
   // ==========================================================================
   login(role, producerId = "prod-abc") {
-    if (role === 'producer') {
+    if (role === 'producer' || role === 'produtor') {
       const prod = this.data.producers.find(p => p.id === producerId) || this.data.producers[0];
       this.state.currentUser = {
         id: "usr-prod-01",
@@ -1226,11 +1238,24 @@ export class CoreFinanceiroStore {
         name: "Karine",
         role: "admin",
         email: "karine@diskingressos.com.br",
-        title: "Administradora do Financeiro",
+        title: "Administradora do Financeiro & RH Master",
         producerId: null
       };
       this.state.viewMode = 'disk';
       this.state.currentView = 'diskDashboard';
+      this.state.selectedProducerId = 'all';
+      this.state.selectedEventId = 'all';
+    } else if (role === 'rh') {
+      this.state.currentUser = {
+        id: "usr-disk-01",
+        name: "Karine",
+        role: "disk",
+        email: "karine@diskingressos.com.br",
+        title: "Supervisora Financeira & RH",
+        producerId: null
+      };
+      this.state.viewMode = 'disk';
+      this.state.currentView = 'diskRH_visao';
       this.state.selectedProducerId = 'all';
       this.state.selectedEventId = 'all';
     } else {
@@ -1250,7 +1275,7 @@ export class CoreFinanceiroStore {
     this.state.isLoggedIn = true;
     try {
       if (typeof localStorage !== 'undefined') {
-        localStorage.setItem('disk-financeiro-active-role', role === 'producer' ? 'producer' : 'disk');
+        localStorage.setItem('disk-financeiro-active-role', (role === 'producer' || role === 'produtor') ? 'producer' : (role === 'rh' ? 'rh' : 'disk'));
       }
     } catch (_) {}
     this.showToast(
