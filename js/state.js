@@ -4466,6 +4466,100 @@ export class CoreFinanceiroStore {
     return novoColab;
   }
 
+  atualizarColaboradorRH(id, dados) {
+    const colab = (this.data.rhColaboradores || []).find(c => c.id === id);
+    if (!colab) throw new Error("Colaborador não encontrado.");
+
+    if (dados.nome) colab.nome = dados.nome;
+    if (dados.email) colab.email = dados.email;
+    if (dados.telefone) colab.telefone = dados.telefone;
+    if (dados.cargoNome || dados.cargo) colab.cargoNome = dados.cargoNome || dados.cargo;
+    if (dados.departamento || dados.departamentoNome) colab.departamento = dados.departamento || dados.departamentoNome;
+    if (dados.tipoContrato) colab.tipoContrato = dados.tipoContrato;
+    if (dados.salario !== undefined) colab.salario = parseFloat(dados.salario) || colab.salario;
+    if (dados.valorDiariaEvento !== undefined) colab.valorDiariaEvento = parseFloat(dados.valorDiariaEvento) || colab.valorDiariaEvento;
+    if (dados.chavePix) colab.chavePix = dados.chavePix;
+    if (dados.banco) colab.banco = dados.banco;
+
+    if (!this.data.rhAuditLogs) this.data.rhAuditLogs = [];
+    this.data.rhAuditLogs.unshift({
+      id: `log-rh-${Date.now()}`,
+      at: new Date().toLocaleString('pt-BR'),
+      by: this.state.currentUser.name || 'Gestor RH Disk',
+      colaboradorAfetado: `${colab.nome} (${colab.matricula})`,
+      acao: 'ALTERACAO_CADASTRAL_COLABORADOR',
+      entidade: 'Colaborador',
+      detalhes: `Ficha do colaborador atualizada no RH Disk.`,
+      ip: '127.0.0.1'
+    });
+
+    this.showToast("✓ Ficha Atualizada", `Dados de ${colab.nome} foram salvos com sucesso.`, "success");
+    this.persist();
+    this.notify();
+    return colab;
+  }
+
+  cadastrarGeofenceRH(dados) {
+    if (!dados || !dados.nome) throw new Error("Nome da cerca virtual é obrigatório.");
+    const id = dados.id || `geo-${Date.now()}`;
+    const novaCerca = {
+      id,
+      nome: dados.nome,
+      latitude: parseFloat(dados.latitude) || -25.4284,
+      longitude: parseFloat(dados.longitude) || -49.2733,
+      raioMetros: parseInt(dados.raioMetros, 10) || 150,
+      tipoLocal: dados.tipoLocal || 'ARENA_SHOW',
+      cidade: dados.cidade || 'Curitiba - PR',
+      status: dados.status || 'ATIVA',
+      criadaEm: new Date().toISOString()
+    };
+
+    if (!this.data.rhGeofences) this.data.rhGeofences = [];
+    this.data.rhGeofences.push(novaCerca);
+
+    if (!this.data.rhAuditLogs) this.data.rhAuditLogs = [];
+    this.data.rhAuditLogs.unshift({
+      id: `log-rh-${Date.now()}`,
+      at: new Date().toLocaleString('pt-BR'),
+      by: this.state.currentUser.name || 'Gestor RH Disk',
+      colaboradorAfetado: 'Geral',
+      acao: 'CRIACAO_GEOFENCE',
+      entidade: 'Geofence',
+      detalhes: `Cerca virtual [${novaCerca.nome}] configurada com raio de ${novaCerca.raioMetros}m.`,
+      ip: '127.0.0.1'
+    });
+
+    this.showToast("✓ Cerca Virtual Criada", `Geofence "${novaCerca.nome}" ativada para o Disk Ponto.`, "success");
+    this.persist();
+    this.notify();
+    return novaCerca;
+  }
+
+  alocarEquipeEventoRH(dados) {
+    if (!dados || !dados.eventoId) throw new Error("Evento é obrigatório.");
+    const novoCusto = {
+      id: `equipe-evt-${Date.now()}`,
+      eventoId: dados.eventoId,
+      eventoNome: dados.eventoNome || 'Festival Curitiba 2026',
+      dataEvento: dados.dataEvento || new Date().toISOString().split('T')[0],
+      quantidadeColaboradores: parseInt(dados.quantidade, 10) || 1,
+      funcao: dados.funcao || 'Operações e Bilheteria',
+      horasTotaisPrevistas: parseInt(dados.horas, 10) || 8,
+      valorTotal: parseFloat(dados.valorTotal) || 450.00,
+      status: 'ESCALADO',
+      integradoDRE: true,
+      dataApropriacao: new Date().toLocaleString('pt-BR')
+    };
+
+    if (!this.data.rhEquipesCustosEvento) this.data.rhEquipesCustosEvento = [];
+    this.data.rhEquipesCustosEvento.unshift(novoCusto);
+
+    this.showToast("✓ Equipe Escalada", `Alocação para ${novoCusto.eventoNome} apropriada no DRE.`, "success");
+    this.persist();
+    this.notify();
+    return novoCusto;
+  }
+
   registrarBatidaPontoRH(dados) {
     if (!dados || !dados.colaboradorId) {
       throw new Error("Colaborador é obrigatório.");

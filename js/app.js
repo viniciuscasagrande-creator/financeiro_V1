@@ -6944,6 +6944,39 @@ class LimitlessFinancialApp {
     `);
   }
 
+  p19ConcInvestigate(id) {
+    return this.p19Investigate(id);
+  }
+
+  p19ImportBankStatement() {
+    this.showModal(`
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title fw-bold"><i class="ph-file-arrow-up me-2"></i>Importar Extrato Bancário (OFX / CSV)</h5>
+        <button type="button" class="btn-close btn-close-white" onclick="window.app.closeModal()"></button>
+      </div>
+      <div class="modal-body p-4">
+        <div class="mb-3">
+          <label class="form-label fw-bold small">Conta Bancária de Destino</label>
+          <select class="form-select">
+            <option value="santander">Banco Santander (033) - Ag 0432 Conta 48291-0</option>
+            <option value="itau">Itaú Unibanco (341) - Ag 1244 Conta 93821-4</option>
+          </select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-bold small">Arquivo de Extrato (.OFX ou .CSV)</label>
+          <input type="file" class="form-control" accept=".ofx,.csv">
+        </div>
+        <div class="alert alert-info py-2 small mb-0">
+          <i class="ph-info me-1"></i> O motor de conciliação processará os lançamentos em D+0 comparando com os registros de PIX e CNAB.
+        </div>
+        <div class="d-flex justify-content-end gap-2 pt-3 border-top mt-3">
+          <button type="button" class="btn btn-light" onclick="window.app.closeModal()">Cancelar</button>
+          <button type="button" class="btn btn-primary fw-bold" onclick="financialStore.showToast('✓ Extrato Conciliado', '34 novos lançamentos conciliados com sucesso.', 'success'); window.app.closeModal();">Processar Extrato</button>
+        </div>
+      </div>
+    `);
+  }
+
   p19Investigate(id) {
     const st = financialStore.getState();
     const item = (st.data.reconciliationItems && st.data.reconciliationItems.find(x => x.id === id)) || {
@@ -9041,6 +9074,238 @@ window.LimitlessApp = {
     } catch (e) {
       alert("Erro ao cadastrar: " + e.message);
     }
+  },
+
+  editarColaborador(id) {
+    const db = financialStore.getState().db || {};
+    const colab = (db.rhColaboradores || []).find(c => c.id === id);
+    if (!colab) return financialStore.showToast("Erro", "Colaborador não encontrado.", "danger");
+
+    const html = `
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title fw-bold"><i class="ph-pencil-simple me-2"></i>Editar Ficha do Colaborador (${colab.nome})</h5>
+        <button type="button" class="btn-close btn-close-white" onclick="window.app.closeModal()"></button>
+      </div>
+      <div class="modal-body p-4">
+        <form id="form-editar-colaborador" onsubmit="window.LimitlessApp.salvarEdicaoColaborador(event, '${colab.id}')">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label fw-bold small">Nome Completo *</label>
+              <input type="text" class="form-control" name="nome" required value="${colab.nome}">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label fw-bold small">CPF</label>
+              <input type="text" class="form-control" name="cpf" disabled value="${colab.cpf}">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label fw-bold small">Matrícula</label>
+              <input type="text" class="form-control" disabled value="${colab.matricula || '-'}">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-bold small">E-mail Profissional</label>
+              <input type="email" class="form-control" name="email" value="${colab.email || ''}">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-bold small">Telefone / WhatsApp</label>
+              <input type="text" class="form-control" name="telefone" value="${colab.telefone || ''}">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-bold small">Cargo / Função *</label>
+              <input type="text" class="form-control" name="cargoNome" required value="${colab.cargoNome || colab.cargo || ''}">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-bold small">Departamento *</label>
+              <select class="form-select" name="departamentoNome">
+                <option value="Operações e Bilheteria de Eventos" ${colab.departamento?.includes('Operações') ? 'selected' : ''}>Operações e Bilheteria de Eventos</option>
+                <option value="Financeiro, Controladoria e Tesouraria" ${colab.departamento?.includes('Financeiro') ? 'selected' : ''}>Financeiro, Controladoria e Tesouraria</option>
+                <option value="Tecnologia da Informação & Core" ${colab.departamento?.includes('Tecnologia') ? 'selected' : ''}>Tecnologia da Informação & Core</option>
+                <option value="Comercial, Parcerias e Atendimento" ${colab.departamento?.includes('Comercial') ? 'selected' : ''}>Comercial, Parcerias e Atendimento</option>
+                <option value="Gente, Gestão & Recursos Humanos" ${colab.departamento?.includes('Gente') ? 'selected' : ''}>Gente, Gestão & Recursos Humanos</option>
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-bold small">Regime de Contrato *</label>
+              <select class="form-select" name="tipoContrato">
+                <option value="CLT" ${colab.tipoContrato === 'CLT' ? 'selected' : ''}>CLT (Quadro Efetivo)</option>
+                <option value="FREELANCER_EVENTO" ${colab.tipoContrato === 'FREELANCER_EVENTO' ? 'selected' : ''}>Freelancer de Evento</option>
+                <option value="PJ" ${colab.tipoContrato === 'PJ' ? 'selected' : ''}>Pessoa Jurídica (PJ)</option>
+                <option value="ESTAGIO" ${colab.tipoContrato === 'ESTAGIO' ? 'selected' : ''}>Estágio</option>
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-bold small">Salário Base (CLT) R$</label>
+              <input type="number" step="0.01" class="form-control" name="salario" value="${colab.salario || 0}">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-bold small">Valor Diária R$</label>
+              <input type="number" step="0.01" class="form-control" name="valorDiariaEvento" value="${colab.valorDiariaEvento || 0}">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-bold small">Banco</label>
+              <input type="text" class="form-control" name="banco" value="${colab.banco || ''}">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-bold small">Chave PIX</label>
+              <input type="text" class="form-control" name="chavePix" value="${colab.chavePix || ''}">
+            </div>
+          </div>
+          <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
+            <button type="button" class="btn btn-light" onclick="window.app.closeModal()">Cancelar</button>
+            <button type="submit" class="btn btn-primary fw-bold"><i class="ph-check me-1"></i> Salvar Alterações</button>
+          </div>
+        </form>
+      </div>
+    `;
+    window.app.openModal(html);
+  },
+
+  salvarEdicaoColaborador(event, id) {
+    event.preventDefault();
+    const fd = new FormData(event.target);
+    financialStore.atualizarColaboradorRH(id, {
+      nome: fd.get('nome'),
+      email: fd.get('email'),
+      telefone: fd.get('telefone'),
+      cargoNome: fd.get('cargoNome'),
+      departamento: fd.get('departamentoNome'),
+      tipoContrato: fd.get('tipoContrato'),
+      salario: fd.get('salario'),
+      valorDiariaEvento: fd.get('valorDiariaEvento'),
+      banco: fd.get('banco'),
+      chavePix: fd.get('chavePix')
+    });
+    window.app.closeModal();
+    window.app.refreshData();
+  },
+
+  abrirModalNovaGeofence() {
+    const html = `
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title fw-bold"><i class="ph-map-pin me-2"></i>Nova Cerca Virtual (Geofence de Ponto)</h5>
+        <button type="button" class="btn-close btn-close-white" onclick="window.app.closeModal()"></button>
+      </div>
+      <div class="modal-body p-4">
+        <form id="form-nova-geofence" onsubmit="window.LimitlessApp.salvarNovaGeofence(event)">
+          <div class="mb-3">
+            <label class="form-label fw-bold small">Nome do Local / Arena de Eventos *</label>
+            <input type="text" class="form-control" name="nome" required placeholder="Ex: Ligga Arena - Portão Principal (Eventos)">
+          </div>
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              <label class="form-label fw-bold small">Latitude GPS *</label>
+              <input type="number" step="0.0000001" class="form-control" name="latitude" required value="-25.4482">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-bold small">Longitude GPS *</label>
+              <input type="number" step="0.0000001" class="form-control" name="longitude" required value="-49.2770">
+            </div>
+          </div>
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              <label class="form-label fw-bold small">Raio de Validação (Metros) *</label>
+              <input type="number" class="form-control" name="raioMetros" required value="150" min="20" max="2000">
+              <div class="form-text small">Tolerância aceita pelo aplicativo Disk Ponto para validação do ponto.</div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-bold small">Tipo de Estabelecimento</label>
+              <select class="form-select" name="tipoLocal">
+                <option value="ARENA_SHOW">Arena de Shows / Estádio</option>
+                <option value="TEATRO">Teatro / Casa de Espetáculos</option>
+                <option value="SEDE_ADMINISTRATIVA">Sede Administrativa</option>
+                <option value="BILHETERIA_EXTERNA">Ponto de Venda / Bilheteria</option>
+              </select>
+            </div>
+          </div>
+          <div class="d-flex justify-content-end gap-2 pt-3 border-top mt-3">
+            <button type="button" class="btn btn-light" onclick="window.app.closeModal()">Cancelar</button>
+            <button type="submit" class="btn btn-primary fw-bold"><i class="ph-check me-1"></i> Ativar Cerca Virtual</button>
+          </div>
+        </form>
+      </div>
+    `;
+    window.app.openModal(html);
+  },
+
+  salvarNovaGeofence(event) {
+    event.preventDefault();
+    const fd = new FormData(event.target);
+    financialStore.cadastrarGeofenceRH({
+      nome: fd.get('nome'),
+      latitude: fd.get('latitude'),
+      longitude: fd.get('longitude'),
+      raioMetros: fd.get('raioMetros'),
+      tipoLocal: fd.get('tipoLocal')
+    });
+    window.app.closeModal();
+    window.app.refreshData();
+  },
+
+  abrirModalAlocarEquipe() {
+    const events = financialStore.getState().data?.events || [];
+
+    const html = `
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title fw-bold"><i class="ph-users-three me-2"></i>Alocar Equipe em Show / Evento</h5>
+        <button type="button" class="btn-close btn-close-white" onclick="window.app.closeModal()"></button>
+      </div>
+      <div class="modal-body p-4">
+        <form id="form-alocar-equipe" onsubmit="window.LimitlessApp.salvarAlocacaoEquipe(event)">
+          <div class="mb-3">
+            <label class="form-label fw-bold small">Selecione o Evento *</label>
+            <select class="form-select" name="eventoId" required>
+              ${events.length > 0 ? events.map(e => `<option value="${e.id}">${e.name} (${e.venue || 'Curitiba'})</option>`).join('') : '<option value="evt-001">Festival Curitiba 2026 (Pedreira Paulo Leminski)</option>'}
+            </select>
+          </div>
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              <label class="form-label fw-bold small">Função Operacional *</label>
+              <select class="form-select" name="funcao">
+                <option value="Operador de Bilheteria / Caixa">Operador de Bilheteria / Caixa</option>
+                <option value="Coordenador de Portaria e Acesso">Coordenador de Portaria e Acesso</option>
+                <option value="Suporte Técnico de Catracas">Suporte Técnico de Catracas</option>
+                <option value="Supervisor Geral de Operações">Supervisor Geral de Operações</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-bold small">Quantidade de Colaboradores *</label>
+              <input type="number" class="form-control" name="quantidade" value="4" min="1" max="100">
+            </div>
+          </div>
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              <label class="form-label fw-bold small">Horas Previstas de Operação</label>
+              <input type="number" class="form-control" name="horas" value="8" min="1" max="24">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-bold small">Custo Total Apropriado (DRE) R$ *</label>
+              <input type="number" step="0.01" class="form-control" name="valorTotal" value="720.00">
+            </div>
+          </div>
+          <div class="d-flex justify-content-end gap-2 pt-3 border-top mt-3">
+            <button type="button" class="btn btn-light" onclick="window.app.closeModal()">Cancelar</button>
+            <button type="submit" class="btn btn-primary fw-bold"><i class="ph-check me-1"></i> Confirmar Alocação no DRE</button>
+          </div>
+        </form>
+      </div>
+    `;
+    window.app.openModal(html);
+  },
+
+  salvarAlocacaoEquipe(event) {
+    event.preventDefault();
+    const fd = new FormData(event.target);
+    const events = financialStore.getState().data?.events || [];
+    const evt = events.find(e => e.id === fd.get('eventoId')) || { name: 'Festival Curitiba 2026' };
+    financialStore.alocarEquipeEventoRH({
+      eventoId: fd.get('eventoId'),
+      eventoNome: evt.name,
+      funcao: fd.get('funcao'),
+      quantidade: fd.get('quantidade'),
+      horas: fd.get('horas'),
+      valorTotal: fd.get('valorTotal')
+    });
+    window.app.closeModal();
+    window.app.refreshData();
   },
 
   abrirSimuladorPontoMobile() {
