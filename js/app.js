@@ -11257,9 +11257,27 @@ window.LimitlessApp = {
 
   salvarModalModuloRH(event, moduloKey, acao) {
     event.preventDefault();
+    try {
+      const form = event.target;
+      const formData = new FormData(form);
+      const values = Object.fromEntries(formData.entries());
+      const nomeIdentificado = values.nome || values.colaborador || values.candidato || values.descricao || values.beneficio || values.cargo || values.titulo || values.paramNome || values.tipoRelatorio || values.tipoAusencia || values.mentor || acao;
+      const responsavelIdentificado = values.gestor || values.responsavel || values.mentor || values.medico || 'RH Disk';
+      if (window.RHDiskV23 && typeof window.RHDiskV23.saveRecord === 'function') {
+        window.RHDiskV23.saveRecord(moduloKey, {
+          nome: `${acao} • ${nomeIdentificado}`,
+          responsavel: responsavelIdentificado,
+          detalhes: values
+        });
+      }
+    } catch (err) {
+      console.warn('Erro ao persistir registro RH V2.3:', err);
+    }
     financialStore.showToast("✓ Operação Concluída", `Ação "${acao}" do módulo [${moduloKey}] registrada com sucesso no RH Disk.`, "success");
     window.app.closeModal();
-    window.app.refreshData();
+    if (window.app && typeof window.app.render === 'function') {
+      window.app.render();
+    }
   }
 };
 

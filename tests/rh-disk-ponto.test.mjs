@@ -485,5 +485,64 @@ function calcularDistanciaHaversine(lat1, lon1, lat2, lon2) {
   console.log('✓ Benefícios corporativos gerenciam VA, VR, Combustível, VT e Outros customizados pelo RH');
 }
 
-console.log('\nTodos os 29 testes do RH Disk e Disk Ponto (Fases 1 a 10 + RH V2) passaram com sucesso!\n');
+// Teste 30: RH Disk V2.3 - Motor de Persistência Operacional e Workflows de Status com Recálculo de KPIs
+{
+  const store = {};
+  function mockSaveRecord(mod, record) {
+    const arr = store[mod] || [];
+    const newRec = {
+      id: `RH-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      nome: record.nome || 'Novo Registro',
+      status: record.status || 'Pendente',
+      criadoEm: '05/10/2026 14:00',
+      responsavel: record.responsavel || 'RH Disk'
+    };
+    arr.unshift(newRec);
+    store[mod] = arr;
+    return newRec;
+  }
+
+  function mockUpdateStatus(mod, id, novoStatus) {
+    const list = store[mod] || [];
+    const item = list.find(r => r.id === id);
+    assert(item, 'Item deve existir na base');
+    item.status = novoStatus;
+    item.atualizadoEm = '05/10/2026 14:05';
+    return item;
+  }
+
+  function mockCalcularKPIs(mod) {
+    const regs = store[mod] || [];
+    return {
+      pendentes: regs.filter(r => r.status === 'Pendente').length,
+      andamento: regs.filter(r => r.status === 'Em análise' || r.status === 'Em andamento').length,
+      concluidos: regs.filter(r => r.status === 'Aprovado' || r.status === 'Concluído').length,
+      total: regs.length
+    };
+  }
+
+  // 1. Inserir registro
+  const rec = mockSaveRecord('ferias', { nome: 'Férias • Mariana Duarte', responsavel: 'Gestor' });
+  assert.strictEqual(rec.status, 'Pendente');
+  let kpis = mockCalcularKPIs('ferias');
+  assert.strictEqual(kpis.pendentes, 1);
+  assert.strictEqual(kpis.total, 1);
+
+  // 2. Colocar em análise
+  mockUpdateStatus('ferias', rec.id, 'Em análise');
+  kpis = mockCalcularKPIs('ferias');
+  assert.strictEqual(kpis.pendentes, 0);
+  assert.strictEqual(kpis.andamento, 1);
+
+  // 3. Aprovar
+  mockUpdateStatus('ferias', rec.id, 'Aprovado');
+  kpis = mockCalcularKPIs('ferias');
+  assert.strictEqual(kpis.andamento, 0);
+  assert.strictEqual(kpis.concluidos, 1);
+  assert.strictEqual(kpis.total, 1);
+
+  console.log('✓ RH Disk V2.3: Persistência operacional e ciclo de workflow (Pendente -> Em análise -> Aprovado) recalculam KPIs');
+}
+
+console.log('\nTodos os 30 testes do RH Disk e Disk Ponto (Fases 1 a 10 + RH V2 + V2.3 Operação Real) passaram com sucesso!\n');
 

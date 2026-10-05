@@ -3978,6 +3978,97 @@ export const RH_V2_MODULOS = {
   configuracoes: ['Configurações de RH','Parâmetros, políticas, jornadas e regras corporativas',['Nova política','Novo parâmetro','Editar regras','Publicar versão'],['Configuração','Escopo','Versão','Atualização','Status','Ação']]
 };
 
+function rhV23Store() {
+  const KEY = 'diskRH.v23.operacao';
+  const load = () => {
+    try {
+      return JSON.parse(localStorage.getItem(KEY) || '{}');
+    } catch {
+      return {};
+    }
+  };
+  const save = (d) => {
+    try {
+      localStorage.setItem(KEY, JSON.stringify(d));
+    } catch (e) {}
+  };
+  return { load, save, key: KEY };
+}
+
+export function installRHV23Runtime() {
+  if (typeof window === 'undefined' || window.RHDiskV23) return;
+  window.RHDiskV23 = {
+    list(mod) {
+      const d = rhV23Store().load();
+      return d[mod] || [];
+    },
+    saveRecord(mod, record) {
+      const d = rhV23Store().load();
+      const arr = d[mod] || [];
+      const newRec = {
+        id: `RH-${Date.now().toString().slice(-6)}`,
+        nome: record.nome || 'Novo Registro',
+        status: record.status || 'Pendente',
+        criadoEm: new Date().toLocaleString('pt-BR'),
+        responsavel: record.responsavel || 'RH Disk',
+        detalhes: record.detalhes || {}
+      };
+      arr.unshift(newRec);
+      d[mod] = arr;
+      rhV23Store().save(d);
+      return newRec;
+    },
+    create(mod, titulo) {
+      if (window.LimitlessApp && typeof window.LimitlessApp.abrirModalModuloRH === 'function') {
+        const cfg = RH_V2_MODULOS[mod] || RH_V2_MODULOS.aprovacoes;
+        window.LimitlessApp.abrirModalModuloRH(mod, cfg[2][0]);
+      } else {
+        const nome = prompt(`Novo registro em ${titulo}\nInforme nome/descrição:`);
+        if (!nome) return;
+        this.saveRecord(mod, { nome });
+        window.financialStore?.showToast?.('Registro criado', `${nome} foi incluído em ${titulo}.`, 'success');
+        window.LimitlessApp?.navigate?.(`diskRH_${mod}`);
+      }
+    },
+    status(mod, id, status) {
+      const d = rhV23Store().load();
+      const x = (d[mod] || []).find(r => r.id === id);
+      if (x) {
+        x.status = status;
+        x.atualizadoEm = new Date().toLocaleString('pt-BR');
+        rhV23Store().save(d);
+        window.financialStore?.showToast?.('Status atualizado', `Registro ${id} alterado para "${status}".`, 'info');
+      }
+      if (window.app && typeof window.app.render === 'function') {
+        window.app.render();
+      } else {
+        window.LimitlessApp?.navigate?.(`diskRH_${mod}`);
+      }
+    },
+    remove(mod, id) {
+      if (!confirm('Excluir este registro de homologação?')) return;
+      const d = rhV23Store().load();
+      d[mod] = (d[mod] || []).filter(r => r.id !== id);
+      rhV23Store().save(d);
+      window.financialStore?.showToast?.('Registro removido', `Registro ${id} excluído com sucesso.`, 'warning');
+      if (window.app && typeof window.app.render === 'function') {
+        window.app.render();
+      } else {
+        window.LimitlessApp?.navigate?.(`diskRH_${mod}`);
+      }
+    },
+    seed() {
+      const d = rhV23Store().load();
+      if (Object.keys(d).length) return;
+      d.ferias = [{ id: 'FER-001', nome: 'Solicitação de férias • Ana Souza', status: 'Pendente', criadoEm: '05/10/2026 09:15', responsavel: 'Gestor' }];
+      d.aprovacoes = [{ id: 'APR-001', nome: 'Férias • Ana Souza', status: 'Pendente', criadoEm: '05/10/2026 09:16', responsavel: 'RH' }];
+      d.reembolsos = [{ id: 'REE-001', nome: 'Reembolso Evento Curitiba • R$ 380,00', status: 'Em análise', criadoEm: '04/10/2026 17:20', responsavel: 'Financeiro' }];
+      rhV23Store().save(d);
+    }
+  };
+  window.RHDiskV23.seed();
+}
+
 function rhV2Action(label, modulo) {
   const safe = String(label).replace(/'/g, "\\'");
   const mod = String(modulo).replace(/'/g, "\\'");
@@ -3985,36 +4076,95 @@ function rhV2Action(label, modulo) {
 }
 
 export function renderDiskRHModulo(state, filterArg = 'aprovacoes') {
+  installRHV23Runtime();
   const key = String(filterArg || 'aprovacoes').toLowerCase().replace('diskrh_', '');
   const cfg = RH_V2_MODULOS[key] || RH_V2_MODULOS.aprovacoes;
   const [titulo, subtitulo, acoes, colunas] = cfg;
+
+  const regs = typeof window !== 'undefined' && window.RHDiskV23 ? window.RHDiskV23.list(key) : [];
+  const pend = regs.filter(r => r.status === 'Pendente').length;
+  const andamento = regs.filter(r => r.status === 'Em análise' || r.status === 'Em andamento').length;
+  const concl = regs.filter(r => r.status === 'Aprovado' || r.status === 'Concluído').length;
+
   const cards = [
-    ['Pendentes', '2', 'ph-hourglass-medium', 'text-warning'],
-    ['Em andamento', '5', 'ph-arrows-clockwise', 'text-primary'],
-    ['Concluídos no mês', '38', 'ph-check-circle', 'text-success'],
-    ['Conformidade', '100%', 'ph-shield-check', 'text-info']
+    ['Pendentes', pend, 'ph-hourglass-medium', 'text-warning'],
+    ['Em andamento', andamento, 'ph-arrows-clockwise', 'text-primary'],
+    ['Concluídos', concl, 'ph-check-circle', 'text-success'],
+    ['Total', regs.length, 'ph-database', 'text-info']
   ];
+
+  const rows = regs.length
+    ? regs.map(r => `
+      <tr>
+        <td>
+          <strong>${r.nome}</strong>
+          <div class="small text-muted">${r.id}</div>
+        </td>
+        <td>${r.responsavel || 'RH Disk'}</td>
+        <td>${r.criadoEm || '-'}</td>
+        <td>
+          <span class="badge ${r.status === 'Aprovado' || r.status === 'Concluído' ? 'bg-success' : (r.status === 'Pendente' ? 'bg-warning text-dark' : (r.status === 'Reprovado' ? 'bg-danger' : 'bg-info'))}">
+            ${r.status}
+          </span>
+        </td>
+        <td class="text-end">
+          <div class="btn-group btn-group-sm">
+            <button class="btn btn-outline-success" onclick="window.RHDiskV23.status('${key}', '${r.id}', 'Aprovado')" title="Aprovar">
+              <i class="ph ph-check"></i>
+            </button>
+            <button class="btn btn-outline-primary" onclick="window.RHDiskV23.status('${key}', '${r.id}', 'Em análise')" title="Colocar em Análise">
+              <i class="ph ph-eye"></i>
+            </button>
+            <button class="btn btn-outline-danger" onclick="window.RHDiskV23.status('${key}', '${r.id}', 'Reprovado')" title="Reprovar">
+              <i class="ph ph-x"></i>
+            </button>
+            <button class="btn btn-outline-secondary" onclick="window.RHDiskV23.remove('${key}', '${r.id}')" title="Excluir Registro">
+              <i class="ph ph-trash"></i>
+            </button>
+          </div>
+        </td>
+      </tr>
+    `).join('')
+    : `
+      <tr>
+        <td colspan="5" class="text-center py-5 text-muted">
+          <i class="ph-folder-notch-open fs-2 d-block mb-2 text-primary"></i>
+          Nenhum registro encontrado nesta rotina. Utilize <strong>"${acoes[0]}"</strong> para lançar o primeiro registro de homologação.
+        </td>
+      </tr>
+    `;
 
   return `
     <div class="content-area rh-v2-page container-fluid py-3" data-rh-modulo="${key}">
       <div class="d-flex justify-content-between align-items-start mb-4 flex-wrap gap-3">
         <div>
-          <h3 class="fw-bold mb-1"><i class="ph-briefcase text-primary me-2"></i>${titulo}</h3>
+          <div class="small text-primary fw-bold text-uppercase mb-1">RH DISK V2.3 • OPERAÇÃO REAL</div>
+          <h2 class="h3 fw-bold mb-1"><i class="ph-briefcase text-primary me-2"></i>${titulo}</h2>
           <p class="text-muted mb-0">${subtitulo}</p>
         </div>
         <div class="d-flex gap-2 flex-wrap">
-          ${acoes.map((a, i) => `
-            <button class="btn btn-sm ${i === 0 ? 'btn-primary' : 'btn-outline-primary'}" onclick="${i === 0 ? `window.LimitlessApp.abrirModalModuloRH('${key}', '${a}')` : rhV2Action(a, titulo)}">
-              <i class="ph ${i === 0 ? 'ph-plus-circle' : 'ph-play'} me-1"></i>${a}
+          <button class="btn btn-primary" onclick="window.LimitlessApp.abrirModalModuloRH('${key}', '${acoes[0]}')">
+            <i class="ph ph-plus-circle me-1"></i>${acoes[0]}
+          </button>
+          ${acoes.slice(1).map(a => `
+            <button class="btn btn-outline-primary" onclick="${rhV2Action(a, titulo)}">
+              ${a}
             </button>
           `).join('')}
         </div>
       </div>
 
+      <!-- Alerta de Homologação Operacional V2.3 -->
+      <div class="alert alert-primary py-2 d-flex align-items-center mb-4">
+        <i class="ph-database me-2 fs-5"></i>
+        <span><strong>Persistência Operacional V2.3:</strong> Inclusões e mudanças de status ficam salvas nesta instalação para validação completa do fluxo. A API/Core com PostgreSQL/Prisma será a próxima camada de persistência corporativa.</span>
+      </div>
+
+      <!-- Cards de KPIs Recalculados em Tempo Real -->
       <div class="row g-3 mb-4">
         ${cards.map(c => `
           <div class="col-xl-3 col-md-6">
-            <div class="card border-0 shadow-sm h-100">
+            <div class="card border-0 shadow-sm h-100 rh-kpi-card">
               <div class="card-body d-flex justify-content-between align-items-center">
                 <div>
                   <div class="text-muted small text-uppercase fw-bold">${c[0]}</div>
@@ -4027,9 +4177,10 @@ export function renderDiskRHModulo(state, filterArg = 'aprovacoes') {
         `).join('')}
       </div>
 
+      <!-- Tabela Operacional com Workflow -->
       <div class="card border-0 shadow-sm mb-4">
         <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
-          <h5 class="fw-bold mb-0">Gestão e Controle • ${titulo}</h5>
+          <h5 class="fw-bold mb-0">Operação de ${titulo}</h5>
           <div class="d-flex gap-2">
             <input class="form-control form-control-sm" placeholder="Buscar registros..." style="width:220px">
             <button class="btn btn-sm btn-outline-secondary" onclick="${rhV2Action('Filtrar', titulo)}">
@@ -4041,16 +4192,15 @@ export function renderDiskRHModulo(state, filterArg = 'aprovacoes') {
           <table class="table table-hover align-middle mb-0">
             <thead class="table-light">
               <tr class="small text-muted">
-                ${colunas.map(c => `<th>${c}</th>`).join('')}
+                <th>Registro / ID</th>
+                <th>Responsável</th>
+                <th>Data</th>
+                <th>Status</th>
+                <th class="text-end">Ações de Workflow</th>
               </tr>
             </thead>
             <tbody>
-              <tr>
-                <td colspan="${colunas.length}" class="text-center py-5 text-muted">
-                  <i class="ph-folder-notch-open fs-2 d-block mb-2 text-primary"></i>
-                  Base operacional sincronizada. Utilize <strong>"${acoes[0]}"</strong> para lançar um novo registro.
-                </td>
-              </tr>
+              ${rows}
             </tbody>
           </table>
         </div>
