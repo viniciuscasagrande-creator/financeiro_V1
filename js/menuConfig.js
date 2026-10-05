@@ -313,6 +313,7 @@ export const menuFinanceiroCompleto = [
       { id: 'diskRH_visao', label: 'Visão Geral RH', filterArg: 'visao', icon: 'ph-squares-four' },
       { id: 'diskRH_aprovacoes', label: 'Central de Aprovações', filterArg: 'aprovacoes', icon: 'ph-check-square-offset' },
       { id: 'diskRH_grupo_pessoas', label: 'PESSOAS E ESTRUTURA', icon: 'ph-identification-card', group: true, subItems: [
+        { id: 'diskRH_dashPessoas', label: 'Dashboard de Pessoas', filterArg: 'dash_pessoas', icon: 'ph-gauge' },
         { id: 'diskRH_colaboradores', label: 'Colaboradores', filterArg: 'colaboradores' },
         { id: 'diskRH_organograma', label: 'Estrutura Organizacional', filterArg: 'organograma' },
         { id: 'diskRH_cargosSalarios', label: 'Cargos e Salários', filterArg: 'cargos_salarios' },
@@ -320,6 +321,7 @@ export const menuFinanceiroCompleto = [
         { id: 'diskRH_patrimonio', label: 'Patrimônio do Colaborador', filterArg: 'patrimonio' }
       ]},
       { id: 'diskRH_grupo_dp', label: 'DEPARTAMENTO PESSOAL', icon: 'ph-briefcase', group: true, subItems: [
+        { id: 'diskRH_dashDP', label: 'Dashboard Departamento Pessoal', filterArg: 'dash_dp', icon: 'ph-gauge' },
         { id: 'diskRH_admissao', label: 'Admissão Digital', filterArg: 'admissao' },
         { id: 'diskRH_onboarding', label: 'Onboarding', filterArg: 'onboarding' },
         { id: 'diskRH_ferias', label: 'Férias', filterArg: 'ferias' },
@@ -334,19 +336,23 @@ export const menuFinanceiroCompleto = [
         { id: 'diskRH_esocial', label: 'eSocial', filterArg: 'esocial' }
       ]},
       { id: 'diskRH_grupo_ponto', label: 'PONTO E JORNADA', icon: 'ph-clock', group: true, subItems: [
+        { id: 'diskRH_dashPonto', label: 'Dashboard Ponto e Jornada', filterArg: 'dash_ponto', icon: 'ph-gauge' },
         { id: 'diskRH_ponto', label: 'Ponto e Jornada', filterArg: 'ponto' },
         { id: 'diskRH_geofences', label: 'Cercas Virtuais (Geofences)', filterArg: 'geofences' }
       ]},
       { id: 'diskRH_grupo_talentos', label: 'TALENTOS E DESENVOLVIMENTO', icon: 'ph-chart-line-up', group: true, subItems: [
+        { id: 'diskRH_dashTalentos', label: 'Dashboard de Talentos', filterArg: 'dash_talentos', icon: 'ph-gauge' },
         { id: 'diskRH_recrutamento', label: 'Recrutamento e Seleção', filterArg: 'recrutamento' },
         { id: 'diskRH_desempenho', label: 'Desempenho e PDI', filterArg: 'desempenho' },
         { id: 'diskRH_treinamentos', label: 'Treinamentos', filterArg: 'treinamentos' }
       ]},
       { id: 'diskRH_grupo_sst', label: 'SAÚDE E SEGURANÇA', icon: 'ph-first-aid-kit', group: true, subItems: [
+        { id: 'diskRH_dashSST', label: 'Dashboard SST', filterArg: 'dash_sst', icon: 'ph-gauge' },
         { id: 'diskRH_sst', label: 'SST e Medicina do Trabalho', filterArg: 'sst' },
         { id: 'diskRH_epis', label: 'EPIs e Segurança', filterArg: 'epis' }
       ]},
       { id: 'diskRH_grupo_eventos', label: 'EVENTOS E CUSTOS', icon: 'ph-calendar-check', group: true, subItems: [
+        { id: 'diskRH_dashEventos', label: 'Dashboard Eventos e Custos', filterArg: 'dash_eventos', icon: 'ph-gauge' },
         { id: 'diskRH_equipesEvento', label: 'Equipes por Evento', filterArg: 'equipes_evento' },
         { id: 'diskRH_freelancers', label: 'Temporários e Freelancers', filterArg: 'freelancers' },
         { id: 'diskRH_custosEvento', label: 'Custos de Pessoal por Evento', filterArg: 'custos_evento' },
@@ -354,11 +360,13 @@ export const menuFinanceiroCompleto = [
         { id: 'diskRH_reembolsos', label: 'Despesas e Reembolsos', filterArg: 'reembolsos' }
       ]},
       { id: 'diskRH_grupo_portais', label: 'PORTAIS E GESTÃO', icon: 'ph-user-switch', group: true, subItems: [
+        { id: 'diskRH_dashGestao', label: 'Dashboard do Gestor', filterArg: 'dash_gestao', icon: 'ph-gauge' },
         { id: 'diskRH_portalColaborador', label: 'Portal do Colaborador', filterArg: 'portal_colaborador' },
         { id: 'diskRH_portalGestor', label: 'Portal do Gestor', filterArg: 'portal_gestor' },
         { id: 'diskRH_relatorios', label: 'Relatórios e People Analytics', filterArg: 'relatorios' }
       ]},
       { id: 'diskRH_grupo_admin', label: 'ADMINISTRAÇÃO DO RH', icon: 'ph-gear-six', group: true, subItems: [
+        { id: 'diskRH_dashAdmin', label: 'Dashboard Administração RH', filterArg: 'dash_admin', icon: 'ph-gauge' },
         { id: 'diskRH_integracoes', label: 'Integrações de RH', filterArg: 'integracoes' },
         { id: 'diskRH_configuracoes', label: 'Configurações de RH', filterArg: 'configuracoes' },
         { id: 'diskRH_auditoria', label: 'Auditoria e LGPD', filterArg: 'auditoria' }

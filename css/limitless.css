@@ -1963,4 +1963,39 @@ body.theme-dark .scrollspy-pill.active,
 .nav-group-sub .rh-nav-group > .rh-nav-group-toggle.active-parent { font-weight: 900; }
 .nav-group-sub .rh-nav-group.is-open > .rh-nav-group-toggle .nav-arrow { transform: rotate(90deg); }
 
+/* RH Disk V2.2 — Dashboards Operacionais & Cards Clicáveis */
+.rh-dashboard-operacional {
+  animation: fadeIn 0.2s ease-in-out;
+}
+
+.rh-kpi-card {
+  cursor: pointer;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
+  user-select: none;
+}
+
+.rh-kpi-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.08) !important;
+}
+
+.rh-kpi-card:active {
+  transform: translateY(-1px);
+}
+
+.rh-attention-banner {
+  box-shadow: 0 4px 18px rgba(15, 23, 42, 0.15);
+}
+
+.rh-alert-btn {
+  transition: background-color 0.15s ease, transform 0.15s ease, border-color 0.15s ease;
+}
+
+.rh-alert-btn:hover {
+  transform: translateX(3px);
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+}
+
+
 

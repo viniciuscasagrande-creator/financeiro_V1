@@ -71,7 +71,8 @@ import {
   renderDiskRHReembolsos,
   renderDiskRHPortalColaborador,
   renderDiskRHPortalGestor,
-  renderDiskRHIntegracoes
+  renderDiskRHIntegracoes,
+  renderDiskRHDashboardOperacional
 } from '../js/views/rh/rhViews.js';
 
 let passed = 0;
@@ -178,7 +179,15 @@ const diskViews = [
   ['Disk: RH Reembolsos de Despesas', () => renderDiskRHReembolsos(stateDisk)],
   ['Disk: RH Portal do Colaborador', () => renderDiskRHPortalColaborador(stateDisk)],
   ['Disk: RH Portal do Gestor', () => renderDiskRHPortalGestor(stateDisk)],
-  ['Disk: RH Integracoes ERP e eSocial', () => renderDiskRHIntegracoes(stateDisk)]
+  ['Disk: RH Integracoes ERP e eSocial', () => renderDiskRHIntegracoes(stateDisk)],
+  ['Disk: RH Dashboard Pessoas', () => renderDiskRHDashboardOperacional(stateDisk, 'dash_pessoas')],
+  ['Disk: RH Dashboard Departamento Pessoal', () => renderDiskRHDashboardOperacional(stateDisk, 'dash_dp')],
+  ['Disk: RH Dashboard Ponto e Jornada', () => renderDiskRHDashboardOperacional(stateDisk, 'dash_ponto')],
+  ['Disk: RH Dashboard Talentos', () => renderDiskRHDashboardOperacional(stateDisk, 'dash_talentos')],
+  ['Disk: RH Dashboard SST', () => renderDiskRHDashboardOperacional(stateDisk, 'dash_sst')],
+  ['Disk: RH Dashboard Eventos e Custos', () => renderDiskRHDashboardOperacional(stateDisk, 'dash_eventos')],
+  ['Disk: RH Dashboard Portais e Gestao', () => renderDiskRHDashboardOperacional(stateDisk, 'dash_gestao')],
+  ['Disk: RH Dashboard Administracao', () => renderDiskRHDashboardOperacional(stateDisk, 'dash_admin')]
 ];
 
 for (const [name, fn] of diskViews) {

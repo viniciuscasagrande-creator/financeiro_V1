@@ -108,7 +108,8 @@ import {
   renderDiskRHPortalColaborador,
   renderDiskRHPortalGestor,
   renderDiskRHIntegracoes,
-  renderDiskRHModulo
+  renderDiskRHModulo,
+  renderDiskRHDashboardOperacional
 } from './views/rh/rhViews.js';
 import { initScrollSpy } from './components/scrollSpy.js';
 
@@ -722,6 +723,21 @@ class LimitlessFinancialApp {
         li.classList.add('is-open', 'nav-item-open');
         const sub = li.querySelector(':scope > .nav-group-sub') || li.querySelector('.nav-group-sub');
         if (sub) sub.style.display = 'flex';
+      }
+
+      // Se for um grupo de RH, navega diretamente para o painel operacional do grupo
+      const rhGroupToDash = {
+        diskRH_grupo_pessoas: { view: 'diskRH_dashPessoas', filter: 'dash_pessoas' },
+        diskRH_grupo_dp: { view: 'diskRH_dashDP', filter: 'dash_dp' },
+        diskRH_grupo_ponto: { view: 'diskRH_dashPonto', filter: 'dash_ponto' },
+        diskRH_grupo_talentos: { view: 'diskRH_dashTalentos', filter: 'dash_talentos' },
+        diskRH_grupo_sst: { view: 'diskRH_dashSST', filter: 'dash_sst' },
+        diskRH_grupo_eventos: { view: 'diskRH_dashEventos', filter: 'dash_eventos' },
+        diskRH_grupo_portais: { view: 'diskRH_dashGestao', filter: 'dash_gestao' },
+        diskRH_grupo_admin: { view: 'diskRH_dashAdmin', filter: 'dash_admin' }
+      };
+      if (rhGroupToDash[id]) {
+        this.navigate(rhGroupToDash[id].view, rhGroupToDash[id].filter);
       }
     } else {
       this.openedSubmenus.delete(id);
@@ -3207,6 +3223,26 @@ class LimitlessFinancialApp {
         case 'diskRH':
         case 'diskRH_visao':
           viewHtml = renderDiskRHVisaoGeral(state, this.currentFilterArg);
+          break;
+        case 'diskRH_dashPessoas':
+        case 'diskRH_dashDP':
+        case 'diskRH_dashPonto':
+        case 'diskRH_dashTalentos':
+        case 'diskRH_dashSST':
+        case 'diskRH_dashEventos':
+        case 'diskRH_dashGestao':
+        case 'diskRH_dashAdmin':
+        case 'diskRH_dashboardOperacional':
+          viewHtml = renderDiskRHDashboardOperacional(state, this.currentFilterArg || (
+            state.currentView === 'diskRH_dashPessoas' ? 'dash_pessoas' :
+            state.currentView === 'diskRH_dashDP' ? 'dash_dp' :
+            state.currentView === 'diskRH_dashPonto' ? 'dash_ponto' :
+            state.currentView === 'diskRH_dashTalentos' ? 'dash_talentos' :
+            state.currentView === 'diskRH_dashSST' ? 'dash_sst' :
+            state.currentView === 'diskRH_dashEventos' ? 'dash_eventos' :
+            state.currentView === 'diskRH_dashGestao' ? 'dash_gestao' :
+            state.currentView === 'diskRH_dashAdmin' ? 'dash_admin' : 'dash_pessoas'
+          ));
           break;
         case 'diskRH_colaboradores':
           viewHtml = renderDiskRHColaboradores(state, this.currentFilterArg);

@@ -55,10 +55,66 @@ export function renderDiskRHVisaoGeral(state, filterArg = 'visao') {
         </div>
       </div>
 
-      <!-- Top KPI Cards -->
+      <!-- Bloco Prioritário: Precisa da sua atenção -->
+      <div class="card border-0 shadow-sm mb-4 rh-attention-banner" style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); color: #fff; border-radius: 12px;">
+        <div class="card-body p-3 p-md-4">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <div class="d-flex align-items-center gap-2">
+              <span class="badge bg-danger rounded-circle p-2"><i class="ph-bell-ringing fs-5"></i></span>
+              <div>
+                <h5 class="fw-bold mb-0 text-white">Precisa da sua atenção</h5>
+                <span class="text-white-50 small">Pendências críticas e operacionais priorizadas para hoje (clique no card para resolver)</span>
+              </div>
+            </div>
+            <button class="btn btn-sm btn-outline-light d-none d-md-inline-block" onclick="window.LimitlessApp.navigate('diskRH_aprovacoes')">
+              <i class="ph-check-square me-1"></i> Central de Aprovações
+            </button>
+          </div>
+          <div class="row g-2">
+            <div class="col-md-4 col-sm-6">
+              <button class="btn btn-sm text-start w-100 p-2 d-flex align-items-center justify-content-between border border-secondary border-opacity-50 text-white bg-dark bg-opacity-50 rounded rh-alert-btn" onclick="window.LimitlessApp.navigate('diskRH_rescisoes')">
+                <span class="d-flex align-items-center text-truncate"><span class="badge bg-danger me-2">URGENTE</span> 3 rescisões aguardando</span>
+                <i class="ph-caret-right text-muted flex-shrink-0 ms-1"></i>
+              </button>
+            </div>
+            <div class="col-md-4 col-sm-6">
+              <button class="btn btn-sm text-start w-100 p-2 d-flex align-items-center justify-content-between border border-secondary border-opacity-50 text-white bg-dark bg-opacity-50 rounded rh-alert-btn" onclick="window.LimitlessApp.navigate('diskRH_aprovacoes')">
+                <span class="d-flex align-items-center text-truncate"><span class="badge bg-warning text-dark me-2">ATENÇÃO</span> 8 ajustes de ponto</span>
+                <i class="ph-caret-right text-muted flex-shrink-0 ms-1"></i>
+              </button>
+            </div>
+            <div class="col-md-4 col-sm-6">
+              <button class="btn btn-sm text-start w-100 p-2 d-flex align-items-center justify-content-between border border-secondary border-opacity-50 text-white bg-dark bg-opacity-50 rounded rh-alert-btn" onclick="window.LimitlessApp.navigate('diskRH_ferias')">
+                <span class="d-flex align-items-center text-truncate"><span class="badge bg-warning text-dark me-2">ATENÇÃO</span> 4 férias a analisar</span>
+                <i class="ph-caret-right text-muted flex-shrink-0 ms-1"></i>
+              </button>
+            </div>
+            <div class="col-md-4 col-sm-6">
+              <button class="btn btn-sm text-start w-100 p-2 d-flex align-items-center justify-content-between border border-secondary border-opacity-50 text-white bg-dark bg-opacity-50 rounded rh-alert-btn" onclick="window.LimitlessApp.navigate('diskRH_documentos')">
+                <span class="d-flex align-items-center text-truncate"><span class="badge bg-warning text-dark me-2">AVISO</span> 6 documentos a vencer</span>
+                <i class="ph-caret-right text-muted flex-shrink-0 ms-1"></i>
+              </button>
+            </div>
+            <div class="col-md-4 col-sm-6">
+              <button class="btn btn-sm text-start w-100 p-2 d-flex align-items-center justify-content-between border border-secondary border-opacity-50 text-white bg-dark bg-opacity-50 rounded rh-alert-btn" onclick="window.LimitlessApp.navigate('diskRH_geofences')">
+                <span class="d-flex align-items-center text-truncate"><span class="badge bg-warning text-dark me-2">OCORRÊNCIA</span> 2 geofences em alerta</span>
+                <i class="ph-caret-right text-muted flex-shrink-0 ms-1"></i>
+              </button>
+            </div>
+            <div class="col-md-4 col-sm-6">
+              <button class="btn btn-sm text-start w-100 p-2 d-flex align-items-center justify-content-between border border-secondary border-opacity-50 text-white bg-dark bg-opacity-50 rounded rh-alert-btn" onclick="window.LimitlessApp.navigate('diskRH_folhaCompleta')">
+                <span class="d-flex align-items-center text-truncate"><span class="badge bg-info text-white me-2">ROTINA</span> Folha aguardando fechamento</span>
+                <i class="ph-caret-right text-muted flex-shrink-0 ms-1"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Top KPI Cards (Clicáveis para Navegação Direta) -->
       <div class="row g-3 mb-4">
         <div class="col-md-3">
-          <div class="card border-0 shadow-sm border-start border-4 border-primary h-100">
+          <div class="card border-0 shadow-sm border-start border-4 border-primary h-100 rh-kpi-card" role="button" onclick="window.LimitlessApp.navigate('diskRH_colaboradores')">
             <div class="card-body">
               <div class="d-flex justify-content-between align-items-center mb-2">
                 <span class="text-muted small text-uppercase fw-bold">Headcount Ativo</span>
@@ -73,7 +129,7 @@ export function renderDiskRHVisaoGeral(state, filterArg = 'visao') {
         </div>
 
         <div class="col-md-3">
-          <div class="card border-0 shadow-sm border-start border-4 border-success h-100">
+          <div class="card border-0 shadow-sm border-start border-4 border-success h-100 rh-kpi-card" role="button" onclick="window.LimitlessApp.navigate('diskRH_geofences')">
             <div class="card-body">
               <div class="d-flex justify-content-between align-items-center mb-2">
                 <span class="text-muted small text-uppercase fw-bold">Cercas Virtuais (Geofences)</span>
@@ -88,7 +144,7 @@ export function renderDiskRHVisaoGeral(state, filterArg = 'visao') {
         </div>
 
         <div class="col-md-3">
-          <div class="card border-0 shadow-sm border-start border-4 border-info h-100">
+          <div class="card border-0 shadow-sm border-start border-4 border-info h-100 rh-kpi-card" role="button" onclick="window.LimitlessApp.navigate('diskRH_custosEvento')">
             <div class="card-body">
               <div class="d-flex justify-content-between align-items-center mb-2">
                 <span class="text-muted small text-uppercase fw-bold">Mão de Obra Eventos (DRE)</span>
@@ -103,7 +159,7 @@ export function renderDiskRHVisaoGeral(state, filterArg = 'visao') {
         </div>
 
         <div class="col-md-3">
-          <div class="card border-0 shadow-sm border-start border-4 border-warning h-100">
+          <div class="card border-0 shadow-sm border-start border-4 border-warning h-100 rh-kpi-card" role="button" onclick="window.LimitlessApp.navigate('diskRH_aprovacoes')">
             <div class="card-body">
               <div class="d-flex justify-content-between align-items-center mb-2">
                 <span class="text-muted small text-uppercase fw-bold">Ajustes Pendentes</span>
@@ -4014,5 +4070,352 @@ export function renderDiskRHModulo(state, filterArg = 'aprovacoes') {
     </div>
   `;
 }
+
+// ============================================================================
+// RH DISK V2.2 — DASHBOARDS OPERACIONAIS INTEGRADOS POR DOMÍNIO
+// ============================================================================
+
+export const RH_DASHBOARDS = {
+  dash_pessoas: {
+    titulo: 'Dashboard de Pessoas e Estrutura',
+    subtitulo: 'Visão operacional do quadro de pessoas, contratos, estrutura e movimentações.',
+    icon: 'ph-users-three',
+    kpis: [
+      ['Colaboradores ativos', '42', '+3 no mês', 'diskRH_colaboradores'],
+      ['Admissões em andamento', '7', '3 aguardam documentos', 'diskRH_admissao'],
+      ['Contratos / docs a vencer', '6', 'Próximos 30 dias', 'diskRH_documentos'],
+      ['Movimentações pendentes', '5', 'Cargo ou salário', 'diskRH_cargosSalarios']
+    ],
+    alertas: [
+      ['danger', '2 contratos de experiência vencem em até 7 dias', 'diskRH_documentos'],
+      ['warning', '3 admissões aguardam validação documental', 'diskRH_admissao'],
+      ['info', '5 alterações de cargo/salário aguardam análise', 'diskRH_cargosSalarios']
+    ],
+    atalhos: [
+      ['Novo colaborador', 'diskRH_colaboradores', 'ph-user-plus'],
+      ['Admissão digital', 'diskRH_admissao', 'ph-identification-card'],
+      ['Organograma', 'diskRH_organograma', 'ph-tree-structure'],
+      ['Documentos', 'diskRH_documentos', 'ph-files']
+    ]
+  },
+  dash_dp: {
+    titulo: 'Dashboard Departamento Pessoal',
+    subtitulo: 'Folha, férias, benefícios, afastamentos, eSocial e desligamentos em uma única visão.',
+    icon: 'ph-briefcase',
+    kpis: [
+      ['Folha atual', 'R$ 684 mil', 'Competência aberta', 'diskRH_folhaCompleta'],
+      ['Férias a programar', '14', 'Próximos 60 dias', 'diskRH_ferias'],
+      ['Afastamentos ativos', '4', '1 retorno esta semana', 'diskRH_ausencias'],
+      ['Pendências eSocial', '8', 'Requer validação', 'diskRH_esocial']
+    ],
+    alertas: [
+      ['danger', '3 rescisões aguardam processamento formal', 'diskRH_rescisoes'],
+      ['warning', '4 solicitações de férias aguardam aprovação', 'diskRH_ferias'],
+      ['warning', '8 lotes do eSocial precisam de validação prévia', 'diskRH_esocial'],
+      ['info', 'Folha da competência atual aguardando fechamento', 'diskRH_folhaCompleta']
+    ],
+    atalhos: [
+      ['Calcular folha', 'diskRH_folhaCompleta', 'ph-calculator'],
+      ['Férias', 'diskRH_ferias', 'ph-beach-ball'],
+      ['Benefícios', 'diskRH_beneficios', 'ph-heart'],
+      ['eSocial', 'diskRH_esocial', 'ph-cloud-arrow-up']
+    ]
+  },
+  dash_ponto: {
+    titulo: 'Dashboard Ponto e Jornada',
+    subtitulo: 'Situação do dia, ocorrências em tempo real, geofences e pendências de jornada.',
+    icon: 'ph-clock-countdown',
+    kpis: [
+      ['Presentes agora', '38', '90% do quadro hoje', 'diskRH_ponto'],
+      ['Em intervalo', '4', 'Dentro da jornada', 'diskRH_ponto'],
+      ['Atrasos hoje', '2', 'Requer acompanhamento', 'diskRH_ponto'],
+      ['Ajustes pendentes', '8', 'Aguardando aprovação', 'diskRH_aprovacoes']
+    ],
+    alertas: [
+      ['danger', '2 batidas foram realizadas fora da geofence autorizada', 'diskRH_geofences'],
+      ['warning', '8 ajustes de ponto aguardam aprovação do gestor/RH', 'diskRH_aprovacoes'],
+      ['warning', '2 colaboradores com atraso superior à tolerância', 'diskRH_ponto'],
+      ['info', 'Banco de horas apurado: +340h na competência', 'diskRH_ponto']
+    ],
+    atalhos: [
+      ['Monitor de ponto', 'diskRH_ponto', 'ph-clock-countdown'],
+      ['Geofences', 'diskRH_geofences', 'ph-map-pin'],
+      ['Aprovar ajustes', 'diskRH_aprovacoes', 'ph-check-square'],
+      ['Equipes de evento', 'diskRH_equipesEvento', 'ph-users-four']
+    ]
+  },
+  dash_talentos: {
+    titulo: 'Dashboard Talentos e Desenvolvimento',
+    subtitulo: 'Recrutamento, processo seletivo, desempenho, PDI e capacitação da equipe.',
+    icon: 'ph-chart-line-up',
+    kpis: [
+      ['Vagas abertas', '5', '4 prioritárias', 'diskRH_recrutamento'],
+      ['Candidatos no funil', '24', '6 em entrevista', 'diskRH_recrutamento'],
+      ['Avaliações pendentes', '14', 'Ciclo atual', 'diskRH_desempenho'],
+      ['Treinamentos a vencer', '8', 'NRs obrigatórias', 'diskRH_treinamentos']
+    ],
+    alertas: [
+      ['warning', '4 vagas prioritárias estão sem candidato finalista', 'diskRH_recrutamento'],
+      ['warning', '14 avaliações 360° ainda não foram concluídas', 'diskRH_desempenho'],
+      ['info', '8 certificados de NRs obrigatórias vencem em até 30 dias', 'diskRH_treinamentos']
+    ],
+    atalhos: [
+      ['Nova vaga', 'diskRH_recrutamento', 'ph-briefcase'],
+      ['Avaliações', 'diskRH_desempenho', 'ph-star'],
+      ['PDI', 'diskRH_desempenho', 'ph-target'],
+      ['Treinamentos', 'diskRH_treinamentos', 'ph-graduation-cap']
+    ]
+  },
+  dash_sst: {
+    titulo: 'Dashboard Saúde e Segurança',
+    subtitulo: 'Saúde ocupacional, exames periódicos, ASO, CAT, EPIs e vencimentos críticos.',
+    icon: 'ph-first-aid-kit',
+    kpis: [
+      ['ASOs a vencer', '7', 'Próximos 30 dias', 'diskRH_sst'],
+      ['Exames pendentes', '4', 'Agendamento necessário', 'diskRH_sst'],
+      ['EPIs a renovar', '12', 'Itens com validade', 'diskRH_epis'],
+      ['Ocorrências SST / CAT', '0', 'Zero acidentes', 'diskRH_sst']
+    ],
+    alertas: [
+      ['danger', '1 ASO está com prazo expirado', 'diskRH_sst'],
+      ['warning', '7 colaboradores com ASO vencendo nos próximos 30 dias', 'diskRH_sst'],
+      ['warning', '12 EPIs precisam de renovação ou inspeção física', 'diskRH_epis'],
+      ['info', '4 exames ocupacionais periódicos aguardam agendamento', 'diskRH_sst']
+    ],
+    atalhos: [
+      ['Novo ASO', 'diskRH_sst', 'ph-file-medical'],
+      ['Agendar exame', 'diskRH_sst', 'ph-calendar-plus'],
+      ['Entregar EPI', 'diskRH_epis', 'ph-hard-hat'],
+      ['Registrar CAT', 'diskRH_sst', 'ph-warning-octagon']
+    ]
+  },
+  dash_eventos: {
+    titulo: 'Dashboard Eventos e Custos',
+    subtitulo: 'Equipes de arena, freelancers, horas e custo real de mão de obra apropriado aos eventos.',
+    icon: 'ph-calendar-check',
+    kpis: [
+      ['Eventos com equipe hoje', '3', 'Shows e arenas ativas', 'diskRH_equipesEvento'],
+      ['Pessoas alocadas', '34', 'CLT + temporários', 'diskRH_equipesEvento'],
+      ['Freelancers ativos', '12', 'Em operação hoje', 'diskRH_freelancers'],
+      ['Custo de pessoal', 'R$ 28.450', 'Alimentando DRE', 'diskRH_custosEvento']
+    ],
+    alertas: [
+      ['danger', '2 freelancers estão sem documentação ou chave PIX validada', 'diskRH_freelancers'],
+      ['warning', '3 solicitações de reembolso de despesas aguardam aprovação', 'diskRH_reembolsos'],
+      ['warning', '1 evento ultrapassou o orçamento previsto de mão de obra', 'diskRH_custosEvento'],
+      ['info', 'Diárias PIX de R$ 4.200 prontas para integração com a Tesouraria', 'diskRH_custosEvento']
+    ],
+    atalhos: [
+      ['Equipes por evento', 'diskRH_equipesEvento', 'ph-users-four'],
+      ['Freelancers', 'diskRH_freelancers', 'ph-user-focus'],
+      ['Custos por evento', 'diskRH_custosEvento', 'ph-currency-circle-dollar'],
+      ['Reembolsos', 'diskRH_reembolsos', 'ph-receipt']
+    ]
+  },
+  dash_gestao: {
+    titulo: 'Dashboard Portais e Gestão',
+    subtitulo: 'Pendências da equipe, aprovações de líderes, autoatendimento e métricas de liderança.',
+    icon: 'ph-user-switch',
+    kpis: [
+      ['Aprovações pendentes', '12', 'Todas as categorias', 'diskRH_aprovacoes'],
+      ['Solicitações abertas', '19', 'Portal colaborador', 'diskRH_portalColaborador'],
+      ['Gestores com pendência', '6', 'Ação necessária', 'diskRH_portalGestor'],
+      ['Métricas acompanhadas', '24', 'People Analytics', 'diskRH_relatorios']
+    ],
+    alertas: [
+      ['danger', '3 aprovações com prazo de SLA vencendo hoje', 'diskRH_aprovacoes'],
+      ['warning', '6 gestores possuem avaliações ou ajustes de ponto pendentes', 'diskRH_portalGestor'],
+      ['info', '19 solicitações em autoatendimento ativo no portal', 'diskRH_portalColaborador']
+    ],
+    atalhos: [
+      ['Central de aprovações', 'diskRH_aprovacoes', 'ph-check-square-offset'],
+      ['Portal do gestor', 'diskRH_portalGestor', 'ph-users'],
+      ['Portal colaborador', 'diskRH_portalColaborador', 'ph-user'],
+      ['People Analytics', 'diskRH_relatorios', 'ph-chart-bar']
+    ]
+  },
+  dash_admin: {
+    titulo: 'Dashboard Administração do RH',
+    subtitulo: 'Saúde das integrações ERP/eSocial, auditoria imutável, LGPD, políticas e conformidade.',
+    icon: 'ph-gear-six',
+    kpis: [
+      ['Integrações ativas', '6', '1 requer atenção', 'diskRH_integracoes'],
+      ['Falhas de sincronização', '2', 'Últimas 24h', 'diskRH_integracoes'],
+      ['Eventos de auditoria', '148', 'Últimos 7 dias', 'diskRH_auditoria'],
+      ['Políticas publicadas', '17', 'Versões vigentes', 'diskRH_configuracoes']
+    ],
+    alertas: [
+      ['danger', '1 integração de mensageria requer reautenticação de token', 'diskRH_integracoes'],
+      ['warning', '2 sincronizações com eSocial apresentaram aviso de consistência', 'diskRH_integracoes'],
+      ['warning', '4 acessos a dados sensíveis de colaboradores sob revisão LGPD', 'diskRH_auditoria'],
+      ['info', '2 políticas institucionais com nova versão em rascunho', 'diskRH_configuracoes']
+    ],
+    atalhos: [
+      ['Integrações', 'diskRH_integracoes', 'ph-plugs-connected'],
+      ['Auditoria e LGPD', 'diskRH_auditoria', 'ph-shield-check'],
+      ['Configurações', 'diskRH_configuracoes', 'ph-sliders'],
+      ['Documentos GED', 'diskRH_documentos', 'ph-files']
+    ]
+  }
+};
+
+export function renderDiskRHDashboardOperacional(state, filterArg = 'dash_pessoas') {
+  const cfg = RH_DASHBOARDS[filterArg] || RH_DASHBOARDS.dash_pessoas;
+  const nav = (id) => `window.LimitlessApp.navigate('${id}')`;
+
+  return `
+    <div class="content-area rh-dashboard-operacional" data-rh-dashboard="${filterArg}">
+      <!-- Header do Dashboard Operacional -->
+      <div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-4">
+        <div>
+          <div class="text-primary small fw-bold text-uppercase mb-1">RH Disk • Central de Trabalho Operacional</div>
+          <h2 class="mb-1"><i class="ph ${cfg.icon} me-2 text-primary"></i>${cfg.titulo}</h2>
+          <p class="text-muted mb-0">${cfg.subtitulo}</p>
+        </div>
+        <div class="d-flex gap-2">
+          <button class="btn btn-outline-secondary" onclick="${nav('diskRH_visao')}">
+            <i class="ph ph-house me-1"></i>Visão Geral RH
+          </button>
+          <button class="btn btn-primary" onclick="${nav('diskRH_aprovacoes')}">
+            <i class="ph ph-check-square-offset me-1"></i>Central de Aprovações
+          </button>
+        </div>
+      </div>
+
+      <!-- KPIs Operacionais Clicáveis -->
+      <div class="row g-3 mb-4">
+        ${cfg.kpis.map((k, i) => `
+          <div class="col-xl-3 col-md-6">
+            <div class="card h-100 shadow-sm border-0 rh-kpi-card" role="button" onclick="${nav(k[3])}">
+              <div class="card-body">
+                <div class="d-flex justify-content-between">
+                  <div>
+                    <div class="text-muted small text-uppercase fw-bold">${k[0]}</div>
+                    <div class="fs-3 fw-bold mt-2 text-dark">${k[1]}</div>
+                    <div class="small ${i === 2 ? 'text-warning fw-bold' : 'text-muted'} mt-1">${k[2]}</div>
+                  </div>
+                  <div class="rounded-circle bg-primary bg-opacity-10 text-primary p-3 align-self-start">
+                    <i class="ph ph-arrow-up-right fs-5"></i>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+
+      <!-- Blocos Centrais: Precisa da sua atenção & Ações Rápidas -->
+      <div class="row g-4 mb-4">
+        <div class="col-xl-7">
+          <div class="card shadow-sm border-0 h-100">
+            <div class="card-header bg-white py-3">
+              <h5 class="mb-0 fw-bold"><i class="ph ph-bell-ringing text-warning me-2"></i>Precisa da sua atenção</h5>
+              <div class="small text-muted">Pendências priorizadas para o trabalho de hoje (clique para resolver)</div>
+            </div>
+            <div class="list-group list-group-flush">
+              ${cfg.alertas.map(a => `
+                <button class="list-group-item list-group-item-action d-flex align-items-center justify-content-between py-3 rh-alert-btn" onclick="${nav(a[2])}">
+                  <span>
+                    <span class="badge bg-${a[0]} me-2">${a[0] === 'danger' ? 'URGENTE' : a[0] === 'warning' ? 'ATENÇÃO' : 'INFO'}</span>
+                    <strong class="text-dark">${a[1]}</strong>
+                  </span>
+                  <i class="ph ph-caret-right text-muted"></i>
+                </button>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+
+        <div class="col-xl-5">
+          <div class="card shadow-sm border-0 h-100">
+            <div class="card-header bg-white py-3">
+              <h5 class="mb-0 fw-bold"><i class="ph ph-lightning text-primary me-2"></i>Ações rápidas</h5>
+              <div class="small text-muted">Acesse diretamente as operações mais utilizadas deste grupo</div>
+            </div>
+            <div class="card-body">
+              <div class="row g-2">
+                ${cfg.atalhos.map(a => `
+                  <div class="col-6">
+                    <button class="btn btn-light border w-100 text-start h-100 py-3" onclick="${nav(a[1])}">
+                      <i class="ph ${a[2]} fs-4 text-primary d-block mb-2"></i>
+                      <strong>${a[0]}</strong>
+                      <span class="d-block small text-muted mt-1">Abrir operação &rarr;</span>
+                    </button>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Evolução Gerencial & Resumo Operacional -->
+      <div class="row g-4">
+        <div class="col-lg-8">
+          <div class="card shadow-sm border-0">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+              <div>
+                <h5 class="mb-0 fw-bold">Evolução dos últimos 6 meses</h5>
+                <span class="small text-muted">Indicador gerencial e histórico consolidado do grupo</span>
+              </div>
+              <button class="btn btn-sm btn-outline-secondary" onclick="${nav('diskRH_relatorios')}">
+                <i class="ph-chart-bar me-1"></i> Abrir People Analytics
+              </button>
+            </div>
+            <div class="card-body">
+              <div class="d-flex align-items-end gap-3" style="height:170px">
+                ${[58, 72, 65, 84, 76, 92].map((v, i) => `
+                  <div class="flex-fill text-center">
+                    <div class="small fw-bold text-muted mb-1">${v}%</div>
+                    <div class="bg-primary bg-opacity-25 rounded-top mx-auto" style="height:${v}%;max-width:54px;transition:height 0.3s ease;"></div>
+                    <small class="text-muted d-block mt-2">${['Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out'][i]}</small>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-lg-4">
+          <div class="card shadow-sm border-0 h-100">
+            <div class="card-header bg-white py-3">
+              <h5 class="mb-0 fw-bold">Resumo operacional</h5>
+              <span class="small text-muted">Aderência aos padrões e prazos</span>
+            </div>
+            <div class="card-body">
+              <div class="d-flex justify-content-between py-2 border-bottom">
+                <span>Dentro do prazo</span>
+                <strong class="text-success">82%</strong>
+              </div>
+              <div class="d-flex justify-content-between py-2 border-bottom">
+                <span>Em atenção</span>
+                <strong class="text-warning">13%</strong>
+              </div>
+              <div class="d-flex justify-content-between py-2 border-bottom">
+                <span>Críticos</span>
+                <strong class="text-danger">5%</strong>
+              </div>
+              <div class="alert alert-light border small text-muted mt-3 mb-0">
+                <i class="ph-info me-1 text-primary"></i>
+                <strong>Ambiente de Homologação:</strong> Os indicadores deste painel são dados de homologação da interface e sincronizam com as rotinas do Core de cada domínio.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// Funções de conveniência para rotas específicas de Dashboard
+export function renderDiskRHDashPessoas(state) { return renderDiskRHDashboardOperacional(state, 'dash_pessoas'); }
+export function renderDiskRHDashDP(state) { return renderDiskRHDashboardOperacional(state, 'dash_dp'); }
+export function renderDiskRHDashPonto(state) { return renderDiskRHDashboardOperacional(state, 'dash_ponto'); }
+export function renderDiskRHDashTalentos(state) { return renderDiskRHDashboardOperacional(state, 'dash_talentos'); }
+export function renderDiskRHDashSST(state) { return renderDiskRHDashboardOperacional(state, 'dash_sst'); }
+export function renderDiskRHDashEventos(state) { return renderDiskRHDashboardOperacional(state, 'dash_eventos'); }
+export function renderDiskRHDashGestao(state) { return renderDiskRHDashboardOperacional(state, 'dash_gestao'); }
+export function renderDiskRHDashAdmin(state) { return renderDiskRHDashboardOperacional(state, 'dash_admin'); }
+
 
 
