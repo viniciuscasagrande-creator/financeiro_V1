@@ -1709,37 +1709,74 @@ export function renderDiskRHBeneficios(state, filterArg = 'beneficios') {
   const beneficios = db.rhBeneficios || [];
   const pedidos = db.rhPedidosBeneficios || [];
 
+  const totalIntegral = beneficios.reduce((acc, b) => acc + (parseFloat(b.valorMensalIntegral) || 0), 0);
+  const totalDesconto = beneficios.reduce((acc, b) => acc + (parseFloat(b.descontoEmFolha6Pct !== undefined ? b.descontoEmFolha6Pct : b.descontoFolha) || 0), 0);
+  const totalEmpresa = beneficios.reduce((acc, b) => acc + (parseFloat(b.custoEmpresa) || 0), 0);
+  const colaboradoresUnicos = new Set(beneficios.map(b => b.colaboradorId)).size;
+
+  const vaCount = beneficios.filter(b => b.tipo === 'VALE_ALIMENTACAO').length;
+  const vrCount = beneficios.filter(b => b.tipo === 'VALE_REFEICAO').length;
+  const combCount = beneficios.filter(b => b.tipo === 'AUXILIO_COMBUSTIVEL').length;
+  const vtCount = beneficios.filter(b => b.tipo === 'VALE_TRANSPORTE').length;
+  const saudeCount = beneficios.filter(b => b.tipo === 'PLANO_SAUDE').length;
+  const outrosCount = beneficios.filter(b => !['VALE_ALIMENTACAO', 'VALE_REFEICAO', 'AUXILIO_COMBUSTIVEL', 'VALE_TRANSPORTE', 'PLANO_SAUDE'].includes(b.tipo)).length;
+
+  const getTipoBadge = (tipo) => {
+    switch (tipo) {
+      case 'VALE_ALIMENTACAO':
+        return `<span class="badge bg-success-subtle text-success border border-success"><i class="ph-basket me-1"></i>Vale Alimentação</span>`;
+      case 'VALE_REFEICAO':
+        return `<span class="badge bg-warning-subtle text-warning border border-warning"><i class="ph-fork-knife me-1"></i>Vale Refeição</span>`;
+      case 'AUXILIO_COMBUSTIVEL':
+        return `<span class="badge bg-info-subtle text-info border border-info"><i class="ph-gas-pump me-1"></i>Auxílio Combustível</span>`;
+      case 'VALE_TRANSPORTE':
+        return `<span class="badge bg-primary-subtle text-primary border border-primary"><i class="ph-bus me-1"></i>Vale Transporte (6% CLT)</span>`;
+      case 'PLANO_SAUDE':
+        return `<span class="badge bg-danger-subtle text-danger border border-danger"><i class="ph-heartbeat me-1"></i>Plano de Saúde</span>`;
+      default:
+        return `<span class="badge bg-secondary-subtle text-secondary border border-secondary"><i class="ph-gift me-1"></i>Personalizado RH</span>`;
+    }
+  };
+
   return `
     <div class="container-fluid py-3">
-      <div class="d-flex justify-content-between align-items-center mb-4">
+      <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
         <div>
-          <h3 class="fw-bold mb-1"><i class="ph-credit-card text-success me-2"></i>Gestão Corporativa de Benefícios</h3>
-          <p class="text-muted mb-0">Vale Transporte (trava do teto de desconto de 6% do salário CLT), Vale Refeição (dias úteis), Plano de Saúde e recargas mensais.</p>
+          <div class="d-flex align-items-center gap-2 mb-1">
+            <span class="badge bg-success text-white fw-bold px-2 py-1 fs-xxs">DEPARTAMENTO PESSOAL</span>
+            <span class="text-muted small">&bull;</span>
+            <span class="text-muted small">Gestão de Benefícios &amp; Subsídios</span>
+          </div>
+          <h3 class="fw-bold mb-1 text-dark"><i class="ph-credit-card text-success me-2"></i>Gestão Corporativa de Benefícios</h3>
+          <p class="text-muted mb-0 small">Concessão e controle de Vale Alimentação, Vale Refeição, Auxílio Combustível, Vale Transporte (teto legal de 6% CLT) e benefícios personalizados.</p>
         </div>
-        <div class="d-flex gap-2">
-          <button class="btn btn-success btn-sm" onclick="window.LimitlessApp.aprovarRecargaBeneficios('ped-ben-2026-10')">
-            <i class="ph-check-circle me-1"></i> Homologar Recarga Outubro/2026
+        <div class="d-flex flex-wrap gap-2">
+          <button class="btn btn-primary btn-sm fw-bold shadow-sm d-flex align-items-center gap-1" onclick="window.LimitlessApp.abrirModalNovoBeneficio()" title="Conceder novo benefício a colaborador">
+            <i class="ph-plus-circle fs-5"></i> <span>Adicionar Benefício</span>
+          </button>
+          <button class="btn btn-outline-success btn-sm fw-semibold d-flex align-items-center gap-1" onclick="window.LimitlessApp.aprovarRecargaBeneficios('ped-ben-2026-10')">
+            <i class="ph-check-circle fs-5"></i> <span>Homologar Recarga Outubro/2026</span>
           </button>
         </div>
       </div>
 
-      <!-- Top KPI Cards -->
+      <!-- Top KPI Cards Dinâmicos -->
       <div class="row g-3 mb-4">
         <div class="col-md-3">
           <div class="card border-0 shadow-sm border-start border-4 border-primary h-100">
             <div class="card-body">
               <span class="text-muted small text-uppercase fw-bold">Recarga Mensal Total</span>
-              <div class="fs-3 fw-bold text-primary mt-1">R$ 38.740,00</div>
-              <div class="small text-muted mt-1">42 colaboradores beneficiados</div>
+              <div class="fs-3 fw-bold text-primary mt-1">${formatCurrency(totalIntegral)}</div>
+              <div class="small text-muted mt-1">${beneficios.length} benefício(s) cadastrado(s)</div>
             </div>
           </div>
         </div>
         <div class="col-md-3">
           <div class="card border-0 shadow-sm border-start border-4 border-info h-100">
             <div class="card-body">
-              <span class="text-muted small text-uppercase fw-bold">Desconto em Folha (Trava 6% CLT)</span>
-              <div class="fs-3 fw-bold text-info mt-1">R$ 14.210,00</div>
-              <div class="small text-muted mt-1">Lei nº 7.418/1985 (Teto legal)</div>
+              <span class="text-muted small text-uppercase fw-bold">Desconto em Folha (Teto 6% CLT)</span>
+              <div class="fs-3 fw-bold text-info mt-1">-${formatCurrency(totalDesconto)}</div>
+              <div class="small text-muted mt-1">Coparticipação colaboradores</div>
             </div>
           </div>
         </div>
@@ -1747,17 +1784,38 @@ export function renderDiskRHBeneficios(state, filterArg = 'beneficios') {
           <div class="card border-0 shadow-sm border-start border-4 border-warning h-100">
             <div class="card-body">
               <span class="text-muted small text-uppercase fw-bold">Custo Corporativo Líquido</span>
-              <div class="fs-3 fw-bold text-warning mt-1">R$ 24.530,00</div>
-              <div class="small text-muted mt-1">Subsídio empresa em benefícios</div>
+              <div class="fs-3 fw-bold text-warning mt-1">${formatCurrency(totalEmpresa)}</div>
+              <div class="small text-muted mt-1">Subsídio direto Disk Ingressos</div>
             </div>
           </div>
         </div>
         <div class="col-md-3">
           <div class="card border-0 shadow-sm border-start border-4 border-success h-100">
             <div class="card-body">
-              <span class="text-muted small text-uppercase fw-bold">Status do Pedido de Outubro</span>
-              <div class="fs-3 fw-bold text-success mt-1">APROVADO</div>
-              <div class="small text-muted mt-1">Disponibilizado no 1º dia útil</div>
+              <span class="text-muted small text-uppercase fw-bold">Colaboradores Beneficiados</span>
+              <div class="fs-3 fw-bold text-success mt-1">${colaboradoresUnicos} Colaboradores</div>
+              <div class="small text-muted mt-1">${vaCount} VA | ${vrCount} VR | ${combCount} Combustível | ${vtCount} VT</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Barra de Filtros Rápidos por Categoria -->
+      <div class="card border-0 shadow-sm mb-3">
+        <div class="card-body py-2 px-3">
+          <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+            <div class="d-flex flex-wrap align-items-center gap-1" id="beneficios-filter-group">
+              <button type="button" class="btn btn-sm btn-dark fw-bold rounded-pill px-3" onclick="window.LimitlessApp.filtrarTabelaBeneficios('TODOS', this)">Todos (${beneficios.length})</button>
+              <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3" onclick="window.LimitlessApp.filtrarTabelaBeneficios('VALE_ALIMENTACAO', this)"><i class="ph-basket me-1 text-success"></i>Vale Alimentação (${vaCount})</button>
+              <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3" onclick="window.LimitlessApp.filtrarTabelaBeneficios('VALE_REFEICAO', this)"><i class="ph-fork-knife me-1 text-warning"></i>Vale Refeição (${vrCount})</button>
+              <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3" onclick="window.LimitlessApp.filtrarTabelaBeneficios('AUXILIO_COMBUSTIVEL', this)"><i class="ph-gas-pump me-1 text-info"></i>Auxílio Combustível (${combCount})</button>
+              <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3" onclick="window.LimitlessApp.filtrarTabelaBeneficios('VALE_TRANSPORTE', this)"><i class="ph-bus me-1 text-primary"></i>Vale Transporte (${vtCount})</button>
+              <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3" onclick="window.LimitlessApp.filtrarTabelaBeneficios('OUTROS', this)"><i class="ph-gift me-1 text-secondary"></i>Outros RH (${outrosCount + saudeCount})</button>
+            </div>
+            <div>
+              <button class="btn btn-sm btn-success fw-bold" onclick="window.LimitlessApp.abrirModalNovoBeneficio()">
+                <i class="ph-plus-circle me-1"></i> Novo Benefício
+              </button>
             </div>
           </div>
         </div>
@@ -1765,44 +1823,73 @@ export function renderDiskRHBeneficios(state, filterArg = 'beneficios') {
 
       <!-- Tabela de Benefícios Ativos -->
       <div class="card border-0 shadow-sm mb-4">
-        <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-          <h5 class="fw-bold mb-0">Detalhamento de Benefícios por Colaborador</h5>
-          <span class="badge bg-light text-dark border">Controle de Coparticipação</span>
+        <div class="card-header bg-white py-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
+          <div>
+            <h5 class="fw-bold mb-0 text-dark"><i class="ph-list-checks me-2 text-primary"></i>Detalhamento de Benefícios por Colaborador</h5>
+            <span class="text-muted small">Controle de coparticipação em folha e subsídio empresarial</span>
+          </div>
+          <span class="badge bg-light text-dark border"><i class="ph-shield-check me-1 text-success"></i>Auditoria RH Imutável Ativa</span>
         </div>
         <div class="table-responsive">
-          <table class="table table-hover align-middle mb-0">
+          <table class="table table-hover align-middle mb-0" id="tabela-beneficios-rh">
             <thead class="table-light">
-              <tr class="small text-muted">
+              <tr class="small text-muted text-uppercase">
                 <th>Colaborador</th>
-                <th>Benefício</th>
+                <th>Benefício / Tipo</th>
                 <th>Operadora</th>
-                <th>Valor Integral</th>
-                <th>Desconto em Folha (6% Teto)</th>
-                <th>Custo Empresa</th>
-                <th>Status</th>
-                <th>Ações</th>
+                <th class="text-end">Valor Integral</th>
+                <th class="text-end">Desconto em Folha</th>
+                <th class="text-end">Custo Empresa</th>
+                <th class="text-center">Status</th>
+                <th class="text-end">Ações</th>
               </tr>
             </thead>
             <tbody>
-              ${beneficios.map(b => `
-                <tr>
-                  <td class="fw-bold text-dark">${b.colaboradorNome}</td>
+              ${beneficios.length > 0 ? beneficios.map(b => `
+                <tr data-beneficio-tipo="${b.tipo}">
                   <td>
-                    <div class="fw-semibold text-primary">${b.nomeBeneficio}</div>
-                    <span class="badge bg-light text-dark border">${b.tipo}</span>
+                    <div class="fw-bold text-dark">${b.colaboradorNome}</div>
+                    <div class="text-muted fs-xxs">ID: ${b.colaboradorId || 'Geral'}</div>
                   </td>
-                  <td class="small">${b.operadora}</td>
-                  <td class="fw-bold text-dark">${formatCurrency(b.valorMensalIntegral)}</td>
-                  <td class="fw-bold text-danger">-${formatCurrency(b.descontoEmFolha6Pct)}</td>
-                  <td class="fw-bold text-success">${formatCurrency(b.custoEmpresa)}</td>
-                  <td><span class="badge bg-success">${b.status}</span></td>
                   <td>
-                    <button class="btn btn-sm btn-outline-secondary" onclick="window.LimitlessApp.editarBeneficioColaborador('${b.id}')">
-                      <i class="ph-pencil-simple"></i>
+                    <div class="fw-semibold text-dark mb-1">${b.nomeBeneficio}</div>
+                    ${getTipoBadge(b.tipo)}
+                  </td>
+                  <td class="small text-muted">
+                    <i class="ph-buildings me-1"></i>${b.operadora || 'Operadora RH'}
+                  </td>
+                  <td class="text-end fw-bold text-dark">${formatCurrency(b.valorMensalIntegral)}</td>
+                  <td class="text-end fw-bold text-danger">-${formatCurrency(b.descontoEmFolha6Pct !== undefined ? b.descontoEmFolha6Pct : b.descontoFolha || 0)}</td>
+                  <td class="text-end fw-bold text-success">${formatCurrency(b.custoEmpresa)}</td>
+                  <td class="text-center">
+                    <span class="badge ${b.status === 'ATIVO' ? 'bg-success' : 'bg-secondary'}">${b.status || 'ATIVO'}</span>
+                  </td>
+                  <td class="text-end">
+                    <div class="btn-group btn-group-sm">
+                      <button class="btn btn-outline-secondary" onclick="window.LimitlessApp.editarBeneficioColaborador('${b.id}')" title="Editar Benefício">
+                        <i class="ph-pencil-simple"></i>
+                      </button>
+                      <button class="btn btn-outline-warning" onclick="window.LimitlessApp.alternarStatusBeneficio('${b.id}')" title="Ativar / Inativar">
+                        <i class="ph-power"></i>
+                      </button>
+                      <button class="btn btn-outline-danger" onclick="window.LimitlessApp.excluirBeneficioColaborador('${b.id}')" title="Excluir Benefício">
+                        <i class="ph-trash"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              `).join('') : `
+                <tr>
+                  <td colspan="8" class="text-center py-5">
+                    <i class="ph-credit-card text-muted fs-1 mb-2"></i>
+                    <h6 class="fw-bold text-dark">Nenhum benefício cadastrado no momento</h6>
+                    <p class="text-muted small mb-3">Conceda vale transporte, vale refeição, auxílio combustível ou benefícios customizados.</p>
+                    <button class="btn btn-primary btn-sm fw-bold" onclick="window.LimitlessApp.abrirModalNovoBeneficio()">
+                      <i class="ph-plus-circle me-1"></i> Conceder Primeiro Benefício
                     </button>
                   </td>
                 </tr>
-              `).join('')}
+              `}
             </tbody>
           </table>
         </div>

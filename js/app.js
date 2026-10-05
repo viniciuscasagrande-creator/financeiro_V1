@@ -9863,8 +9863,422 @@ window.LimitlessApp = {
     }
   },
 
+  filtrarTabelaBeneficios(tipo, btn) {
+    const parent = btn?.parentElement;
+    if (parent) {
+      parent.querySelectorAll('button').forEach(b => {
+        b.classList.remove('btn-dark', 'fw-bold');
+        b.classList.add('btn-outline-secondary');
+      });
+      btn.classList.remove('btn-outline-secondary');
+      btn.classList.add('btn-dark', 'fw-bold');
+    }
+
+    const rows = document.querySelectorAll('#tabela-beneficios-rh tbody tr[data-beneficio-tipo]');
+    rows.forEach(r => {
+      const bTipo = r.getAttribute('data-beneficio-tipo');
+      if (tipo === 'TODOS') {
+        r.style.display = '';
+      } else if (tipo === 'OUTROS') {
+        if (!['VALE_ALIMENTACAO', 'VALE_REFEICAO', 'AUXILIO_COMBUSTIVEL', 'VALE_TRANSPORTE'].includes(bTipo)) {
+          r.style.display = '';
+        } else {
+          r.style.display = 'none';
+        }
+      } else {
+        r.style.display = bTipo === tipo ? '' : 'none';
+      }
+    });
+  },
+
+  abrirModalNovoBeneficio(preColaboradorId = null) {
+    const db = financialStore.getState().db || {};
+    const colaboradores = db.rhColaboradores || [];
+
+    const html = `
+      <div class="modal-header bg-success text-white">
+        <h5 class="modal-title fw-bold"><i class="ph-credit-card me-2"></i>Conceder Novo Benefício Corporativo</h5>
+        <button type="button" class="btn-close btn-close-white" onclick="window.app.closeModal()"></button>
+      </div>
+      <div class="modal-body p-4">
+        <form id="form-novo-beneficio" onsubmit="window.LimitlessApp.salvarNovoBeneficio(event)">
+          <!-- Seleção do Colaborador -->
+          <div class="mb-3">
+            <label class="form-label fw-bold small">Colaborador Beneficiado *</label>
+            <select class="form-select" name="colaboradorId" id="modal-ben-colab" onchange="window.LimitlessApp.atualizarCalculoBeneficioForm()" required>
+              <option value="">Selecione o colaborador...</option>
+              ${colaboradores.map(c => `
+                <option value="${c.id}" data-salario="${c.salario || 0}" ${c.id === preColaboradorId ? 'selected' : ''}>
+                  ${c.nome} (${c.cargoNome || c.cargo || 'Colaborador'} - Salário Base: R$ ${(c.salario || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })})
+                </option>
+              `).join('')}
+            </select>
+          </div>
+
+          <div class="row g-3 mb-3">
+            <!-- Tipo de Benefício -->
+            <div class="col-md-6">
+              <label class="form-label fw-bold small">Tipo de Benefício *</label>
+              <select class="form-select" name="tipo" id="modal-ben-tipo" onchange="window.LimitlessApp.onTipoBeneficioChange()" required>
+                <option value="VALE_ALIMENTACAO">Vale Alimentação (VA)</option>
+                <option value="VALE_REFEICAO">Vale Refeição (VR)</option>
+                <option value="AUXILIO_COMBUSTIVEL">Auxílio Combustível</option>
+                <option value="VALE_TRANSPORTE">Vale Transporte (VT - Teto 6% CLT)</option>
+                <option value="PLANO_SAUDE">Plano de Saúde / Odontológico</option>
+                <option value="OUTRO">Outro (Especificado pelo Gestor do RH)</option>
+              </select>
+            </div>
+
+            <!-- Operadora / Fornecedor -->
+            <div class="col-md-6">
+              <label class="form-label fw-bold small">Operadora / Fornecedor *</label>
+              <input type="text" class="form-control" name="operadora" id="modal-ben-operadora" required list="lista-operadoras-ben" value="Flash Benefícios Flexíveis">
+              <datalist id="lista-operadoras-ben">
+                <option value="Flash Benefícios Flexíveis">
+                <option value="Sodexo / Pluxee">
+                <option value="VR Benefícios">
+                <option value="Alelo">
+                <option value="Ticket Serviços">
+                <option value="URBS Curitiba / Metrocard">
+                <option value="Shell Box / Ticket Log">
+                <option value="Ipiranga ConectCar">
+                <option value="Unimed Curitiba">
+                <option value="Bradesco Saúde">
+                <option value="Wellhub / Gympass">
+                <option value="Reembolso Direto Disk Ingressos">
+              </datalist>
+            </div>
+          </div>
+
+          <!-- Especificação / Nome do Benefício -->
+          <div class="mb-3">
+            <label class="form-label fw-bold small">Especificação / Nome do Benefício *</label>
+            <input type="text" class="form-control" name="nomeBeneficio" id="modal-ben-nome" required value="Vale Alimentação Sodexo / Flash">
+            <div class="form-text small text-muted" id="modal-ben-nome-help">Quando selecionar 'Outro', defina a especificação (ex: Auxílio Creche, Gympass, Seguro de Vida, Farmácia).</div>
+          </div>
+
+          <!-- Valores e Regra de Desconto -->
+          <div class="card bg-light border p-3 mb-3">
+            <h6 class="fw-bold text-dark small mb-2"><i class="ph-calculator me-1 text-primary"></i>Parâmetros Financeiros &amp; Coparticipação</h6>
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label fw-bold small">Valor Mensal Integral (R$) *</label>
+                <input type="number" step="0.01" min="0.01" class="form-control" name="valorMensalIntegral" id="modal-ben-valor" value="650.00" oninput="window.LimitlessApp.atualizarCalculoBeneficioForm()" required>
+                <div class="form-text small text-muted">Crédito total disponibilizado ao colaborador.</div>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-bold small">Regra de Desconto em Folha *</label>
+                <select class="form-select" name="regraDesconto" id="modal-ben-regra" onchange="window.LimitlessApp.atualizarCalculoBeneficioForm()">
+                  <option value="ISENTO">100% Empresa (Isento / Sem desconto em folha)</option>
+                  <option value="VT_LEGAL_6">Teto Legal de 6% do Salário Base (Vale Transporte)</option>
+                  <option value="PERCENTUAL_10">Coparticipação de 10% do benefício</option>
+                  <option value="PERCENTUAL_20">Coparticipação de 20% do benefício</option>
+                  <option value="FIXO">Valor Fixo em Reais (R$)</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="row g-3 mt-1">
+              <div class="col-md-6">
+                <label class="form-label fw-bold small text-danger">Desconto em Folha do Colaborador (R$)</label>
+                <input type="number" step="0.01" min="0" class="form-control text-danger fw-bold" name="descontoEmFolha6Pct" id="modal-ben-desconto" value="0.00" oninput="window.LimitlessApp.atualizarCustoEmpresaDisplay()">
+                <div class="form-text small text-muted" id="modal-ben-desconto-hint">Valor deduzido no holerite mensal.</div>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-bold small text-success">Custo Corporativo Disk Ingressos (R$)</label>
+                <input type="text" class="form-control text-success fw-bold bg-white" id="modal-ben-custo-display" readonly value="R$ 650,00">
+                <div class="form-text small text-muted">Subsídio líquido assumido pela empresa.</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              <label class="form-label fw-bold small">Competência de Início</label>
+              <input type="text" class="form-control" name="competenciaInicio" value="2026-10" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-bold small">Status Inicial</label>
+              <select class="form-select" name="status">
+                <option value="ATIVO" selected>ATIVO</option>
+                <option value="INATIVO">INATIVO (Aguardando homologação)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-bold small">Observações / Política Interna</label>
+            <textarea class="form-control" name="observacoes" rows="2" placeholder="Observações adicionais, linhas de ônibus cadastradas, política de concessão ou termos acordados..."></textarea>
+          </div>
+
+          <div class="d-flex justify-content-end gap-2 pt-3 border-top mt-3">
+            <button type="button" class="btn btn-light" onclick="window.app.closeModal()">Cancelar</button>
+            <button type="submit" class="btn btn-success fw-bold"><i class="ph-check-circle me-1"></i> Conceder e Salvar Benefício</button>
+          </div>
+        </form>
+      </div>
+    `;
+    window.app.openModal(html);
+  },
+
+  onTipoBeneficioChange() {
+    const tipo = document.getElementById('modal-ben-tipo')?.value;
+    const nomeEl = document.getElementById('modal-ben-nome');
+    const operadoraEl = document.getElementById('modal-ben-operadora');
+    const valorEl = document.getElementById('modal-ben-valor');
+    const regraEl = document.getElementById('modal-ben-regra');
+    const helpEl = document.getElementById('modal-ben-nome-help');
+
+    if (!tipo) return;
+
+    switch (tipo) {
+      case 'VALE_ALIMENTACAO':
+        if (nomeEl) nomeEl.value = 'Vale Alimentação Sodexo / Flash';
+        if (operadoraEl) operadoraEl.value = 'Flash Benefícios Flexíveis';
+        if (valorEl) valorEl.value = '650.00';
+        if (regraEl) regraEl.value = 'ISENTO';
+        if (helpEl) helpEl.textContent = 'Crédito mensal para supermercados e compras de gêneros alimentícios.';
+        break;
+      case 'VALE_REFEICAO':
+        if (nomeEl) nomeEl.value = 'Vale Refeição Flexível';
+        if (operadoraEl) operadoraEl.value = 'Flash Benefícios Flexíveis';
+        if (valorEl) valorEl.value = '880.00';
+        if (regraEl) regraEl.value = 'ISENTO';
+        if (helpEl) helpEl.textContent = 'Alimentação diária para dias úteis trabalhados.';
+        break;
+      case 'AUXILIO_COMBUSTIVEL':
+        if (nomeEl) nomeEl.value = 'Auxílio Combustível Shell Box';
+        if (operadoraEl) operadoraEl.value = 'Shell Box / Ticket Log';
+        if (valorEl) valorEl.value = '450.00';
+        if (regraEl) regraEl.value = 'ISENTO';
+        if (helpEl) helpEl.textContent = 'Ajuda de custo de abastecimento e mobilidade para eventos/escritório.';
+        break;
+      case 'VALE_TRANSPORTE':
+        if (nomeEl) nomeEl.value = 'Vale Transporte URBS Curitiba';
+        if (operadoraEl) operadoraEl.value = 'URBS / Metrocard';
+        if (valorEl) valorEl.value = '352.00';
+        if (regraEl) regraEl.value = 'VT_LEGAL_6';
+        if (helpEl) helpEl.textContent = 'Lei nº 7.418/1985: Desconto limitado ao teto legal estrito de 6% do salário base CLT.';
+        break;
+      case 'PLANO_SAUDE':
+        if (nomeEl) nomeEl.value = 'Plano de Saúde Unimed Curitiba Top Nacional';
+        if (operadoraEl) operadoraEl.value = 'Unimed Curitiba';
+        if (valorEl) valorEl.value = '640.00';
+        if (regraEl) regraEl.value = 'FIXO';
+        if (helpEl) helpEl.textContent = 'Assistência médica com plano de coparticipação corporativa.';
+        break;
+      case 'OUTRO':
+        if (nomeEl) {
+          nomeEl.value = '';
+          nomeEl.placeholder = 'Ex: Auxílio Creche, Seguro de Vida, Farmácia, Gympass / Wellhub...';
+          nomeEl.focus();
+        }
+        if (operadoraEl) operadoraEl.value = '';
+        if (valorEl) valorEl.value = '250.00';
+        if (regraEl) regraEl.value = 'ISENTO';
+        if (helpEl) helpEl.textContent = 'Defina a especificação personalizada do benefício conforme diretriz do gestor de RH.';
+        break;
+    }
+
+    this.atualizarCalculoBeneficioForm();
+  },
+
+  atualizarCalculoBeneficioForm() {
+    const colabSelect = document.getElementById('modal-ben-colab');
+    const valorEl = document.getElementById('modal-ben-valor');
+    const regraEl = document.getElementById('modal-ben-regra');
+    const descontoEl = document.getElementById('modal-ben-desconto');
+    const hintEl = document.getElementById('modal-ben-desconto-hint');
+
+    if (!valorEl || !regraEl || !descontoEl) return;
+
+    const valorIntegral = parseFloat(valorEl.value) || 0;
+    const regra = regraEl.value;
+    let desconto = 0;
+
+    const selectedOption = colabSelect?.selectedOptions?.[0];
+    const salarioBase = parseFloat(selectedOption?.getAttribute('data-salario')) || 0;
+
+    if (regra === 'ISENTO') {
+      desconto = 0;
+      if (hintEl) hintEl.textContent = 'Sem desconto em folha. Custo 100% suportado pela Disk Ingressos.';
+    } else if (regra === 'VT_LEGAL_6') {
+      const teto6Pct = salarioBase * 0.06;
+      desconto = Math.min(valorIntegral, teto6Pct);
+      if (hintEl) hintEl.textContent = `Teto de 6% do salário (R$ ${salarioBase.toFixed(2)}): máx R$ ${teto6Pct.toFixed(2)}.`;
+    } else if (regra === 'PERCENTUAL_10') {
+      desconto = valorIntegral * 0.10;
+      if (hintEl) hintEl.textContent = 'Coparticipação de 10% sobre o valor integral do benefício.';
+    } else if (regra === 'PERCENTUAL_20') {
+      desconto = valorIntegral * 0.20;
+      if (hintEl) hintEl.textContent = 'Coparticipação de 20% sobre o valor integral do benefício.';
+    } else if (regra === 'FIXO') {
+      desconto = parseFloat(descontoEl.value) || 0;
+      if (hintEl) hintEl.textContent = 'Valor fixo estipulado pelo RH.';
+    }
+
+    if (regra !== 'FIXO') {
+      descontoEl.value = desconto.toFixed(2);
+    }
+
+    this.atualizarCustoEmpresaDisplay();
+  },
+
+  atualizarCustoEmpresaDisplay() {
+    const valorEl = document.getElementById('modal-ben-valor');
+    const descontoEl = document.getElementById('modal-ben-desconto');
+    const displayEl = document.getElementById('modal-ben-custo-display');
+
+    if (!valorEl || !descontoEl || !displayEl) return;
+
+    const valorIntegral = parseFloat(valorEl.value) || 0;
+    const desconto = parseFloat(descontoEl.value) || 0;
+    const custoEmpresa = Math.max(0, valorIntegral - desconto);
+
+    displayEl.value = `R$ ${custoEmpresa.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  },
+
+  salvarNovoBeneficio(event) {
+    event.preventDefault();
+    const fd = new FormData(event.target);
+
+    financialStore.cadastrarBeneficioRH({
+      colaboradorId: fd.get('colaboradorId'),
+      tipo: fd.get('tipo'),
+      nomeBeneficio: fd.get('nomeBeneficio'),
+      operadora: fd.get('operadora'),
+      valorMensalIntegral: fd.get('valorMensalIntegral'),
+      regraDesconto: fd.get('regraDesconto'),
+      descontoEmFolha6Pct: fd.get('descontoEmFolha6Pct'),
+      competenciaInicio: fd.get('competenciaInicio'),
+      status: fd.get('status') || 'ATIVO',
+      observacoes: fd.get('observacoes')
+    });
+
+    window.app.closeModal();
+    window.app.refreshData();
+  },
+
   editarBeneficioColaborador(beneficioId) {
-    financialStore.showToast("Editar Benefício", "Ajustando parâmetros de coparticipação e rotas de transporte.", "info");
+    const db = financialStore.getState().db || {};
+    const beneficios = db.rhBeneficios || [];
+    const ben = beneficios.find(b => b.id === beneficioId);
+
+    if (!ben) {
+      financialStore.showToast("Erro", "Benefício não localizado.", "danger");
+      return;
+    }
+
+    const html = `
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title fw-bold"><i class="ph-pencil-simple me-2"></i>Editar Benefício Corporativo</h5>
+        <button type="button" class="btn-close btn-close-white" onclick="window.app.closeModal()"></button>
+      </div>
+      <div class="modal-body p-4">
+        <form id="form-editar-beneficio" onsubmit="window.LimitlessApp.salvarEdicaoBeneficio(event, '${ben.id}')">
+          <div class="mb-3">
+            <label class="form-label fw-bold small">Colaborador</label>
+            <input type="text" class="form-control bg-light" readonly value="${ben.colaboradorNome}">
+          </div>
+
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              <label class="form-label fw-bold small">Tipo de Benefício *</label>
+              <select class="form-select" name="tipo" id="modal-ben-tipo" onchange="window.LimitlessApp.onTipoBeneficioChange()" required>
+                <option value="VALE_ALIMENTACAO" ${ben.tipo === 'VALE_ALIMENTACAO' ? 'selected' : ''}>Vale Alimentação (VA)</option>
+                <option value="VALE_REFEICAO" ${ben.tipo === 'VALE_REFEICAO' ? 'selected' : ''}>Vale Refeição (VR)</option>
+                <option value="AUXILIO_COMBUSTIVEL" ${ben.tipo === 'AUXILIO_COMBUSTIVEL' ? 'selected' : ''}>Auxílio Combustível</option>
+                <option value="VALE_TRANSPORTE" ${ben.tipo === 'VALE_TRANSPORTE' ? 'selected' : ''}>Vale Transporte (VT - Teto 6% CLT)</option>
+                <option value="PLANO_SAUDE" ${ben.tipo === 'PLANO_SAUDE' ? 'selected' : ''}>Plano de Saúde / Odontológico</option>
+                <option value="OUTRO" ${!['VALE_ALIMENTACAO', 'VALE_REFEICAO', 'AUXILIO_COMBUSTIVEL', 'VALE_TRANSPORTE', 'PLANO_SAUDE'].includes(ben.tipo) ? 'selected' : ''}>Outro (Personalizado RH)</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-bold small">Operadora / Fornecedor *</label>
+              <input type="text" class="form-control" name="operadora" id="modal-ben-operadora" required value="${ben.operadora || ''}">
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-bold small">Especificação / Nome do Benefício *</label>
+            <input type="text" class="form-control" name="nomeBeneficio" id="modal-ben-nome" required value="${ben.nomeBeneficio || ''}">
+          </div>
+
+          <div class="card bg-light border p-3 mb-3">
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label fw-bold small">Valor Mensal Integral (R$) *</label>
+                <input type="number" step="0.01" min="0.01" class="form-control" name="valorMensalIntegral" id="modal-ben-valor" value="${ben.valorMensalIntegral}" oninput="window.LimitlessApp.atualizarCustoEmpresaDisplay()" required>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-bold small text-danger">Desconto em Folha (R$)</label>
+                <input type="number" step="0.01" min="0" class="form-control text-danger fw-bold" name="descontoEmFolha6Pct" id="modal-ben-desconto" value="${ben.descontoEmFolha6Pct !== undefined ? ben.descontoEmFolha6Pct : ben.descontoFolha || 0}" oninput="window.LimitlessApp.atualizarCustoEmpresaDisplay()">
+              </div>
+            </div>
+            <div class="mt-2">
+              <label class="form-label fw-bold small text-success">Custo Corporativo Disk Ingressos (R$)</label>
+              <input type="text" class="form-control text-success fw-bold bg-white" id="modal-ben-custo-display" readonly value="R$ ${(ben.custoEmpresa || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}">
+            </div>
+          </div>
+
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              <label class="form-label fw-bold small">Status do Benefício</label>
+              <select class="form-select" name="status">
+                <option value="ATIVO" ${ben.status === 'ATIVO' ? 'selected' : ''}>ATIVO</option>
+                <option value="INATIVO" ${ben.status === 'INATIVO' ? 'selected' : ''}>INATIVO</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-bold small">Competência de Início</label>
+              <input type="text" class="form-control" name="competenciaInicio" value="${ben.competenciaInicio || '2026-10'}">
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-bold small">Observações</label>
+            <textarea class="form-control" name="observacoes" rows="2">${ben.observacoes || ''}</textarea>
+          </div>
+
+          <div class="d-flex justify-content-end gap-2 pt-3 border-top mt-3">
+            <button type="button" class="btn btn-light" onclick="window.app.closeModal()">Cancelar</button>
+            <button type="submit" class="btn btn-primary fw-bold"><i class="ph-check me-1"></i> Salvar Alterações</button>
+          </div>
+        </form>
+      </div>
+    `;
+    window.app.openModal(html);
+  },
+
+  salvarEdicaoBeneficio(event, beneficioId) {
+    event.preventDefault();
+    const fd = new FormData(event.target);
+
+    financialStore.atualizarBeneficioRH(beneficioId, {
+      tipo: fd.get('tipo'),
+      nomeBeneficio: fd.get('nomeBeneficio'),
+      operadora: fd.get('operadora'),
+      valorMensalIntegral: fd.get('valorMensalIntegral'),
+      descontoEmFolha6Pct: fd.get('descontoEmFolha6Pct'),
+      status: fd.get('status'),
+      competenciaInicio: fd.get('competenciaInicio'),
+      observacoes: fd.get('observacoes')
+    });
+
+    window.app.closeModal();
+    window.app.refreshData();
+  },
+
+  alternarStatusBeneficio(beneficioId) {
+    financialStore.alternarStatusBeneficioRH(beneficioId);
+    window.app.refreshData();
+  },
+
+  excluirBeneficioColaborador(beneficioId) {
+    if (confirm("Confirma a exclusão deste benefício do colaborador? Esta ação será registrada na trilha de auditoria do RH.")) {
+      financialStore.excluirBeneficioRH(beneficioId);
+      window.app.refreshData();
+    }
   },
 
   aprovarDiariaStaff(diariaId) {

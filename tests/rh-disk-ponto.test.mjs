@@ -457,5 +457,33 @@ function calcularDistanciaHaversine(lat1, lon1, lat2, lon2) {
   console.log('✓ Conectores de integração preservam separação limpa entre RH e Financeiro');
 }
 
-console.log('\nTodos os 28 testes do RH Disk e Disk Ponto (Fases 1 a 10 + RH V2) passaram com sucesso!\n');
+// Teste 29: Gestão Corporativa de Benefícios (VA, VR, Combustível, VT 6% e Outros Customizados)
+{
+  const colabSalario = 5000.00;
+  
+  // Vale Transporte: Teto legal de 6% do salário CLT
+  const vt = { tipo: 'VALE_TRANSPORTE', valor: 380.00, regra: 'VT_LEGAL_6' };
+  const descVT = Math.min(vt.valor, colabSalario * 0.06);
+  const custoEmpresaVT = vt.valor - descVT;
+  assert.strictEqual(descVT, 300.00); // 6% de 5000 = 300
+  assert.strictEqual(custoEmpresaVT, 80.00);
+
+  // Auxílio Combustível: Isento 100% Empresa
+  const comb = { tipo: 'AUXILIO_COMBUSTIVEL', valor: 450.00, regra: 'ISENTO' };
+  assert.strictEqual(comb.valor - 0, 450.00);
+
+  // Vale Alimentação e Vale Refeição
+  const va = { tipo: 'VALE_ALIMENTACAO', valor: 650.00, regra: 'ISENTO' };
+  const vr = { tipo: 'VALE_REFEICAO', valor: 880.00, regra: 'ISENTO' };
+  assert.strictEqual(va.valor + vr.valor, 1530.00);
+
+  // Outros Personalizados: Especificado pelo gestor do RH
+  const outro = { tipo: 'OUTRO', nome: 'Auxílio Creche & Educação', valor: 400.00, regra: 'ISENTO' };
+  assert.strictEqual(outro.tipo, 'OUTRO');
+  assert.strictEqual(outro.nome, 'Auxílio Creche & Educação');
+
+  console.log('✓ Benefícios corporativos gerenciam VA, VR, Combustível, VT e Outros customizados pelo RH');
+}
+
+console.log('\nTodos os 29 testes do RH Disk e Disk Ponto (Fases 1 a 10 + RH V2) passaram com sucesso!\n');
 

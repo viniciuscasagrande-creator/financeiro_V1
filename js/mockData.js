@@ -1868,6 +1868,42 @@ export const initialMockDatabase = {
       descontoEmFolha6Pct: 95.00,
       custoEmpresa: 545.00,
       status: "ATIVO"
+    },
+    {
+      id: "ben-004",
+      colaboradorId: "colab-003",
+      colaboradorNome: "Rafael Souza Lima",
+      tipo: "VALE_ALIMENTACAO",
+      nomeBeneficio: "Vale Alimentação Sodexo Cesta Pluxee",
+      operadora: "Sodexo / Pluxee",
+      valorMensalIntegral: 650.00,
+      descontoEmFolha6Pct: 0.00,
+      custoEmpresa: 650.00,
+      status: "ATIVO"
+    },
+    {
+      id: "ben-005",
+      colaboradorId: "colab-003",
+      colaboradorNome: "Rafael Souza Lima",
+      tipo: "AUXILIO_COMBUSTIVEL",
+      nomeBeneficio: "Auxílio Combustível Shell Box & Ticket Car",
+      operadora: "Shell Box / Ticket Log",
+      valorMensalIntegral: 450.00,
+      descontoEmFolha6Pct: 0.00,
+      custoEmpresa: 450.00,
+      status: "ATIVO"
+    },
+    {
+      id: "ben-006",
+      colaboradorId: "colab-004",
+      colaboradorNome: "Juliana Prado Neves",
+      tipo: "OUTRO",
+      nomeBeneficio: "Auxílio Creche & Educação Infantil",
+      operadora: "Reembolso Direto Disk Ingressos",
+      valorMensalIntegral: 400.00,
+      descontoEmFolha6Pct: 0.00,
+      custoEmpresa: 400.00,
+      status: "ATIVO"
     }
   ],
 

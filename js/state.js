@@ -4942,6 +4942,144 @@ export class CoreFinanceiroStore {
     return ped;
   }
 
+  cadastrarBeneficioRH(dados) {
+    if (!dados || !dados.colaboradorId) throw new Error("Colaborador é obrigatório.");
+    if (!dados.nomeBeneficio) throw new Error("Nome/Especificação do benefício é obrigatório.");
+
+    const dbColabs = this.data.rhColaboradores || [];
+    const colab = dbColabs.find(c => c.id === dados.colaboradorId) || { nome: dados.colaboradorNome || 'Colaborador' };
+
+    const valorIntegral = parseFloat(dados.valorMensalIntegral) || 0;
+    let descontoFolha = parseFloat(dados.descontoEmFolha6Pct !== undefined ? dados.descontoEmFolha6Pct : dados.descontoFolha) || 0;
+
+    // Se regra de VT 6% legal for selecionada
+    if (dados.regraDesconto === 'VT_LEGAL_6') {
+      const salarioBase = parseFloat(colab.salario) || 0;
+      const teto6Pct = salarioBase * 0.06;
+      descontoFolha = Math.min(valorIntegral, teto6Pct);
+    }
+
+    const custoEmpresa = Math.max(0, valorIntegral - descontoFolha);
+
+    const novoBeneficio = {
+      id: dados.id || `ben-${Date.now()}`,
+      colaboradorId: dados.colaboradorId,
+      colaboradorNome: colab.nome,
+      tipo: dados.tipo || 'VALE_ALIMENTACAO',
+      nomeBeneficio: dados.nomeBeneficio,
+      operadora: dados.operadora || 'Flash Benefícios Flexíveis',
+      valorMensalIntegral: valorIntegral,
+      descontoEmFolha6Pct: descontoFolha,
+      custoEmpresa: custoEmpresa,
+      regraDesconto: dados.regraDesconto || 'ISENTO',
+      competenciaInicio: dados.competenciaInicio || '2026-10',
+      observacoes: dados.observacoes || '',
+      status: dados.status || 'ATIVO',
+      criadoEm: new Date().toISOString()
+    };
+
+    if (!this.data.rhBeneficios) this.data.rhBeneficios = [];
+    this.data.rhBeneficios.unshift(novoBeneficio);
+
+    // Trilha imutável de auditoria
+    if (!this.data.rhAuditLogs) this.data.rhAuditLogs = [];
+    this.data.rhAuditLogs.unshift({
+      id: `log-rh-${Date.now()}`,
+      at: new Date().toLocaleString('pt-BR'),
+      by: this.state.currentUser.name || 'Gestor RH Disk',
+      colaboradorAfetado: `${colab.nome}`,
+      acao: 'CONCESSAO_BENEFICIO',
+      entidade: 'Benefício',
+      detalhes: `Concessão de benefício [${novoBeneficio.nomeBeneficio}] (${novoBeneficio.tipo}) no valor de R$ ${valorIntegral.toFixed(2)}.`,
+      ip: '127.0.0.1'
+    });
+
+    this.showToast("✓ Benefício Concedido", `${novoBeneficio.nomeBeneficio} adicionado para ${colab.nome}.`, "success");
+    this.persist();
+    this.notify();
+    return novoBeneficio;
+  }
+
+  atualizarBeneficioRH(id, dados) {
+    const ben = (this.data.rhBeneficios || []).find(b => b.id === id);
+    if (!ben) throw new Error("Benefício não encontrado.");
+
+    if (dados.nomeBeneficio) ben.nomeBeneficio = dados.nomeBeneficio;
+    if (dados.tipo) ben.tipo = dados.tipo;
+    if (dados.operadora) ben.operadora = dados.operadora;
+    if (dados.valorMensalIntegral !== undefined) ben.valorMensalIntegral = parseFloat(dados.valorMensalIntegral) || 0;
+    if (dados.descontoEmFolha6Pct !== undefined) ben.descontoEmFolha6Pct = parseFloat(dados.descontoEmFolha6Pct) || 0;
+    ben.custoEmpresa = Math.max(0, ben.valorMensalIntegral - ben.descontoEmFolha6Pct);
+    if (dados.status) ben.status = dados.status;
+    if (dados.observacoes !== undefined) ben.observacoes = dados.observacoes;
+    if (dados.regraDesconto) ben.regraDesconto = dados.regraDesconto;
+    if (dados.competenciaInicio) ben.competenciaInicio = dados.competenciaInicio;
+
+    if (!this.data.rhAuditLogs) this.data.rhAuditLogs = [];
+    this.data.rhAuditLogs.unshift({
+      id: `log-rh-${Date.now()}`,
+      at: new Date().toLocaleString('pt-BR'),
+      by: this.state.currentUser.name || 'Gestor RH Disk',
+      colaboradorAfetado: ben.colaboradorNome,
+      acao: 'ALTERACAO_BENEFICIO',
+      entidade: 'Benefício',
+      detalhes: `Parâmetros do benefício [${ben.nomeBeneficio}] atualizados.`,
+      ip: '127.0.0.1'
+    });
+
+    this.showToast("✓ Benefício Atualizado", `Parâmetros de ${ben.nomeBeneficio} salvos com sucesso.`, "success");
+    this.persist();
+    this.notify();
+    return ben;
+  }
+
+  alternarStatusBeneficioRH(id) {
+    const ben = (this.data.rhBeneficios || []).find(b => b.id === id);
+    if (!ben) throw new Error("Benefício não encontrado.");
+
+    ben.status = ben.status === 'ATIVO' ? 'INATIVO' : 'ATIVO';
+
+    if (!this.data.rhAuditLogs) this.data.rhAuditLogs = [];
+    this.data.rhAuditLogs.unshift({
+      id: `log-rh-${Date.now()}`,
+      at: new Date().toLocaleString('pt-BR'),
+      by: this.state.currentUser.name || 'Gestor RH Disk',
+      colaboradorAfetado: ben.colaboradorNome,
+      acao: 'STATUS_BENEFICIO',
+      entidade: 'Benefício',
+      detalhes: `Status do benefício [${ben.nomeBeneficio}] alterado para ${ben.status}.`,
+      ip: '127.0.0.1'
+    });
+
+    this.showToast("Status Atualizado", `${ben.nomeBeneficio} agora está ${ben.status}.`, "info");
+    this.persist();
+    this.notify();
+    return ben;
+  }
+
+  excluirBeneficioRH(id) {
+    const idx = (this.data.rhBeneficios || []).findIndex(b => b.id === id);
+    if (idx === -1) throw new Error("Benefício não encontrado.");
+    const removido = this.data.rhBeneficios.splice(idx, 1)[0];
+
+    if (!this.data.rhAuditLogs) this.data.rhAuditLogs = [];
+    this.data.rhAuditLogs.unshift({
+      id: `log-rh-${Date.now()}`,
+      at: new Date().toLocaleString('pt-BR'),
+      by: this.state.currentUser.name || 'Gestor RH Disk',
+      colaboradorAfetado: removido.colaboradorNome,
+      acao: 'EXCLUSAO_BENEFICIO',
+      entidade: 'Benefício',
+      detalhes: `Benefício [${removido.nomeBeneficio}] excluído do cadastro.`,
+      ip: '127.0.0.1'
+    });
+
+    this.showToast("Benefício Excluído", `${removido.nomeBeneficio} foi removido com sucesso.`, "warning");
+    this.persist();
+    this.notify();
+    return removido;
+  }
+
   fecharCompetenciaPontoRH(competencia = "2026-10") {
     let fechamento = (this.data.rhFechamentosPonto || []).find(f => f.competencia === competencia);
     const pendentes = (this.data.rhAjustesPonto || []).filter(a => a.status === 'PENDENTE');
