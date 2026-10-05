@@ -89,6 +89,16 @@
             <i class="ph-list fs-4"></i>
           </button>
           <span class="badge bg-primary text-white fw-bold fs-xxs px-2 py-1" id="navbar-role-indicator">PORTAL DO PRODUTOR</span>
+
+          <!-- Alternador Rápido de Perfil: Produtor vs Financeiro Disk / RH -->
+          <div class="btn-group btn-group-sm ms-2" role="group" aria-label="Alternar Visão">
+            <button type="button" class="btn btn-sm btn-outline-light text-white-50 py-1 px-2 fs-xxs fw-normal" id="btn-switch-produtor" onclick="window.switchGlobalRole('PRODUTOR')" title="Alternar para Visão Produtor">
+              <i class="ph-user me-1"></i> Produtor
+            </button>
+            <button type="button" class="btn btn-sm btn-success text-white py-1 px-2 fs-xxs fw-bold shadow-sm" id="btn-switch-disk" onclick="window.switchGlobalRole('RH')" title="Alternar para Financeiro Disk e Módulo de RH">
+              <i class="ph-users-three me-1"></i> RH Disk &amp; Financeiro
+            </button>
+          </div>
         </div>
 
         <!-- Global Search Box -->
@@ -159,6 +169,9 @@
                 <div class="fw-bold fs-xs text-dark" id="user-dropdown-name">João Silva</div>
                 <div class="text-muted fs-xxs" id="user-dropdown-role">Produtora ABC Ltda. (Diretor)</div>
               </div>
+              <a href="#" class="dropdown-item fs-xs py-2 fw-bold text-success" onclick="window.switchGlobalRole('RH'); return false;"><i class="ph-users-three me-2 text-success"></i> Acessar RH Disk &amp; Financeiro</a>
+              <a href="#" class="dropdown-item fs-xs py-2" onclick="window.switchGlobalRole('PRODUTOR'); return false;"><i class="ph-user me-2 text-primary"></i> Alternar para Visão Produtor</a>
+              <div class="dropdown-divider my-1"></div>
               <a href="#" class="dropdown-item fs-xs py-2" onclick="window.app && window.app.navigate('dadosBancarios'); return false;"><i class="ph-credit-card me-2 text-success"></i> Dados Bancários &amp; PIX</a>
               <a href="#" class="dropdown-item fs-xs py-2" onclick="window.app && window.app.openTransferModal(); return false;"><i class="ph-arrows-clockwise me-2 text-info"></i> Transferência entre Eventos</a>
               <div class="dropdown-divider my-1"></div>
