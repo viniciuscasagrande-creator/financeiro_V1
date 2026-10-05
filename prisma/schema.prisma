@@ -4,7 +4,7 @@
 // ============================================================================
 
 datasource db {
-  provider = "sqlite" // SQLite para facilidade de execução local no VS Code (ou postgresql para produção)
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
