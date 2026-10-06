@@ -244,6 +244,9 @@ Correção definitiva do motor de elegibilidade para evitar vazamento de deduç�
 ## Evolução V0.7 — Base Mestre de Produtores
 Inclui busca por nome/CNPJ no Dossiê e fluxo de Comprovantes e Transações com publicação controlada para o portal do Produtor. Consulte `docs/BASE_MESTRE_PRODUTORES_COMPROVANTES_V0.7.md`.
 
+## Regras de Repasse e Elegibilidade Financeira
+Manual canônico detalhando a política 50/20, fórmulas matemáticas, deduções por evento, hierarquia de políticas, autorizações excepcionais e workflow de aprovação/assinatura digital. Consulte [`docs/REGRAS_DE_REPASSE.md`](docs/REGRAS_DE_REPASSE.md).
+
 ## Evoluções RH Disk Integrado
 - **V2.1 — Menu Hierárquico Inteligente**: Organização modular em 10 grupos expansíveis com memorização de estado. Consulte [`docs/RH_DISK_V2_1_MENU_HIERARQUICO.md`](docs/RH_DISK_V2_1_MENU_HIERARQUICO.md).
 - **V2.2 — Dashboards Operacionais**: 8 dashboards por domínio como área de trabalho, KPIs clicáveis e área "Precisa da sua atenção". Consulte [`docs/RH_DISK_V2_2_DASHBOARDS_OPERACIONAIS.md`](docs/RH_DISK_V2_2_DASHBOARDS_OPERACIONAIS.md).
