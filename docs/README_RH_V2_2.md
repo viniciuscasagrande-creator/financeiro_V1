@@ -3,9 +3,11 @@
 Evolução da V2.1 integrada ao Módulo Financeiro oficial do Disk Ingressos.
 
 ## Arquitetura: O Dashboard como Área de Trabalho
+
 O dashboard agora atua como a bancada de trabalho operacional diária do usuário, unindo indicadores em tempo real, pendências com ação direta e visão gerencial.
 
-### Dashboards Operacionais por Domínio:
+### Dashboards Operacionais por Domínio
+
 1. **Pessoas e Estrutura (`diskRH_dashPessoas`)**:
    - Headcount ativo, novas admissões, contratos e documentos a vencer, movimentações de cargos/salários pendentes.
    - Alertas com links para resolução direta de contratos em vencimento e admissões digitais.
@@ -26,7 +28,8 @@ O dashboard agora atua como a bancada de trabalho operacional diária do usuári
 8. **Administração do RH (`diskRH_dashAdmin`)**:
    - Conectores ERP/eSocial, auditoria imutável (logs de acessos sensíveis LGPD), políticas publicadas e integridade de filas.
 
-## Interatividade e Recursos:
+## Interatividade e Recursos
+
 - **Área "Precisa da sua atenção"**: Cards e badges prioritários (🔴 URGENTE, 🟠 ATENÇÃO, 🟡 VENCIMENTO, 🔵 ROTINA) que direcionam o gestor com um único clique para o registro a ser resolvido.
 - **KPIs Clicáveis**: Cada métrica possui navegação contextual direta.
 - **Ações Rápidas**: Botões para abrir formulários e processos mais utilizados.

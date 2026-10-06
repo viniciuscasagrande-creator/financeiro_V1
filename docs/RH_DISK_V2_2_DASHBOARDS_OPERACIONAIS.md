@@ -3,6 +3,7 @@
 Evolução sobre a estrutura hierárquica (V2.1) integrada ao Módulo Financeiro oficial.
 
 ## Dashboards Operacionais por Domínio
+
 - **Pessoas e Estrutura (`diskRH_dashPessoas`)**: Headcount ativo, admissões em andamento, contratos/docs a vencer, movimentações funcionais.
 - **Departamento Pessoal (`diskRH_dashDP`)**: Folha atual, programação de férias, afastamentos ativos, pendências eSocial, rescisões.
 - **Ponto e Jornada (`diskRH_dashPonto`)**: Presentes agora, colaboradores em intervalo, atrasos hoje, batidas fora de geofence, ajustes pendentes de aprovação, banco de horas (+340h).
@@ -13,6 +14,7 @@ Evolução sobre a estrutura hierárquica (V2.1) integrada ao Módulo Financeiro
 - **Administração do RH (`diskRH_dashAdmin`)**: Conectores ERP/eSocial, auditoria imutável, conformidade LGPD e integridade de filas.
 
 ## Recursos
+
 - Área **"Precisa da sua atenção"** priorizada com alertas clicáveis.
 - **Cards KPI Clicáveis** para navegação contextual direta.
 - Ações rápidas e atalhos operacionais diretos.

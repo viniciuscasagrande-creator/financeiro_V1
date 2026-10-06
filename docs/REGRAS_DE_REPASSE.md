@@ -1,5 +1,6 @@
 # Manual Oficial de Regras, Elegibilidade e Governança de Repasses Financeiros
-### Disk Ingressos — Core Financeiro Unificado (ERP / CRM)
+
+## Disk Ingressos — Core Financeiro Unificado (ERP / CRM)
 
 ---
 
@@ -8,6 +9,7 @@
 O **Repasse Financeiro** é o adiantamento legal e controlado de receitas de bilheteria ao Produtor antes da liquidação final do evento (Borderô). O objetivo do motor de repasses é viabilizar o fluxo de caixa da produção artística garantindo simultaneamente a **segurança financeira da Disk Ingressos**, a **proteção contra estornos/chargebacks**, a **reserva de obrigações de terceiros** e a **segregação patrimonial por evento**.
 
 ### Distinções Canônicas de Produtos Financeiros
+
 | Operação | Natureza | Origem dos Recursos | Momento de Liquidação |
 | :--- | :--- | :--- | :--- |
 | **Repasse de Bilheteria** | Liberação parcial de receitas de vendas já realizadas | Saldo em conta do evento na Disk | Durante a pré-venda do evento |
@@ -28,17 +30,20 @@ Por padrão corporativo da Disk Ingressos, todo evento segue a política de segu
 ```
 
 ### 2.1. Variáveis de Entrada
+
 - **`salesTarget` (Meta de Vendas)**: Valor bruto total estimado de arrecadação do evento (capacidade × preço médio ou valor cadastrado).
 - **`grossSales` (Vendas Brutas Realizadas)**: Total faturado até o instante da consulta (ingressos emitidos).
 - **`progressPercent` (Progresso de Vendas)**:
   $$\text{Progresso (\%)} = \frac{\text{grossSales}}{\text{salesTarget}} \times 100$$
 
 ### 2.2. Avaliação de Gatilho de Venda
+
 1. **Se $\text{progressPercent} < 50\%$**:
    - Status do Repasse: **`BLOQUEADO`**
    - $\text{Limite Bruto} = \text{R\$}~0,00$
    - $\text{Faltam Vendas} = (\text{salesTarget} \times 0,50) - \text{grossSales}$
    - O formulário de solicitação no Portal do Produtor fica desabilitado com aviso explicativo do valor faltante.
+
 2. **Se $\text{progressPercent} \ge 50\%$**:
    - Status do Repasse: **`HABILITADO`**
    - $\text{Limite Bruto} = \text{grossSales} \times 0,20$ (20% das vendas acumuladas)
@@ -71,7 +76,9 @@ As deduções são **estritamente segregadas por evento**. O que ocorre no Event
 $$\text{Total Deduções} = \text{RepassesAnteriores} + \text{Bloqueios} + \text{Reservas} + \text{Retenções} + \text{AmortizaçãoCrédito} + \text{Obrigações} + \text{Estornos}$$
 
 ### 3.2. Trava de Saldo Real em Conta
+
 Mesmo que a fórmula do limite comercial aponte um valor elevado, **o repasse nunca pode ultrapassar o saldo líquido real do evento**:
+
 $$\text{Saldo Real do Evento} = \max\big(0,\; \text{Saldo Bruto em Conta} - \text{obligationsHold} - \text{refundsHold}\big)$$
 
 ---
@@ -92,6 +99,7 @@ graph TD
 3. **Nível 3 — Evento Específico**: Ajuste pontual para uma turnê ou festival específico (ex: 30% de vendas mínimas e 15% de liberação). Tem prioridade máxima sobre os anteriores.
 
 Parâmetros adicionais configuráveis em cada escopo:
+
 - `considerCreditAmortization`: deduzir parcelas de créditos ativos (padrão: `true`).
 - `considerRefunds` / `considerChargebacks`: considerar reservas de contestações (padrão: `true`).
 - `requireValidatedBank`: exigir conta bancária homologada pela Tesouraria (padrão: `true`).
@@ -104,10 +112,12 @@ Parâmetros adicionais configuráveis em cada escopo:
 Para eventos estratégicos que não atingiram 50% de vendas ou necessitam de capital de giro emergencial para infraestrutura, existe o dispositivo de **Autorização Excepcional**.
 
 ### 5.1. Regras de Segregação de Funções (SoD)
+
 - **Produtor**: **PROIBIDO** de emitir ou aprovar autorizações excepcionais. Qualquer tentativa é bloqueada pela API com erro `403 Forbidden`.
 - **Mesa Financeira Disk**: Apenas operadores autorizados do Financeiro/Diretoria Disk podem conceder exceções.
 
 ### 5.2. Requisitos Mandatórios da Exceção
+
 1. **Justificativa Formal Obrigatória**: Texto detalhado com **no mínimo 5 caracteres** explicando o motivo comercial e registrando a alçada responsável para a auditoria.
 2. **Limite Físico do Saldo**: O valor da exceção não pode exceder o saldo financeiro real em conta do evento.
 3. **Consumo Atômico de Uso Único**:
@@ -123,6 +133,7 @@ Para eventos estratégicos que não atingiram 50% de vendas ou necessitam de cap
 ## 6. Segregação Patrimonial e Isolamento por Evento
 
 Cada evento opera como uma **unidade de patrimônio de afetação contábil**:
+
 - As obrigações (ex: fornecedores de som, taxas municipais) cadastradas para o Evento X reservam saldo **apenas** no Evento X.
 - O limite e as deduções de repasse do Evento X **não afetam** o disponível para repasse do Evento Y do mesmo produtor.
 - Estornos e contestações de ingressos incidem unicamente sobre o evento originador da venda.
@@ -156,7 +167,8 @@ sequenceDiagram
     Led-->>Portal: Notifica Produtor (Status: PAGO)
 ```
 
-### Detalhamento das Etapas:
+### Detalhamento das Etapas
+
 1. **Solicitação (`Aguardando análise`)**: O produtor seleciona o evento, digita o valor até o limite permitido e escolhe a conta bancária homologada.
 2. **Análise Financeira (`Em análise`)**: O operador de backoffice checa documentação, dados bancários e integridade de vendas.
 3. **Aprovação (`Aprovado`)**: Homologação formal com segregação de funções (o usuário que aprova não pode ser o mesmo que solicitou).
@@ -170,7 +182,9 @@ sequenceDiagram
      - **CRÉDITO**: *Ativo Circulante — Conta Movimento Bancária (Banco Itaú Disk Ingressos)*
 
 ### Cenário de Rejeição Formal
+
 Caso a solicitação apresente inconsistências (ex: *Inconsistência nos Dados Bancários*, *Bloqueio Judicial Superveniente* ou *Suspeita de Chargeback*):
+
 - O operador seleciona o motivo categórico obrigatório e insere justificativa.
 - O status transita para **`Rejeitado`**.
 - Os valores reservados são **estornados atomicamente** de volta ao saldo disponível do evento no mesmo milissegundo.
@@ -180,6 +194,7 @@ Caso a solicitação apresente inconsistências (ex: *Inconsistência nos Dados 
 ## 8. Casos Práticos de Aplicação
 
 ### Caso A: Festival Curitiba 2026 (`evt-001`) — Repasse Canônico Habilitado
+
 - **Meta de Vendas**: R$ 1.000.000,00
 - **Vendas Brutas Realizadas**: R$ 500.000,00 (Progresso: exatamente 50,0%)
 - **Regra**: Atingiu gatilho $\ge 50\%$.
@@ -189,6 +204,7 @@ Caso a solicitação apresente inconsistências (ex: *Inconsistência nos Dados 
 - **Operação Executada**: Produtor solicita R$ 80.000,00 com sucesso (`REP-00291`), restando R$ 20.000,00 de limite.
 
 ### Caso B: Turnê Rock Arena (`evt-002`) — Bloqueio por Vendas Insuficientes
+
 - **Meta de Vendas**: R$ 600.000,00
 - **Vendas Brutas Realizadas**: R$ 250.000,00 (Progresso: 41,7%)
 - **Gatilho de 50%**: R$ 300.000,00
@@ -198,6 +214,7 @@ Caso a solicitação apresente inconsistências (ex: *Inconsistência nos Dados 
 - **Tratamento de Exceção**: A diretoria emite autorização excepcional de R$ 35.000,00 com justificativa formal para montagem de palco, liberando temporariamente a submissão de até R$ 35.000,00 (`EXCECAO_AUTORIZADA`).
 
 ### Caso C: Festival de Inverno (`evt-inverno`) — Repasse com Múltiplas Deduções
+
 - **Meta de Vendas**: R$ 1.000.000,00
 - **Vendas Realizadas**: R$ 520.000,00 (Progresso: 52,0% $\ge 50\%$)
 - **Limite Bruto (20%)**: $520.000,00 \times 0,20 = \text{R\$}~104.000,00$
@@ -211,6 +228,7 @@ Caso a solicitação apresente inconsistências (ex: *Inconsistência nos Dados 
 ## 9. Rastreabilidade, Logs e Auditoria
 
 Todas as etapas do ciclo de repasse gravam eventos na trilha de auditoria (`auditLogs`):
+
 - `EVENTO`: Data e hora exata em formato ISO 8601.
 - `ATOR`: ID, nome, cargo e perfil de acesso do responsável.
 - `OPERAÇÃO`: `SOLICITACAO_REPASSE`, `AUTORIZACAO_EXCEPCIONAL`, `APROVACAO_REPASSE`, `ASSINATURA_DIGITAL_PRODUTOR`, `ASSINATURA_DIGITAL_DISK`, `PAGAMENTO_PIX`, `REJEICAO_REPASSE`.

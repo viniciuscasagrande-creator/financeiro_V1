@@ -40,4 +40,5 @@ A versão 2.3 dá o salto de telas estáticas para **operação real com persist
    - Todos os 152 testes automatizados e o Módulo Financeiro preservados em 100%.
 
 ## Próximo Passo: V2.4 — Core RH Real
+
 Substituição da camada de persistência local por backend corporativo (Node.js API + PostgreSQL + Prisma ORM + Auditoria centralizada).

@@ -43,7 +43,7 @@ docs/
 ## 🗺️ Mapa de Pacotes e Evolução Funcional
 
 | Pacote | Título / Domínio | Principais Entregas |
-|---|---|---|
+| --- | --- | --- |
 | [Pacote 2](pacotes/PACOTE_2_OPERACAO_FINANCEIRA_REAL.md) | Operação Financeira Real | Esteira de solicitações, saldo disponível, bloqueios cautelares e reservas |
 | [Pacote 3](pacotes/PACOTE_3_GATEWAYS_MDR_CONCILIACAO.md) | Gateways, MDR e Conciliação | Roteamento multiadquirente (Cielo, Rede, Stone), cálculo de MDR e conciliação |
 | [Pacote 4](pacotes/PACOTE_4_TESOURARIA_BANCOS_PIX_CNAB_CAIXA.md) | Tesouraria & Liquidação | Fila PIX instantâneo, CNAB 240/400 bancário, conciliação e liquidação em lote |

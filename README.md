@@ -1,4 +1,5 @@
 # Disk Ingressos — Core Financeiro Unificado (ERP / CRM)
+
 ## Implementação Completa da Demonstração (Pacote Único Integrado)
 
 Este projeto implementa de uma única vez o ambiente demonstrativo completo do **Financeiro Disk Ingressos**, com base na arquitetura **Limitless** da referência [https://financeiropdtnovo.web.app/](https://financeiropdtnovo.web.app/), utilizando um único **Core Financeiro** e separando a experiência por perfil de acesso.
@@ -11,6 +12,7 @@ Este projeto implementa de uma única vez o ambiente demonstrativo completo do *
 - **URL Local no Navegador:** [http://localhost:3000](http://localhost:3000) (Servidor Node.js nativo ativo)
 - **Diretório no VS Code:** `C:\Users\vinad\OneDrive\Desktop\Modulo_Financeiro_v1`
 - **Comando para abrir no VS Code:**
+
   ```powershell
   code C:\Users\vinad\OneDrive\Desktop\Modulo_Financeiro_v1
   ```
@@ -207,6 +209,7 @@ O fluxo principal está 100% calibrado e interconectado de ponta a ponta:
 ### 5. Cenário de Antecipação de Recebíveis
 
 Separado de Repasse, com cálculo automático:
+
 - **Recebíveis Futuros (D+30):** R$ 100.000,00
 - **Valor Solicitado:** R$ 50.000,00
 - **Taxa de Antecipação Contratual:** 2,0% (R$ 1.000,00)
@@ -218,6 +221,7 @@ Separado de Repasse, com cálculo automático:
 ### 6. Ferramentas da Barra de Demonstração Flutuante
 
 No rodapé da tela, a barra interativa permite a qualquer momento:
+
 - `+ Venda Cartão`: injeta transação com MDR de 2,15% e gera recebível futuro.
 - `+ Venda PIX`: injeta transação direta D+0 com saldo imediato.
 - `+ Chargeback`: simula contestação de operadora debitando garantia.
@@ -228,26 +232,31 @@ No rodapé da tela, a barra interativa permite a qualquer momento:
 Inclui matriz administrativa de MDR e regras comerciais, Spread bruto, custos adicionais, receita fixa comercial, margem líquida efetiva, hierarquia Evento → Produtor → Geral Disk e versionamento. Veja `docs/V0.6.1_TAXAS_MDR_SPREAD_REGRAS_COMERCIAIS.md`.
 
 ## V0.6.2 — Spread, Rentabilidade e DRE
+
 A matriz de Taxas/MDR/Spread passa a alimentar a apuração gerencial por evento e o DRE de taxas/adquirência. Consulte `docs/V0.6.2_SPREAD_LEDGER_DRE.md`.
 
 ## V0.6.2.1 — Correção Produtores, Saldos e Repasse por Evento
+
 Abertura padrão no Dossiê Financeiro do Produtor, segregação patrimonial e contábil por evento (`Saldo do Evento → Limite da Política → Deduções do Evento → Elegível para Repasse`), eliminação da simulação indevida de repasse pelo Financeiro Disk e atuação administrativa via Autorização Excepcional. Consulte `docs/V0.6.2.1_CORRECAO_PRODUTORES_REPASSE_EVENTO.md`.
 
 ## V0.6.2.2 — Correção Real do Submenu Produtores
+
 Ajuste da implementação utilizada no protótipo web (`js/views/disk/produtores.js` e `js/app.js`): abertura por padrão no Dossiê Financeiro (`dossie`), cabeçalho e botões dinâmicos por aba (ocultando adição de conta bancária no Dossiê), deduções detalhadas por evento e inclusão de `retainedBalance` em `totalDeductions` no cálculo de elegibilidade do motor (`js/state.js`). Consulte `docs/V0.6.2.2_CORRECAO_REAL_SUBMENU_PRODUTORES.md`.
 
 ## V0.6.2.3 — Correção Definitiva de Produtores, Elegibilidade e Repasse por Evento
+
 Correção definitiva do motor de elegibilidade para evitar vazamento de deduções consolidadas do produtor sobre eventos individuais. O **Festival Curitiba 2026 (`evt-001`)** passa a refletir com exatidão: **Vendas R$ 500.000 (50%) → Limite 20% (R$ 100.000,00) → Deduções do Evento (R$ 0,00) → Disponível para Repasse (R$ 100.000,00 - HABILITADO)**. O formulário de solicitação de repasse fica 100% liberado com sugestão de R$ 80.000,00 e submissão validada. Suíte com 78 testes automatizados aprovados. Consulte `docs/V0.6.2.3_CORRECAO_DEFINITIVA_PRODUTORES_ELEGIBILIDADE_REPASSE.md`.
 
-
-
 ## Evolução V0.7 — Base Mestre de Produtores
+
 Inclui busca por nome/CNPJ no Dossiê e fluxo de Comprovantes e Transações com publicação controlada para o portal do Produtor. Consulte `docs/BASE_MESTRE_PRODUTORES_COMPROVANTES_V0.7.md`.
 
 ## Regras de Repasse e Elegibilidade Financeira
+
 Manual canônico detalhando a política 50/20, fórmulas matemáticas, deduções por evento, hierarquia de políticas, autorizações excepcionais e workflow de aprovação/assinatura digital. Consulte [`docs/REGRAS_DE_REPASSE.md`](docs/REGRAS_DE_REPASSE.md).
 
 ## Evoluções RH Disk Integrado
+
 - **V2.1 — Menu Hierárquico Inteligente**: Organização modular em 10 grupos expansíveis com memorização de estado. Consulte [`docs/RH_DISK_V2_1_MENU_HIERARQUICO.md`](docs/RH_DISK_V2_1_MENU_HIERARQUICO.md).
 - **V2.2 — Dashboards Operacionais**: 8 dashboards por domínio como área de trabalho, KPIs clicáveis e área "Precisa da sua atenção". Consulte [`docs/RH_DISK_V2_2_DASHBOARDS_OPERACIONAIS.md`](docs/RH_DISK_V2_2_DASHBOARDS_OPERACIONAIS.md).
 - **V2.3 — Operação Real do RH**: Persistência reativa de homologação, workflows de status (`Pendente` → `Em análise` → `Aprovado` / `Reprovado`), modais conectados e recálculo dinâmico de KPIs. Consulte [`docs/RH_DISK_V2_3_OPERACAO_REAL.md`](docs/RH_DISK_V2_3_OPERACAO_REAL.md).
@@ -278,4 +287,3 @@ Modulo_Financeiro_v1/
 ├── scripts/        # Scripts operacionais de automação e backup
 └── tests/          # Suíte automatizada com 153 testes (100% aprovados)
 ```
-
